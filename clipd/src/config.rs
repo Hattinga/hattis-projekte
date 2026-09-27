@@ -1,0 +1,344 @@
+//! Settings, and the folders clipd works in.
+
+use anyhow::{Context, Result};
+use serde::{Deserialize, Serialize};
+use std::path::{Path, PathBuf};
+
+/// The hardware encoders clipd drives. All three run on the graphics card; the
+/// buffer container follows from the codec, because the trick of reading the
+/// segment that is still being written only works in a stream format.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Codec {
+    H264,
+    Hevc,
+    Av1,
+}
+
+impl Codec {
+    pub const ALL: [Codec; 3] = [Codec::H264, Codec::Hevc, Codec::Av1];
+
+    pub fn encoder(self) -> &'static str {
+        match self {
+            Codec::H264 => "h264_nvenc",
+            Codec::Hevc => "hevc_nvenc",
+            Codec::Av1 => "av1_nvenc",
+        }
+    }
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Codec::H264 => "H.264",
+            Codec::Hevc => "HEVC",
+            Codec::Av1 => "AV1",
+        }
+    }
+
+    /// Container for the buffer segments. MPEG-TS survives being cut off
+    /// mid-write, which is what lets a clip reach up to the current moment;
+    /// AV1 has no place in TS, so it falls back to Matroska.
+    pub fn segment_format(self) -> &'static str {
+        match self {
+            Codec::H264 | Codec::Hevc => "mpegts",
+            Codec::Av1 => "matroska",
+        }
+    }
+
+    pub fn segment_ext(self) -> &'static str {
+        match self {
+            Codec::H264 | Codec::Hevc => "ts",
+            Codec::Av1 => "mkv",
+        }
+    }
+
+    /// Whether the segment still being written can be used for a clip. Only a
+    /// stream container tolerates a missing tail.
+    pub fn tolerates_partial_segment(self) -> bool {
+        self.segment_format() == "mpegts"
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct Settings {
+    /// Which desktop to record, counted as the Desktop Duplication API counts
+    /// them. `clipd monitors` lists them.
+    pub monitor: u32,
+    pub fps: u32,
+    /// How far back a clip may reach. The buffer on disk holds this much.
+    pub buffer_secs: u32,
+    /// Length of one buffer file. Shorter means finer cuts and more files.
+    pub segment_secs: u32,
+    /// How much a hotkey press saves, at most `buffer_secs`.
+    pub clip_secs: u32,
+    pub codec: Codec,
+    /// Constant quality, 0 (huge) to 51 (poor). 22 is a good starting point.
+    pub quality: u8,
+    /// nvenc preset p1 (fastest) to p7 (best). p5 costs little and looks good.
+    pub preset: String,
+    pub draw_mouse: bool,
+    /// Records what the speakers play. Off means picture only.
+    pub audio: bool,
+    /// AAC bitrate in kbit/s for the recorded sound.
+    pub audio_kbit: u32,
+    /// Part of the name of the playback device to record. Empty means the
+    /// default one — which is not always one that can do loopback, so
+    /// `clipd audio` exists to find a working one.
+    pub audio_device: String,
+    pub hotkey: String,
+    /// Where finished clips land. Empty means `<base>/clips`.
+    pub out_dir: PathBuf,
+}
+
+impl Default for Settings {
+    fn default() -> Self {
+        Self {
+            monitor: 0,
+            fps: 60,
+            buffer_secs: 120,
+            segment_secs: 1,
+            clip_secs: 30,
+            codec: Codec::Hevc,
+            quality: 22,
+            preset: "p5".into(),
+            draw_mouse: false,
+            audio: true,
+            audio_kbit: 160,
+            audio_device: String::new(),
+            hotkey: "Ctrl+Alt+C".into(),
+            out_dir: PathBuf::new(),
+        }
+    }
+}
+
+impl Settings {
+    pub fn load() -> Self {
+        let path = config_path();
+        let Ok(text) = std::fs::read_to_string(&path) else { return Self::default() };
+        match toml::from_str(&text) {
+            Ok(s) => s,
+            Err(e) => {
+                eprintln!("clipd: {} ist unbrauchbar ({e}), es gelten die Standardwerte", path.display());
+                Self::default()
+            }
+        }
+    }
+
+    pub fn save(&self) -> Result<()> {
+        let path = config_path();
+        let text = toml::to_string_pretty(self).context("Einstellungen lassen sich nicht schreiben")?;
+        std::fs::write(&path, text).with_context(|| format!("{} lässt sich nicht schreiben", path.display()))
+    }
+
+    /// Notes down what the running capture actually settled on. Without this a
+    /// separate `clipd clip` would fall back to config.toml and cut a different
+    /// length than the recording was started with.
+    pub fn save_session(&self) -> Result<()> {
+        let path = session_path();
+        let text = toml::to_string_pretty(self).context("Sitzung lässt sich nicht schreiben")?;
+        std::fs::write(&path, text).with_context(|| format!("{} lässt sich nicht schreiben", path.display()))
+    }
+
+    /// The settings of a capture that is currently running, if there is one.
+    pub fn load_session() -> Option<Self> {
+        toml::from_str(&std::fs::read_to_string(session_path()).ok()?).ok()
+    }
+
+    /// Number of buffer files that cover `buffer_secs`, at least one.
+    pub fn ring_len(&self) -> usize {
+        div_ceil(self.buffer_secs, self.segment_secs).max(1) as usize
+    }
+
+    /// Number of buffer files a clip needs. One more than the plain division,
+    /// because the newest file is usually only partly filled.
+    pub fn clip_len(&self) -> usize {
+        let secs = self.clip_secs.min(self.buffer_secs);
+        (div_ceil(secs, self.segment_secs).max(1) as usize + 1).min(self.ring_len())
+    }
+
+    /// Distance between keyframes. The segment muxer can only start a new file
+    /// on a keyframe, so this has to divide the segment length — otherwise
+    /// ffmpeg writes one endless file.
+    pub fn gop(&self) -> u32 {
+        (self.fps * self.segment_secs).max(1)
+    }
+
+    pub fn clips_dir(&self) -> PathBuf {
+        if self.out_dir.as_os_str().is_empty() { base_dir().join("clips") } else { self.out_dir.clone() }
+    }
+
+    /// Complains about values that would produce a broken recording instead of
+    /// letting ffmpeg fail later with something cryptic.
+    pub fn check(&self) -> Result<()> {
+        anyhow::ensure!(self.fps >= 1 && self.fps <= 480, "fps muss zwischen 1 und 480 liegen, nicht {}", self.fps);
+        anyhow::ensure!(self.segment_secs >= 1, "segment_secs muss mindestens 1 sein");
+        anyhow::ensure!(self.buffer_secs >= self.segment_secs, "buffer_secs darf nicht kleiner als segment_secs sein");
+        anyhow::ensure!(self.clip_secs >= 1, "clip_secs muss mindestens 1 sein");
+        anyhow::ensure!(self.quality <= 51, "quality muss zwischen 0 und 51 liegen, nicht {}", self.quality);
+        anyhow::ensure!(
+            (32..=512).contains(&self.audio_kbit),
+            "audio_kbit muss zwischen 32 und 512 liegen, nicht {}",
+            self.audio_kbit
+        );
+        let ok_preset = self.preset.len() == 2
+            && self.preset.starts_with('p')
+            && self.preset[1..].parse::<u8>().is_ok_and(|n| (1..=7).contains(&n));
+        anyhow::ensure!(ok_preset, "preset muss p1 bis p7 sein, nicht {:?}", self.preset);
+        crate::hotkey::parse(&self.hotkey).map(|_| ())
+    }
+}
+
+fn div_ceil(a: u32, b: u32) -> u32 {
+    if b == 0 { a } else { a.div_ceil(b) }
+}
+
+/// Where clipd keeps its settings, the buffer and the clips:
+///
+/// - `CLIPD_HOME` if set;
+/// - during development (exe inside `target/{debug,release}`) the Cargo project
+///   root, so one buffer and one config are shared between builds;
+/// - otherwise next to the .exe, so a copied folder stays portable.
+pub fn base_dir() -> PathBuf {
+    let exe_dir =
+        std::env::current_exe().ok().and_then(|p| p.parent().map(PathBuf::from)).unwrap_or_else(|| PathBuf::from("."));
+    let dir = locate_base(&exe_dir, &|k| std::env::var_os(k).map(PathBuf::from));
+    if dir != exe_dir {
+        let _ = std::fs::create_dir_all(&dir);
+    }
+    dir
+}
+
+fn locate_base(exe_dir: &Path, var: &dyn Fn(&str) -> Option<PathBuf>) -> PathBuf {
+    if let Some(home) = var("CLIPD_HOME").filter(|p| !p.as_os_str().is_empty()) {
+        return home;
+    }
+    // target/debug/clipd.exe -> the folder holding Cargo.toml.
+    if matches!(exe_dir.file_name().and_then(|n| n.to_str()), Some("debug" | "release"))
+        && exe_dir.parent().is_some_and(|p| p.file_name().and_then(|n| n.to_str()) == Some("target"))
+        && let Some(root) = exe_dir.parent().and_then(|p| p.parent())
+    {
+        return root.to_path_buf();
+    }
+    exe_dir.to_path_buf()
+}
+
+pub fn config_path() -> PathBuf {
+    base_dir().join("config.toml")
+}
+
+/// The rolling buffer. Its contents are worthless after a restart, so `run`
+/// empties it on start.
+pub fn buffer_dir() -> PathBuf {
+    base_dir().join("buffer")
+}
+
+/// What the capture that is running right now was started with.
+pub fn session_path() -> PathBuf {
+    buffer_dir().join("session.toml")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Die Voreinstellungen müssen für sich schon ein brauchbares Setup sein.
+    #[test]
+    fn defaults_are_usable() {
+        Settings::default().check().expect("Standardwerte sind gültig");
+    }
+
+    /// Unsinnige Werte sollen vor dem Start auffallen, nicht mitten in ffmpeg.
+    #[test]
+    fn bad_values_are_rejected() {
+        let bad = |f: fn(&mut Settings)| {
+            let mut s = Settings::default();
+            f(&mut s);
+            assert!(s.check().is_err(), "hätte auffallen müssen: {s:?}");
+        };
+        bad(|s| s.fps = 0);
+        bad(|s| s.segment_secs = 0);
+        bad(|s| s.quality = 52);
+        bad(|s| s.preset = "p9".into());
+        bad(|s| s.preset = "schnell".into());
+        bad(|s| s.hotkey = "Strg+Ü".into());
+        bad(|s| {
+            s.buffer_secs = 2;
+            s.segment_secs = 10;
+        });
+    }
+
+    /// Der Ring muss den gewünschten Zeitraum abdecken, auch wenn die
+    /// Segmentlänge nicht glatt aufgeht.
+    #[test]
+    fn ring_covers_the_buffer() {
+        let s = |buffer, segment| Settings { buffer_secs: buffer, segment_secs: segment, ..Default::default() };
+        assert_eq!(s(120, 1).ring_len(), 120);
+        assert_eq!(s(120, 2).ring_len(), 60);
+        assert_eq!(s(10, 3).ring_len(), 4, "aufgerundet");
+        assert_eq!(s(1, 1).ring_len(), 1);
+    }
+
+    /// Ein Clip nimmt ein Segment mehr mit, weil das neueste erst teilweise
+    /// gefüllt ist — aber nie mehr, als der Ring hergibt.
+    #[test]
+    fn clip_takes_one_segment_extra() {
+        let s = |clip, segment, buffer| Settings {
+            clip_secs: clip,
+            segment_secs: segment,
+            buffer_secs: buffer,
+            ..Default::default()
+        };
+        assert_eq!(s(30, 1, 120).clip_len(), 31);
+        assert_eq!(s(30, 2, 120).clip_len(), 16);
+        assert_eq!(s(120, 1, 120).clip_len(), 120, "vom Ring begrenzt");
+        assert_eq!(s(999, 1, 120).clip_len(), 120, "länger als der Buffer geht nicht");
+    }
+
+    /// Ohne passenden Keyframe-Abstand schreibt ffmpeg eine einzige Datei.
+    #[test]
+    fn gop_matches_the_segment_length() {
+        let s = Settings { fps: 60, segment_secs: 2, ..Default::default() };
+        assert_eq!(s.gop(), 120);
+    }
+
+    /// AV1 passt nicht in MPEG-TS; dann ist das angeschnittene Segment tabu.
+    #[test]
+    fn container_follows_the_codec() {
+        assert_eq!(Codec::Hevc.segment_format(), "mpegts");
+        assert!(Codec::H264.tolerates_partial_segment());
+        assert_eq!(Codec::Av1.segment_ext(), "mkv");
+        assert!(!Codec::Av1.tolerates_partial_segment());
+    }
+
+    #[test]
+    fn base_dir_prefers_clipd_home() {
+        let exe = Path::new(r"C:\Programme\clipd");
+        let env = |vars: Vec<(&'static str, &'static str)>| {
+            move |k: &str| vars.iter().find(|(n, _)| *n == k).map(|(_, v)| PathBuf::from(v))
+        };
+        assert_eq!(locate_base(exe, &env(vec![("CLIPD_HOME", r"D:\clipd")])), Path::new(r"D:\clipd"));
+        assert_eq!(locate_base(exe, &env(vec![])), exe, "sonst portabel neben der .exe");
+    }
+
+    /// Aus target/debug heraus liegt alles im Projektordner, damit Debug- und
+    /// Release-Build denselben Buffer und dieselbe config.toml benutzen.
+    #[test]
+    fn base_dir_during_development() {
+        let none = |_: &str| None;
+        assert_eq!(locate_base(Path::new(r"C:\code\clipd\target\debug"), &none), Path::new(r"C:\code\clipd"));
+        assert_eq!(locate_base(Path::new(r"C:\code\clipd\target\release"), &none), Path::new(r"C:\code\clipd"));
+        let other = Path::new(r"C:\code\clipd\anderes\debug");
+        assert_eq!(locate_base(other, &none), other, "nur unter target/");
+    }
+
+    /// Die Einstellungen müssen den Weg durch TOML unverändert überleben.
+    #[test]
+    fn settings_survive_toml() {
+        let s = Settings { codec: Codec::Av1, out_dir: PathBuf::from(r"D:\Clips"), ..Default::default() };
+        let text = toml::to_string_pretty(&s).unwrap();
+        let back: Settings = toml::from_str(&text).unwrap();
+        assert_eq!(back.codec, Codec::Av1);
+        assert_eq!(back.out_dir, PathBuf::from(r"D:\Clips"));
+        assert_eq!(back.hotkey, s.hotkey);
+    }
+}

@@ -1,0 +1,3 @@
+# Matches the width the code in this repository is already written to.
+max_width = 125
+use_small_heuristics = "Max"
