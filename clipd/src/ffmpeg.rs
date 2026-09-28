@@ -1,6 +1,6 @@
 //! Finding ffmpeg and putting its command lines together.
 
-use crate::config::{Codec, Settings};
+use crate::config::{Gpu, Settings};
 use anyhow::{Context, Result, bail};
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -49,44 +49,94 @@ pub fn command(ffmpeg: &Path) -> Command {
     cmd
 }
 
+fn push(a: &mut Vec<String>, args: &[&str]) {
+    a.extend(args.iter().map(|x| x.to_string()));
+}
+
 /// The `ddagrab` source: the Desktop Duplication API hands over frames that
 /// already live on the graphics card, so nothing crosses the PCIe bus twice.
-pub fn source(s: &Settings) -> String {
+/// nvenc takes its BGRA as it is and makes yuv420p itself, on the chip.
+pub fn ddagrab(s: &Settings) -> String {
     format!("ddagrab=output_idx={}:framerate={}:draw_mouse={}", s.monitor, s.fps, u8::from(s.draw_mouse))
+}
+
+/// ddagrab for an AMD card. AMF's encoders refuse ddagrab's BGRA textures
+/// (`SubmitInput` error 18), but `vpp_amf` takes them and makes nv12 on the
+/// chip, so the picture still never leaves the graphics card.
+///
+/// AMF's own capture, `vsrc_amf`, looks like the obvious choice and is not:
+/// its first frame at times takes 5 to 30 seconds, it never draws the
+/// pointer, and it records the first monitor rather than fail on a missing
+/// one. The CPU way round costs five times the time.
+pub fn ddagrab_amf(s: &Settings) -> String {
+    format!("{},vpp_amf=format=nv12:color_profile=bt709:out_color_range=studio", ddagrab(s))
+}
+
+/// AMF knows three speeds where nvenc has seven presets; p5, the default,
+/// lands on the middle one.
+pub fn amf_quality(preset: &str) -> &'static str {
+    match preset {
+        "p1" | "p2" => "speed",
+        "p6" | "p7" => "quality",
+        _ => "balanced",
+    }
+}
+
+/// The picture half of the capture: the lavfi source and the encoder
+/// arguments. The capture and the trial in [`pick_gpu`] both come from here,
+/// so the trial tests exactly what will run.
+///
+/// `-g` must match the segment length on either card, because the muxer can
+/// only open a new file on a keyframe.
+fn video(s: &Settings) -> Result<(String, Vec<String>)> {
+    let q = s.quality.to_string();
+    let gop = s.gop().to_string();
+    let e = &mut Vec::new();
+    let source = match s.gpu {
+        Gpu::Nvidia => {
+            push(e, &["-c:v", s.codec.nvenc(), "-preset", &s.preset]);
+            // Low latency, so a frame does not sit in the encoder while the buffer ages.
+            push(e, &["-tune", "ll"]);
+            // Constant quality. nvenc only honours -cq once the bitrate cap is lifted.
+            push(e, &["-rc", "vbr", "-cq", &q, "-b:v", "0"]);
+            push(e, &["-g", &gop]);
+            ddagrab(s)
+        }
+        Gpu::Amd => {
+            push(e, &["-c:v", s.codec.amf(), "-usage", "lowlatency", "-quality", amf_quality(&s.preset)]);
+            // Constant QP, which every AMF chip can do and which costs the
+            // least. QVBR would be the closer match to nvenc's -cq, but its
+            // pre-analysis alone falls behind real time on a laptop chip.
+            push(e, &["-rc", "cqp", "-qp_i", &q, "-qp_p", &q]);
+            push(e, &["-g", &gop, "-forced_idr", "1"]);
+            ddagrab_amf(s)
+        }
+        Gpu::Auto => bail!("Welche Grafikkarte aufnimmt, steht noch nicht fest"),
+    };
+    Ok((source, std::mem::take(e)))
 }
 
 /// The capture that keeps the buffer full. Writes numbered segments into `dir`.
 ///
-/// Two details decide whether this works at all, both learned the hard way:
-/// `-g` must match the segment length, because the muxer can only open a new
-/// file on a keyframe, and the encoder is fed the BGRA frames ddagrab produces
-/// so nvenc does the conversion to yuv420p itself, on the chip.
-///
 /// With `audio`, ffmpeg reads raw samples from its stdin as a second input;
 /// `crate::audio` keeps that pipe fed.
 pub fn capture_args(s: &Settings, dir: &Path, audio: Option<&crate::audio::Format>) -> Result<Vec<String>> {
-    fn push(a: &mut Vec<String>, args: &[&str]) {
-        a.extend(args.iter().map(|x| x.to_string()));
-    }
+    let (source, encoder) = video(s)?;
     let pattern = dir.join(format!("seg%08d.{}", s.codec.segment_ext()));
     let a = &mut Vec::new();
     push(a, &["-loglevel", "error"]);
-    push(a, &["-f", "lavfi", "-i", &source(s)]);
+    push(a, &["-f", "lavfi", "-i", &source]);
     if let Some(format) = audio {
         a.extend(format.input_args()?);
-        // Without a queue of its own the pipe would stall the whole capture
-        // whenever the encoder is busy.
-        push(a, &["-thread_queue_size", "1024", "-i", "pipe:0"]);
+        // No -thread_queue_size: current ffmpeg reads every input on a thread
+        // of its own and refuses the option on an input. Should the pipe back
+        // up anyway, the writer in `crate::audio` follows the clock, so a
+        // stall costs a gap in the sound but never pushes it off the picture.
+        push(a, &["-i", "pipe:0"]);
         push(a, &["-map", "0:v:0", "-map", "1:a:0"]);
         push(a, &["-c:a", "aac", "-b:a", &format!("{}k", s.audio_kbit)]);
     }
-    push(a, &["-c:v", s.codec.encoder()]);
-    push(a, &["-preset", &s.preset]);
-    // Low latency, so a frame does not sit in the encoder while the buffer ages.
-    push(a, &["-tune", "ll"]);
-    // Constant quality. nvenc only honours -cq once the bitrate cap is lifted.
-    push(a, &["-rc", "vbr", "-cq", &s.quality.to_string(), "-b:v", "0"]);
-    push(a, &["-g", &s.gop().to_string()]);
+    a.extend(encoder);
     push(a, &["-f", "segment"]);
     push(a, &["-segment_time", &s.segment_secs.to_string()]);
     push(a, &["-segment_format", s.codec.segment_format()]);
@@ -177,29 +227,86 @@ pub fn duration(ffprobe: &Path, file: &Path) -> Option<f64> {
     String::from_utf8_lossy(&out.stdout).trim().parse().ok()
 }
 
-/// Checks that this ffmpeg can actually do what clipd needs, so a missing
-/// encoder is reported at start instead of silently leaving the buffer empty.
-pub fn check(ffmpeg: &Path, codec: Codec) -> Result<()> {
-    let out =
-        command(ffmpeg).args(["-loglevel", "quiet", "-encoders"]).output().context("ffmpeg lässt sich nicht starten")?;
-    let list = String::from_utf8_lossy(&out.stdout);
-    if !list.contains(codec.encoder()) {
-        bail!("Dieses ffmpeg kennt {} nicht — ist es ein Build ohne NVENC?", codec.encoder());
+/// Settles which card records, so a missing encoder is reported at start
+/// instead of silently leaving the buffer empty. `Auto` tries NVIDIA first,
+/// then AMD; a card named in the settings is only checked.
+///
+/// Each try encodes one frame exactly the way the capture will. Nothing less
+/// is a real answer: the usual Windows builds list NVENC and AMF whether or
+/// not the machine has either card, and only opening the encoder tells.
+pub fn pick_gpu(ffmpeg: &Path, s: &Settings) -> Result<Gpu> {
+    let listed = |what: &str| -> Result<String> {
+        let out = command(ffmpeg).args(["-loglevel", "quiet", what]).output().context("ffmpeg lässt sich nicht starten")?;
+        Ok(String::from_utf8_lossy(&out.stdout).into_owned())
+    };
+    let (encoders, filters) = (listed("-encoders")?, listed("-filters")?);
+    let tries: &[Gpu] = match s.gpu {
+        Gpu::Auto => &[Gpu::Nvidia, Gpu::Amd],
+        Gpu::Nvidia => &[Gpu::Nvidia],
+        Gpu::Amd => &[Gpu::Amd],
+    };
+    let mut why = Vec::new();
+    for &gpu in tries {
+        let trial = Settings { gpu, ..s.clone() };
+        let outcome = match build_lacks(&encoders, &filters, &trial) {
+            Some(missing) => Err(missing),
+            None => try_frame(ffmpeg, &trial),
+        };
+        match outcome {
+            Ok(()) => return Ok(gpu),
+            Err(e) => why.push(format!("{}: {e}", gpu.label())),
+        }
     }
-    let out =
-        command(ffmpeg).args(["-loglevel", "quiet", "-filters"]).output().context("ffmpeg lässt sich nicht starten")?;
-    if !String::from_utf8_lossy(&out.stdout).contains("ddagrab") {
-        bail!("Dieses ffmpeg kennt ddagrab nicht — es ist zu alt oder kein Windows-Build.");
+    bail!("Keine Grafikkarte nimmt hier {} auf:\n  {}", s.codec.label(), why.join("\n  "))
+}
+
+/// What this ffmpeg build is missing for the card in `s`, judged from its
+/// `-encoders` and `-filters` lists.
+fn build_lacks(encoders: &str, filters: &str, s: &Settings) -> Option<String> {
+    let (encoder, sources): (_, &[&str]) = match s.gpu {
+        Gpu::Nvidia => (s.codec.nvenc(), &["ddagrab"]),
+        Gpu::Amd => (s.codec.amf(), &["ddagrab", "vpp_amf"]),
+        Gpu::Auto => return None,
+    };
+    let lists = |text: &str, name: &str| text.split_whitespace().any(|w| w == name);
+    if !lists(encoders, encoder) {
+        return Some(format!("dieses ffmpeg kennt {encoder} nicht"));
     }
-    Ok(())
+    let missing = sources.iter().find(|f| !lists(filters, f))?;
+    Some(format!("dieses ffmpeg kennt {missing} nicht — es ist zu alt oder kein Windows-Build"))
+}
+
+/// Encodes a single frame the way the capture will.
+fn try_frame(ffmpeg: &Path, s: &Settings) -> Result<(), String> {
+    let (source, encoder) = video(s).map_err(|e| e.to_string())?;
+    let out = command(ffmpeg)
+        .args(["-loglevel", "error", "-f", "lavfi", "-i", &source, "-frames:v", "1"])
+        .args(&encoder)
+        .args(["-f", "null", "-"])
+        .output()
+        .map_err(|e| format!("ffmpeg lässt sich nicht starten: {e}"))?;
+    if out.status.success() { Ok(()) } else { Err(complaint(&String::from_utf8_lossy(&out.stderr))) }
+}
+
+/// The first thing ffmpeg complained about, without the `[hevc_amf @ 0x…]`
+/// tags in front of it.
+fn complaint(stderr: &str) -> String {
+    let Some(mut line) = stderr.lines().map(str::trim).find(|l| !l.is_empty()) else {
+        return "ffmpeg ist ohne Meldung gescheitert".into();
+    };
+    while let Some((_, rest)) = line.strip_prefix('[').and_then(|l| l.split_once("] ")) {
+        line = rest;
+    }
+    line.to_string()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::Codec;
 
     fn settings() -> Settings {
-        Settings { fps: 60, segment_secs: 2, quality: 20, monitor: 1, ..Default::default() }
+        Settings { fps: 60, segment_secs: 2, quality: 20, monitor: 1, gpu: Gpu::Nvidia, ..Default::default() }
     }
 
     fn stereo() -> crate::audio::Format {
@@ -229,9 +336,9 @@ mod tests {
     /// Die Quelle muss den gewählten Monitor und die Bildrate nennen.
     #[test]
     fn source_names_monitor_and_framerate() {
-        assert_eq!(source(&settings()), "ddagrab=output_idx=1:framerate=60:draw_mouse=0");
+        assert_eq!(ddagrab(&settings()), "ddagrab=output_idx=1:framerate=60:draw_mouse=0");
         let s = Settings { draw_mouse: true, ..settings() };
-        assert!(source(&s).ends_with("draw_mouse=1"));
+        assert!(ddagrab(&s).ends_with("draw_mouse=1"));
     }
 
     /// AV1 landet in Matroska, weil MPEG-TS es nicht trägt.
@@ -250,7 +357,7 @@ mod tests {
         let s = Settings { audio_kbit: 192, ..settings() };
         let a = args(&s, Some(&stereo()));
         let at = |flag: &str| a.iter().position(|x| x == flag).map(|i| a[i + 1].clone());
-        assert_eq!(at("-i").as_deref(), Some(source(&s).as_str()), "Bild bleibt Eingang 0");
+        assert_eq!(at("-i").as_deref(), Some(ddagrab(&s).as_str()), "Bild bleibt Eingang 0");
         assert!(a.windows(2).any(|w| w[0] == "-i" && w[1] == "pipe:0"), "Ton als Eingang 1");
         assert_eq!(at("-f").as_deref(), Some("lavfi"));
         assert!(a.windows(2).any(|w| w[0] == "-map" && w[1] == "0:v:0"));
@@ -258,7 +365,7 @@ mod tests {
         assert_eq!(at("-c:a").as_deref(), Some("aac"));
         assert_eq!(at("-b:a").as_deref(), Some("192k"));
         assert!(a.contains(&"f32le".to_string()), "rohes Format genannt");
-        assert!(a.contains(&"-thread_queue_size".to_string()), "sonst blockiert die Pipe die Aufnahme");
+        assert!(!a.contains(&"-thread_queue_size".to_string()), "neue ffmpeg-Builds lehnen das an einer Eingabe ab");
     }
 
     /// Ohne Ton darf keine Spur gemappt und kein Tonkodierer genannt werden.
@@ -290,5 +397,85 @@ mod tests {
         assert_eq!(at("-c").as_deref(), Some("copy"));
         assert_eq!(at("-safe").as_deref(), Some("0"), "absolute Pfade in der Liste");
         assert_eq!(a.last().unwrap(), r"C:\clips\a.mp4");
+    }
+
+    /// AMD nimmt wie NVIDIA mit ddagrab auf und wandelt auf dem Chip um;
+    /// Keyframe-Abstand und Qualität gelten genauso.
+    #[test]
+    fn amd_captures_and_converts_on_the_chip() {
+        let s = Settings { gpu: Gpu::Amd, ..settings() };
+        let a = args(&s, None);
+        let at = |flag: &str| a.iter().position(|x| x == flag).map(|i| a[i + 1].clone());
+        let source = at("-i").unwrap();
+        assert!(source.starts_with("ddagrab=output_idx=1:framerate=60:draw_mouse=0,"), "{source}");
+        assert!(source.contains(",vpp_amf=format=nv12"), "ohne vpp_amf nimmt AMF die BGRA-Bilder nicht an");
+        assert_eq!(at("-c:v").as_deref(), Some("hevc_amf"));
+        assert_eq!(at("-rc").as_deref(), Some("cqp"));
+        assert_eq!(at("-qp_i").as_deref(), Some("20"));
+        assert_eq!(at("-qp_p").as_deref(), Some("20"));
+        assert_eq!(at("-g").as_deref(), Some("120"), "60 fps * 2 s");
+        assert_eq!(at("-quality").as_deref(), Some("balanced"), "p5");
+        assert_eq!(at("-segment_time").as_deref(), Some("2"));
+    }
+
+    /// nvenc-Optionen hätten bei AMF eine andere Bedeutung oder wären ungültig
+    /// (`-preset p5` kennt AMF nicht).
+    #[test]
+    fn amd_gets_no_nvenc_options() {
+        let a = args(&Settings { gpu: Gpu::Amd, ..settings() }, None);
+        for flag in ["-preset", "-tune", "-cq"] {
+            assert!(!a.contains(&flag.to_string()), "{flag} gehört zu nvenc");
+        }
+        assert!(!a.iter().any(|x| x.contains("nvenc") || x.contains("vsrc_amf")));
+    }
+
+    #[test]
+    fn amd_codecs_use_amf_encoders() {
+        for (codec, enc) in [(Codec::H264, "h264_amf"), (Codec::Av1, "av1_amf")] {
+            let a = args(&Settings { gpu: Gpu::Amd, codec, ..settings() }, None);
+            assert!(a.contains(&enc.to_string()), "{enc}");
+        }
+    }
+
+    #[test]
+    fn amf_speed_follows_the_preset() {
+        assert_eq!(amf_quality("p1"), "speed");
+        assert_eq!(amf_quality("p5"), "balanced");
+        assert_eq!(amf_quality("p7"), "quality");
+    }
+
+    /// Ohne entschiedene Karte darf keine Aufnahme starten, sonst würde still
+    /// irgendein Kodierer geraten.
+    #[test]
+    fn auto_must_be_settled_first() {
+        let s = Settings { gpu: Gpu::Auto, ..settings() };
+        assert!(capture_args(&s, Path::new(r"C:\buf"), None).is_err());
+    }
+
+    /// Was einem ffmpeg-Build fehlt, soll beim Namen genannt werden.
+    #[test]
+    fn names_what_the_build_lacks() {
+        let encoders = " V....D hevc_nvenc  NVIDIA NVENC hevc encoder (codec hevc)\n V....D hevc_amf  AMD AMF HEVC encoder";
+        let filters =
+            " ... ddagrab  |->V  Grab Windows Desktop images using Desktop Duplication API\n ... vsrc_amf  |->V  AMD";
+        let nvidia = Settings { gpu: Gpu::Nvidia, ..settings() };
+        let amd = Settings { gpu: Gpu::Amd, ..settings() };
+        assert_eq!(build_lacks(encoders, filters, &nvidia), None);
+        assert!(build_lacks(encoders, filters, &amd).is_some_and(|m| m.contains("vpp_amf")), "vpp_amf fehlt");
+        let av1 = Settings { codec: Codec::Av1, ..nvidia.clone() };
+        assert!(build_lacks(encoders, filters, &av1).is_some_and(|m| m.contains("av1_nvenc")));
+        let hevc_only = " V....D hevc_nvenc_extra";
+        assert!(build_lacks(hevc_only, filters, &nvidia).is_some(), "nur ganze Namen zählen");
+    }
+
+    /// Aus ffmpegs Meldungen bleibt der Satz übrig, der den Grund nennt.
+    #[test]
+    fn complaint_drops_the_tags() {
+        let nvenc = "[hevc_nvenc @ 0000018077293840] Cannot load nvcuda.dll\n\
+                     [vost#0:0/hevc_nvenc @ 00000180] [enc:hevc_nvenc @ 000001] Error while opening encoder\n";
+        assert_eq!(complaint(nvenc), "Cannot load nvcuda.dll");
+        let nested = "\n[vost#0:0/hevc_nvenc @ 01] [enc:hevc_nvenc @ 02] Error while opening encoder";
+        assert_eq!(complaint(nested), "Error while opening encoder");
+        assert_eq!(complaint(""), "ffmpeg ist ohne Meldung gescheitert");
     }
 }

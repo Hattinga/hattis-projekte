@@ -4,20 +4,23 @@ Schlanker Clipper fürs Zocken. clipd nimmt den Bildschirm dauerhaft in einen
 Ringpuffer auf und speichert auf Tastendruck die letzte halbe Minute — das, was
 gerade passiert ist, nicht das, was gleich passieren wird.
 
-Nur Windows, und es braucht eine NVIDIA-Karte: aufgenommen wird mit der Desktop
-Duplication API, kodiert wird auf der Grafikkarte mit NVENC.
+Nur Windows, und es braucht eine Grafikkarte von NVIDIA oder AMD: aufgenommen
+wird mit der Desktop Duplication API, kodiert wird auf der Grafikkarte — mit
+NVENC oder AMF. Welche Karte es wird, findet clipd beim Start selbst heraus.
 
 ## Wie es funktioniert
 
 ```
-ddagrab ──────────► hevc_nvenc ──► seg00000001.ts, seg00000002.ts, …
-(Desktop             (Grafik-       1 Sekunde pro Datei   (Ring auf Platte)
- Duplication)         karte)               │
-WASAPI-Loopback ───► aac                   │
-(was die Boxen                             ▼
- spielen)                    Hotkey ─► die neuesten Segmente
-                                       aneinanderhängen (ohne neu zu
-                                       kodieren) ─► clip-….mp4
+ddagrab ──┬───────────────► hevc_nvenc ──┐
+(Desktop  │                 (NVIDIA)     │
+ Dupli-   └─► vpp_amf ────► hevc_amf ────┼─► seg00000001.ts, seg00000002.ts, …
+ cation)      (nach nv12)   (AMD)        │   1 Sekunde pro Datei (Ring auf Platte)
+                                         │          │
+WASAPI-Loopback ──────────► aac ─────────┘          │
+(was die Boxen spielen)                             ▼
+                                   Hotkey ─► die neuesten Segmente
+                                             aneinanderhängen (ohne neu zu
+                                             kodieren) ─► clip-….mp4
 ```
 
 Drei Dinge daran sind wichtiger, als sie aussehen:
@@ -25,7 +28,8 @@ Drei Dinge daran sind wichtiger, als sie aussehen:
 - **Die Bilder bleiben auf der Grafikkarte.** `ddagrab` liefert D3D11-Bilder,
   und NVENC nimmt sie direkt entgegen. Es geht nichts über den PCIe-Bus zurück
   in den Hauptspeicher, und die CPU wandelt keine Farben um. NVENC macht aus dem
-  BGRA des Desktops selbst yuv420p.
+  BGRA des Desktops selbst yuv420p. AMF nimmt BGRA nicht an, deshalb wandelt
+  bei AMD `vpp_amf` vorher um — ebenfalls auf dem Chip.
 - **Ein Clip wird nicht neu kodiert.** Er hängt fertige Segmente aneinander und
   kopiert die Streams. Ein 30-Sekunden-Clip ist deshalb in Bruchteilen einer
   Sekunde geschrieben, egal wie lang er ist.
@@ -38,6 +42,7 @@ Drei Dinge daran sind wichtiger, als sie aussehen:
 ```
 clipd run                     # nimmt auf und wartet auf den Hotkey
 clipd run --monitor 1         # anderer Bildschirm
+clipd run --gpu amd           # Karte festlegen statt ausprobieren
 clipd run --no-audio          # nur Bild
 clipd monitors                # zeigt, was aufgenommen werden kann
 clipd audio                   # probiert jedes Wiedergabegerät auf Ton durch
@@ -65,9 +70,10 @@ standardmäßig in `clips/`.
 | `buffer_secs` | `120` | wie weit ein Clip zurückreichen kann |
 | `segment_secs` | `1` | Länge einer Pufferdatei |
 | `clip_secs` | `30` | was ein Tastendruck speichert |
+| `gpu` | `auto` | `auto`, `nvidia` oder `amd`; `auto` probiert NVIDIA, dann AMD |
 | `codec` | `hevc` | `h264`, `hevc` oder `av1` |
-| `quality` | `22` | 0 (riesig) bis 51 (schlecht) |
-| `preset` | `p5` | `p1` (schnell) bis `p7` (beste Qualität) |
+| `quality` | `22` | 0 (riesig) bis 51 (schlecht); bei AMD ein fester QP |
+| `preset` | `p5` | `p1` (schnell) bis `p7` (beste Qualität); AMD kennt nur drei Stufen: p1–p2, p3–p5, p6–p7 |
 | `audio` | `true` | nimmt mit auf, was die Boxen spielen |
 | `audio_kbit` | `160` | AAC-Bitrate des Tons |
 | `audio_device` | leer | Teil des Gerätenamens; leer heißt Standardgerät |
@@ -91,11 +97,18 @@ Der Puffer kostet Platz: 1080p60 mit HEVC und `quality = 22` sind rund
   entweder noch ganz leer oder schon 256 KiB lang. clipd nimmt mit, was da ist —
   deshalb ist ein Clip mal 5,00 und mal 5,62 Sekunden lang. Wer das nicht will,
   muss den Ring in den Arbeitsspeicher holen, statt ihn über Dateien zu führen.
-- **Der Farbraum ist als BT.601 ausgezeichnet.** NVENC rechnet das BGRA des
-  Desktops selbst nach yuv420p um und schreibt dazu `bt470bg` in die Datei.
+- **Bei NVIDIA ist der Farbraum als BT.601 ausgezeichnet.** NVENC rechnet das
+  BGRA des Desktops selbst nach yuv420p um und schreibt dazu `bt470bg` in die Datei.
   Das ist in sich stimmig — ein Testbild kommt Pixel für Pixel wieder heraus —
   aber für HD-Material ungewöhnlich. Wer eine Datei weiterverarbeitet, sollte
-  die Auszeichnung nicht einfach auf BT.709 umschreiben.
+  die Auszeichnung nicht einfach auf BT.709 umschreiben. Bei AMD rechnet
+  `vpp_amf` ausdrücklich nach BT.709 um, und so steht es auch in der Datei.
+- **Nicht jede Karte kann jeden Codec.** AV1 etwa braucht eine neuere Karte.
+  clipd probiert beim Start ein einzelnes Bild durch und nennt, woran es
+  scheitert, statt mit leerem Buffer weiterzulaufen.
+- **Der Ton ist, was man hört.** Der Loopback greift hinter dem
+  Lautstärkeregler ab: Steht Windows auf 0 % oder ist stumm geschaltet, wird
+  auch der Clip stumm.
 - **AV1 landet in Matroska.** MPEG-TS trägt kein AV1. Dann ist auch das gerade
   offene Segment tabu, weil Matroska einen fehlenden Schluss nicht verzeiht.
 - **Nicht jedes Wiedergabegerät kann Loopback.** Manche virtuellen Geräte —
@@ -104,6 +117,10 @@ Der Puffer kostet Platz: 1080p60 mit HEVC und `quality = 22` sind rund
   Deshalb wartet clipd nur begrenzt auf ein Gerät und nimmt danach ohne Ton
   auf, statt gar nicht. `clipd audio` probiert alle Geräte durch und nennt das,
   das in die `audio_device` gehört.
+- **Ein Virenscanner sieht genauso aus.** Kaspersky hält `Initialize` an, bis
+  jemand seine Rückfrage beantwortet — und jeder neue Build ist für ihn ein
+  neues Programm, das er fragt. Eine Ausnahme für `target\` hilft beim
+  Entwickeln.
 - **Ein hängengebliebenes `Initialize` kann die Tonaufnahme lahmlegen** — und
   zwar für den ganzen Rechner, nicht nur für clipd. Danach scheitert jede
   Aufnahme mit `0x800706CC`, auch in anderen Programmen, während die Wiedergabe
@@ -126,5 +143,5 @@ cargo test
 ```
 
 `ffmpeg.exe` und `ffprobe.exe` gehören nach `bin/` neben die `clipd.exe` (oder
-in den PATH). Der Build muss NVENC und `ddagrab` können — die üblichen
-Windows-Builds von gyan.dev und BtbN können beides.
+in den PATH). Der Build muss `ddagrab` und NVENC oder AMF samt `vpp_amf`
+können — die üblichen Windows-Builds von gyan.dev und BtbN können das.

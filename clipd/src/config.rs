@@ -4,6 +4,26 @@ use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
+/// Whose encoder records. `Auto` tries NVIDIA, then AMD, at every start, and
+/// the capture only ever sees the card that answered.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Gpu {
+    Auto,
+    Nvidia,
+    Amd,
+}
+
+impl Gpu {
+    pub fn label(self) -> &'static str {
+        match self {
+            Gpu::Auto => "automatisch",
+            Gpu::Nvidia => "NVIDIA NVENC",
+            Gpu::Amd => "AMD AMF",
+        }
+    }
+}
+
 /// The hardware encoders clipd drives. All three run on the graphics card; the
 /// buffer container follows from the codec, because the trick of reading the
 /// segment that is still being written only works in a stream format.
@@ -18,11 +38,19 @@ pub enum Codec {
 impl Codec {
     pub const ALL: [Codec; 3] = [Codec::H264, Codec::Hevc, Codec::Av1];
 
-    pub fn encoder(self) -> &'static str {
+    pub fn nvenc(self) -> &'static str {
         match self {
             Codec::H264 => "h264_nvenc",
             Codec::Hevc => "hevc_nvenc",
             Codec::Av1 => "av1_nvenc",
+        }
+    }
+
+    pub fn amf(self) -> &'static str {
+        match self {
+            Codec::H264 => "h264_amf",
+            Codec::Hevc => "hevc_amf",
+            Codec::Av1 => "av1_amf",
         }
     }
 
@@ -71,10 +99,12 @@ pub struct Settings {
     pub segment_secs: u32,
     /// How much a hotkey press saves, at most `buffer_secs`.
     pub clip_secs: u32,
+    pub gpu: Gpu,
     pub codec: Codec,
     /// Constant quality, 0 (huge) to 51 (poor). 22 is a good starting point.
     pub quality: u8,
     /// nvenc preset p1 (fastest) to p7 (best). p5 costs little and looks good.
+    /// AMF only knows three speeds, see [`crate::ffmpeg::amf_quality`].
     pub preset: String,
     pub draw_mouse: bool,
     /// Records what the speakers play. Off means picture only.
@@ -98,6 +128,7 @@ impl Default for Settings {
             buffer_secs: 120,
             segment_secs: 1,
             clip_secs: 30,
+            gpu: Gpu::Auto,
             codec: Codec::Hevc,
             quality: 22,
             preset: "p5".into(),
@@ -334,10 +365,12 @@ mod tests {
     /// Die Einstellungen müssen den Weg durch TOML unverändert überleben.
     #[test]
     fn settings_survive_toml() {
-        let s = Settings { codec: Codec::Av1, out_dir: PathBuf::from(r"D:\Clips"), ..Default::default() };
+        let s = Settings { codec: Codec::Av1, gpu: Gpu::Amd, out_dir: PathBuf::from(r"D:\Clips"), ..Default::default() };
         let text = toml::to_string_pretty(&s).unwrap();
+        assert!(text.contains(r#"gpu = "amd""#), "{text}");
         let back: Settings = toml::from_str(&text).unwrap();
         assert_eq!(back.codec, Codec::Av1);
+        assert_eq!(back.gpu, Gpu::Amd);
         assert_eq!(back.out_dir, PathBuf::from(r"D:\Clips"));
         assert_eq!(back.hotkey, s.hotkey);
     }

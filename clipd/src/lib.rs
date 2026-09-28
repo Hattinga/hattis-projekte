@@ -2,7 +2,8 @@
 //! hotkey can still save the half minute that has just gone by.
 //!
 //! The chain is `ddagrab` (Desktop Duplication, frames stay in graphics memory)
-//! into `nvenc`, written as short segments. A clip stitches the newest segments
+//! into `nvenc`, or through `vpp_amf` into AMF on an AMD card, written as
+//! short segments. A clip stitches the newest segments
 //! together by copying the streams, which needs no second encode.
 
 pub mod audio;

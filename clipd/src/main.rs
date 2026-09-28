@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use clipd::buffer::Buffer;
-use clipd::config::{Codec, Settings};
+use clipd::config::{Codec, Gpu, Settings};
 use clipd::{buffer, clip, config, ffmpeg, hotkey, sys};
 
 #[derive(Parser)]
@@ -46,6 +46,9 @@ struct RunArgs {
     /// Wie viele Sekunden ein Tastendruck speichert.
     #[arg(long)]
     clip_secs: Option<u32>,
+    /// Wessen Kodierer aufnimmt; automatisch probiert NVIDIA, dann AMD.
+    #[arg(long)]
+    gpu: Option<GpuArg>,
     #[arg(long)]
     codec: Option<CodecArg>,
     /// Qualität, 0 (riesig) bis 51 (schlecht).
@@ -63,6 +66,23 @@ struct RunArgs {
     /// Nimmt nur das Bild auf, ohne Ton.
     #[arg(long)]
     no_audio: bool,
+}
+
+#[derive(Clone, Copy, ValueEnum)]
+enum GpuArg {
+    Auto,
+    Nvidia,
+    Amd,
+}
+
+impl From<GpuArg> for Gpu {
+    fn from(g: GpuArg) -> Self {
+        match g {
+            GpuArg::Auto => Gpu::Auto,
+            GpuArg::Nvidia => Gpu::Nvidia,
+            GpuArg::Amd => Gpu::Amd,
+        }
+    }
 }
 
 #[derive(Clone, Copy, ValueEnum)]
@@ -94,6 +114,9 @@ impl RunArgs {
         set(&mut s.fps, self.fps);
         set(&mut s.buffer_secs, self.buffer_secs);
         set(&mut s.clip_secs, self.clip_secs);
+        if let Some(g) = self.gpu {
+            s.gpu = g.into();
+        }
         if let Some(c) = self.codec {
             s.codec = c.into();
         }
@@ -141,10 +164,12 @@ fn settings(args: RunArgs) -> Result<Settings> {
 }
 
 fn record(args: RunArgs) -> Result<()> {
-    let s = settings(args)?;
+    let mut s = settings(args)?;
     let hk = hotkey::parse(&s.hotkey)?;
     let bin = ffmpeg::find()?;
-    ffmpeg::check(&bin, s.codec)?;
+    // Settled once here; the capture and the session file only ever see the
+    // card that answered.
+    s.gpu = ffmpeg::pick_gpu(&bin, &s)?;
     // Before the capture starts, so a crash cannot leave an ffmpeg behind.
     sys::kill_children_on_exit();
 
@@ -153,10 +178,11 @@ fn record(args: RunArgs) -> Result<()> {
     // After the start, because starting empties the buffer folder.
     s.save_session()?;
     println!(
-        "clipd nimmt Bildschirm {} auf: {} fps {}, Qualität {}, Buffer {} s",
+        "clipd nimmt Bildschirm {} auf: {} fps {} mit {}, Qualität {}, Buffer {} s",
         s.monitor,
         s.fps,
         s.codec.label(),
+        s.gpu.label(),
         s.quality,
         s.buffer_secs
     );

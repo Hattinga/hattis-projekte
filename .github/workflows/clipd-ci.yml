@@ -11,8 +11,8 @@ defaults:
   run:
     working-directory: clipd
 
-# clipd captures with the Desktop Duplication API and encodes on an NVIDIA
-# card, so only Windows is built. The tests get by without both: they cover
+# clipd captures with the Desktop Duplication API and encodes on an NVIDIA or
+# AMD card, so only Windows is built. The tests get by without both: they cover
 # the parts that decide whether a recording is correct — the ffmpeg command
 # lines, the ring, the hotkey combinations.
 jobs:

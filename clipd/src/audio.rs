@@ -129,8 +129,12 @@ pub fn open_within(want: &str, timeout: Duration) -> Result<Audio> {
         Ok(Ok(format)) => Ok(Audio { format, sink: sink_tx }),
         Ok(Err(e)) => Err(anyhow!(e)),
         // Initialize can hang for good on some virtual devices, so this is a
-        // real outcome and not just a slow start.
-        Err(_) => Err(anyhow!("Das Gerät antwortet nicht (`clipd audio` zeigt, welche Geräte gehen)")),
+        // real outcome and not just a slow start. A virus scanner looks just
+        // the same: Kaspersky holds Initialize until someone answers its
+        // prompt, and every new build is a new program to ask about.
+        Err(_) => Err(anyhow!(
+            "Das Gerät antwortet nicht — hält ein Virenscanner den Zugriff an? (`clipd audio` zeigt, welche Geräte gehen)"
+        )),
     }
 }
 
@@ -198,7 +202,13 @@ fn capture(
 
     // From here on there is sound to be had; the caller may start ffmpeg.
     let _ = info.send(Ok(format.clone()));
-    let mut sink = sink_rx.recv_timeout(HANDSHAKE).context("ffmpeg hat keine Eingabe für den Ton geliefert")?;
+    let mut sink = match sink_rx.recv_timeout(HANDSHAKE) {
+        Ok(sink) => sink,
+        // Whoever opened the device only wanted to know that it works
+        // (`clipd audio`) and has let go of it again.
+        Err(mpsc::RecvTimeoutError::Disconnected) => return Ok(()),
+        Err(mpsc::RecvTimeoutError::Timeout) => bail!("ffmpeg hat keine Eingabe für den Ton geliefert"),
+    };
 
     let frame = format.bytes_per_frame();
     let per_sec = format.bytes_per_sec();
