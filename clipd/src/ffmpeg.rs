@@ -22,6 +22,82 @@ pub fn find() -> Result<PathBuf> {
     bail!("ffmpeg fehlt. Lege es nach {} oder in den PATH.", crate::config::base_dir().join("bin").display())
 }
 
+/// Where clipd fetches ffmpeg from when there is none: BtbN's current build
+/// with shared libraries — it has ddagrab, NVENC and AMF, and is half the
+/// size of the static one.
+#[cfg(windows)]
+pub const DOWNLOAD: &str =
+    "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl-shared.zip";
+
+/// ffmpeg, fetched into `<base>/bin` first if there is none anywhere.
+/// `progress` hears bytes so far and the total, when the server says it.
+///
+/// Uses curl.exe and tar.exe, which every Windows since 10 1803 brings, so
+/// clipd needs no HTTP or ZIP code of its own for a one-time download.
+#[cfg(windows)]
+pub fn ensure(progress: &mut dyn FnMut(u64, Option<u64>)) -> Result<PathBuf> {
+    use std::os::windows::process::CommandExt;
+    if let Ok(found) = find() {
+        return Ok(found);
+    }
+    let bin = crate::config::base_dir().join("bin");
+    std::fs::create_dir_all(&bin).with_context(|| format!("{} lässt sich nicht anlegen", bin.display()))?;
+    let zip = bin.join("ffmpeg.zip");
+    let quiet = |mut c: Command| {
+        c.creation_flags(CREATE_NO_WINDOW);
+        c
+    };
+
+    // The size first, so the progress can say how far along it is.
+    let mut head = quiet(Command::new("curl.exe"));
+    head.args(["-sIL", DOWNLOAD]);
+    let total = head.output().ok().and_then(|o| content_length(&String::from_utf8_lossy(&o.stdout)));
+
+    let mut get = quiet(Command::new("curl.exe"));
+    get.args(["-sSL", "--fail", "--retry", "3", "-o"]).arg(&zip).arg(DOWNLOAD);
+    let mut child = get.stderr(std::process::Stdio::piped()).spawn().context("curl.exe lässt sich nicht starten")?;
+    let status = loop {
+        if let Some(status) = child.try_wait()? {
+            break status;
+        }
+        progress(std::fs::metadata(&zip).map_or(0, |m| m.len()), total);
+        std::thread::sleep(std::time::Duration::from_millis(250));
+    };
+    if !status.success() {
+        let _ = std::fs::remove_file(&zip);
+        let mut why = String::new();
+        let _ = std::io::Read::read_to_string(&mut child.stderr.take().context("curl")?, &mut why);
+        bail!("ffmpeg ließ sich nicht laden: {}", why.trim());
+    }
+    progress(total.unwrap_or(0), total);
+
+    // Only the bin folder, without the folder the zip wraps it in.
+    let mut untar = quiet(Command::new("tar.exe"));
+    untar.args(["-xf"]).arg(&zip).args(["--strip-components", "2", "-C"]).arg(&bin).arg("*/bin/*");
+    let out = untar.output().context("tar.exe lässt sich nicht starten")?;
+    let _ = std::fs::remove_file(&zip);
+    let _ = std::fs::remove_file(bin.join(exe("ffplay")));
+    if !out.status.success() {
+        bail!("ffmpeg ließ sich nicht entpacken: {}", String::from_utf8_lossy(&out.stderr).trim());
+    }
+    find()
+}
+
+#[cfg(not(windows))]
+pub fn ensure(_progress: &mut dyn FnMut(u64, Option<u64>)) -> Result<PathBuf> {
+    find()
+}
+
+/// The size of the last response in `curl -I -L` output, after all redirects.
+fn content_length(headers: &str) -> Option<u64> {
+    headers
+        .lines()
+        .filter_map(|l| l.split_once(':'))
+        .filter(|(k, _)| k.trim().eq_ignore_ascii_case("content-length"))
+        .filter_map(|(_, v)| v.trim().parse::<u64>().ok())
+        .rfind(|&n| n > 0)
+}
+
 /// ffprobe next to the ffmpeg that was found.
 pub fn probe_tool(ffmpeg: &Path) -> PathBuf {
     ffmpeg.with_file_name(exe("ffprobe"))
@@ -500,6 +576,27 @@ mod tests {
         assert!(build_lacks(encoders, filters, &h264).is_some_and(|m| m.contains("h264_nvenc")));
         let hevc_only = " V....D hevc_nvenc_extra";
         assert!(build_lacks(hevc_only, filters, &nvidia).is_some(), "nur ganze Namen zählen");
+    }
+
+    /// Nach allen Weiterleitungen zählt die Größe der letzten Antwort; die
+    /// Weiterleitung selbst meldet 0.
+    #[test]
+    fn reads_the_size_after_redirects() {
+        let headers = "HTTP/1.1 302 Found
+Location: x
+Content-Length: 0
+
+HTTP/1.1 200 OK
+content-length: 87037354
+";
+        assert_eq!(content_length(headers), Some(87_037_354));
+        assert_eq!(
+            content_length(
+                "HTTP/1.1 200 OK
+"
+            ),
+            None
+        );
     }
 
     /// Aus ffmpegs Meldungen bleibt der Satz übrig, der den Grund nennt.

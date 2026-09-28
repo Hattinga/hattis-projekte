@@ -198,7 +198,7 @@ fn settings(args: RunArgs) -> Result<Settings> {
 
 fn record(args: RunArgs) -> Result<()> {
     let s = settings(args)?;
-    let bin = ffmpeg::find()?;
+    let bin = fetch_ffmpeg()?;
     // Before the capture starts, so a crash cannot leave an ffmpeg behind.
     sys::kill_children_on_exit();
 
@@ -230,19 +230,23 @@ fn record(args: RunArgs) -> Result<()> {
     }
     println!("{} speichert die letzten {} s nach {}", s.hotkey, s.clip_secs, s.clips_dir().display());
     let mut keys = vec![(hotkey::parse(&s.hotkey)?, s.hotkey.clone())];
+    let mut requests = vec![Request::Clip(None)];
     if !s.record_hotkey.trim().is_empty() {
         println!("{} startet und beendet eine Aufnahme beliebiger Länge", s.record_hotkey);
         keys.push((hotkey::parse(&s.record_hotkey)?, s.record_hotkey.clone()));
+        requests.push(Request::Record);
+    }
+    if !s.long_hotkey.trim().is_empty() {
+        println!("{} speichert die letzten {} s", s.long_hotkey, s.long_clip_secs);
+        keys.push((hotkey::parse(&s.long_hotkey)?, s.long_hotkey.clone()));
+        requests.push(Request::Clip(Some(s.long_clip_secs)));
     }
     println!("Beenden mit Strg+C.");
 
     let on_key = rec.clone();
-    let _keys = hotkey::Listener::start(keys, move |key| {
-        let request = if key == 0 { Request::Clip(None) } else { Request::Record };
-        match act(&on_key, request) {
-            Ok(text) => println!("{text}"),
-            Err(e) => eprintln!("clipd: {e}"),
-        }
+    let _keys = hotkey::Listener::start(keys, move |key| match act(&on_key, requests[key]) {
+        Ok(text) => println!("{text}"),
+        Err(e) => eprintln!("clipd: {e}"),
     })?;
     // `clipd clip` and `clipd record` from another window land here.
     let on_request = rec.clone();
@@ -257,6 +261,27 @@ fn record(args: RunArgs) -> Result<()> {
     loop {
         std::thread::park();
     }
+}
+
+/// ffmpeg, downloaded once if it is missing.
+fn fetch_ffmpeg() -> Result<std::path::PathBuf> {
+    if let Ok(found) = ffmpeg::find() {
+        return Ok(found);
+    }
+    println!("ffmpeg fehlt noch — clipd lädt es einmalig herunter …");
+    let mut shown = 0;
+    let bin = ffmpeg::ensure(&mut |got, total| {
+        let mb = got / 1_000_000;
+        if mb >= shown + 10 {
+            shown = mb;
+            match total {
+                Some(t) => println!("  {mb} von {} MB", t / 1_000_000),
+                None => println!("  {mb} MB"),
+            }
+        }
+    })?;
+    println!("ffmpeg liegt jetzt in {}", bin.parent().map(|p| p.display().to_string()).unwrap_or_default());
+    Ok(bin)
 }
 
 /// What a hotkey or a request from outside asks the capture to do.

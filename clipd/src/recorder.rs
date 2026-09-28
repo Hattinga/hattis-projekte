@@ -138,7 +138,9 @@ impl Recorder {
     }
 
     /// The signs that a save worked, since a game in front hides every other.
+    /// Also the moment to tidy up, now that there is one clip more.
     fn saved(&self, what: &str, done: &Saved) {
+        crate::library::tidy(&self.settings.clips_dir(), self.settings.keep_days, self.settings.max_gb);
         if self.settings.save_sound {
             crate::sys::chime();
         }

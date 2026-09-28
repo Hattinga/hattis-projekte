@@ -20,7 +20,7 @@ pub fn pipe_name() -> String {
 }
 
 /// What a request asks for.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Request {
     /// Save the last seconds; `None` means as long as set.
     Clip(Option<u32>),

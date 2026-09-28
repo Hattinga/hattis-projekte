@@ -13,6 +13,8 @@ const el = (tag, cls, text) => {
 const ICON = {
   all: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>',
   game: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 9h4M8 7v4M15 10h.01M18 8h.01"/><path d="M7 4h10a5 5 0 0 1 4.9 6l-1 5.2a3 3 0 0 1-5.1 1.5L14 15h-4l-1.8 1.7a3 3 0 0 1-5.1-1.5L2.1 10A5 5 0 0 1 7 4z"/></svg>',
+  star: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg>',
+  starFill: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg>',
   desktop: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>',
   play: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15a1 1 0 0 0 1.5.9l12-7.5a1 1 0 0 0 0-1.8l-12-7.5A1 1 0 0 0 7 4.5z"/></svg>',
   pause: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4.5" height="16" rx="1.2"/><rect x="13.5" y="4" width="4.5" height="16" rx="1.2"/></svg>',
@@ -98,7 +100,11 @@ async function refreshStatus(s) {
   const dot = document.querySelector('#status .dot');
   const text = $('status-text'), sub = $('status-sub');
   const rec = status.recordingSecs;
-  if (status.state === 'starting') {
+  if (status.state === 'downloading') {
+    dot.className = 'dot gray';
+    text.textContent = `ffmpeg wird geladen · ${Math.round((status.download || 0) * 100)} %`;
+    sub.textContent = 'Nur beim ersten Start, rund 90 MB';
+  } else if (status.state === 'starting') {
     dot.className = 'dot gray';
     text.textContent = 'Startet …';
     sub.textContent = 'Grafikkarte und Ton werden eingerichtet';
@@ -139,7 +145,8 @@ async function refreshStatus(s) {
 // ---------- library ----------
 
 let clips = [];
-let filter = null; // null: all; otherwise the game folder name
+const FAVORITES = Symbol('favorites');
+let filter = null; // null: all; FAVORITES; otherwise the game folder name
 const metaCache = new Map();
 const metaQueue = [];
 let metaRunning = 0;
@@ -187,6 +194,8 @@ function renderNav() {
     nav.append(b);
   };
   item('Alle Clips', ICON.all, clips.length, null);
+  const favs = clips.filter((c) => c.favorite).length;
+  if (favs) item('Favoriten', ICON.star, favs, FAVORITES);
   for (const [game, count] of games()) {
     item(game || 'Ohne Ordner', game === 'Desktop' ? ICON.desktop : ICON.game, count, game);
   }
@@ -210,8 +219,8 @@ const observer = new IntersectionObserver((entries) => {
 function renderGrid() {
   const lib = $('library');
   lib.innerHTML = '';
-  const shown = filter === null ? clips : clips.filter((c) => c.game === filter);
-  $('title').textContent = filter === null ? 'Alle Clips' : (filter || 'Ohne Ordner');
+  const shown = filter === null ? clips : filter === FAVORITES ? clips.filter((c) => c.favorite) : clips.filter((c) => c.game === filter);
+  $('title').textContent = filter === null ? 'Alle Clips' : filter === FAVORITES ? 'Favoriten' : (filter || 'Ohne Ordner');
   $('empty').classList.toggle('hidden', shown.length > 0);
   if (!shown.length) return;
   // Grouped by day, newest first.
@@ -229,6 +238,7 @@ function renderGrid() {
     card.dataset.path = c.path;
     const thumb = el('div', 'thumb');
     thumb.append(el('img'), el('span', 'badge hidden'));
+    if (c.favorite) { const s = el('span', 'fav'); s.innerHTML = ICON.starFill; thumb.append(s); }
     const sub = [c.game && filter === null ? c.game : null, size(c.bytes)].filter(Boolean).join(' · ');
     card.append(thumb, el('div', 'title', displayName(c.name)), el('div', 'sub', sub));
     card.onclick = () => openDetail(c);
@@ -251,6 +261,7 @@ async function openDetail(clip) {
   $('back').classList.remove('hidden');
   $('title').textContent = clip.game || 'Clip';
   $('name').value = clip.name;
+  starButton();
   $('novideo-text').textContent = 'Die Vorschau spielt nur H.264 ab — dieser Clip ist in einem anderen Format.';
   $('info').textContent = `${when(clip.modified)} · ${size(clip.bytes)}`;
   $('novideo').classList.add('hidden');
@@ -401,6 +412,23 @@ async function exportClip(target) {
 }
 $('trim').onclick = () => exportClip('trim');
 $('discord').onclick = () => exportClip('discord');
+
+function starButton() {
+  const on = !!current?.clip.favorite;
+  $('star').innerHTML = on ? ICON.starFill : ICON.star;
+  $('star').classList.toggle('on', on);
+  $('star').title = on ? 'Kein Favorit mehr' : 'Favorit — wird beim Aufräumen nie gelöscht';
+}
+$('star').onclick = async () => {
+  if (!current) return;
+  const on = !current.clip.favorite;
+  try {
+    await invoke('set_favorite', { path: current.clip.path, on });
+    current.clip = { ...current.clip, favorite: on };
+    starButton();
+    await loadClips();
+  } catch (e) { fail(e); }
+};
 
 $('copy').onclick = () => current && invoke('copy_file', { path: current.clip.path })
   .then(() => toast('Datei kopiert — in Discord oder im Explorer mit Strg+V einfügen')).catch(fail);
@@ -577,8 +605,13 @@ async function openSettings() {
   };
   const where = el('div', 'row');
   where.append(el('div', 'label', 'Speicherort'), pathLabel, change);
+  const lengthLabel = (s) => (s < 60 ? `${s} Sekunden` : `${s / 60} ${s === 60 ? 'Minute' : 'Minuten'}`);
+  const longs = [60, 90, 120, 180, 300, 600];
+  if (!longs.includes(draft.long_clip_secs)) longs.push(draft.long_clip_secs);
+  longs.sort((a, b) => a - b);
   body.append(group('Clips', [
-    row('Clip-Länge', popup(lengths.map((s) => [s, s < 60 ? `${s} Sekunden` : `${s / 60} ${s === 60 ? 'Minute' : 'Minuten'}`]), draft.clip_secs, (v) => (draft.clip_secs = +v))),
+    row('Clip-Länge', popup(lengths.map((s) => [s, lengthLabel(s)]), draft.clip_secs, (v) => (draft.clip_secs = +v))),
+    row('Langer Clip', popup(longs.map((s) => [s, lengthLabel(s)]), draft.long_clip_secs, (v) => (draft.long_clip_secs = +v)), 'Auf eigener Taste, siehe Tastenkürzel'),
     row('Nach Spiel sortieren', toggle(draft.game_folders, (v) => (draft.game_folders = v)), 'Jedes Spiel bekommt einen eigenen Ordner'),
     row('Ton beim Speichern', toggle(draft.save_sound, (v) => (draft.save_sound = v))),
     row('Hinweis im Spiel', toggle(draft.overlay, (v) => (draft.overlay = v)), 'Kurz oben rechts, taucht in keinem Clip auf'),
@@ -599,7 +632,17 @@ async function openSettings() {
   body.append(group('Tastenkürzel', [
     row('Clip speichern', keycap(draft.hotkey, (v) => (draft.hotkey = v), false)),
     row('Aufnahme starten/beenden', keycap(draft.record_hotkey, (v) => (draft.record_hotkey = v), true), 'Rücktaste schaltet es ab'),
+    row('Langen Clip speichern', keycap(draft.long_hotkey, (v) => (draft.long_hotkey = v), true), 'Rücktaste schaltet es ab'),
   ], 'Die Tasten gelten überall, auch wenn ein Spiel im Vordergrund ist.'));
+
+  const days = [[0, 'Nie'], [7, 'Nach 7 Tagen'], [14, 'Nach 14 Tagen'], [30, 'Nach 30 Tagen'], [90, 'Nach 90 Tagen']];
+  if (!days.some(([d]) => d === draft.keep_days)) days.push([draft.keep_days, `Nach ${draft.keep_days} Tagen`]);
+  const gbs = [[0, 'Kein Limit'], [10, '10 GB'], [25, '25 GB'], [50, '50 GB'], [100, '100 GB']];
+  if (!gbs.some(([g]) => g === draft.max_gb)) gbs.push([draft.max_gb, `${draft.max_gb} GB`]);
+  body.append(group('Aufräumen', [
+    row('Alte Clips löschen', popup(days, draft.keep_days, (v) => (draft.keep_days = +v))),
+    row('Höchstens', popup(gbs, draft.max_gb, (v) => (draft.max_gb = +v)), 'Darüber gehen die ältesten'),
+  ], 'Favoriten ⭐ bleiben immer. Aufgeräumt wird nach jedem neuen Clip.'));
 
   body.append(group('Allgemein', [
     row('Mit Windows starten', toggle(autostart, (v) => (autostartWanted = v)), 'clipd startet unsichtbar im Infobereich'),

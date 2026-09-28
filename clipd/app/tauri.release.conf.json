@@ -1,0 +1,10 @@
+{
+  "build": {
+    "beforeBuildCommand": "cargo build --release --locked -p clipd"
+  },
+  "bundle": {
+    "resources": {
+      "../target/release/clipd.exe": "clipd.exe"
+    }
+  }
+}

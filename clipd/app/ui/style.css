@@ -201,6 +201,19 @@ main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 .card:hover .thumb { transform: translateY(-2px); box-shadow: 0 6px 22px rgba(0, 0, 0, 0.16); }
 .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; opacity: 0; transition: opacity 0.2s; }
 .thumb img.loaded { opacity: 1; }
+.fav {
+  position: absolute;
+  left: 7px;
+  top: 7px;
+  width: 22px;
+  height: 22px;
+  padding: 3px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.55);
+  color: var(--yellow);
+}
+.star.on { color: var(--yellow); }
+.star.on:hover { color: var(--yellow); }
 .badge {
   position: absolute;
   right: 7px;

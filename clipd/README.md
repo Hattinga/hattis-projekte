@@ -52,6 +52,8 @@ wenn das Fenster zu ist — dann sitzt es im Infobereich neben der Uhr.
 - **Für Discord:** macht aus der Auswahl eine H.264-Datei unter 10 MB mit
   einer Tonspur und legt sie in die Zwischenablage — in Discord mit Strg+V
   einfügen.
+- **Favoriten:** Ein Stern schützt einen Clip vor dem Aufräumen, das auf
+  Wunsch alte Clips oder alles über einem Speicherlimit löscht.
 - **Ton:** Spiel und Mikrofon lassen sich getrennt leiser, lauter oder stumm
   stellen, bevor man speichert.
 - **Einstellungen** (Strg+,): Bildschirm, Qualität, Format, Clip-Länge,
@@ -113,6 +115,10 @@ standardmäßig in `clips/`.
 | `mic_device` | leer | Teil des Mikrofonnamens; leer heißt Standardmikrofon |
 | `hotkey` | `Ctrl+Alt+C` | auch deutsch: `Strg+Umschalt+F9` |
 | `record_hotkey` | `Ctrl+Alt+R` | Aufnahme beliebiger Länge; leer schaltet sie ab |
+| `long_hotkey` | leer | zweite Taste für einen längeren Clip |
+| `long_clip_secs` | `120` | was die zweite Taste speichert |
+| `keep_days` | `0` | Clips nach so vielen Tagen löschen; 0 heißt nie |
+| `max_gb` | `0` | darüber gehen die ältesten Clips; 0 heißt kein Limit |
 | `game_folders` | `true` | ein Ordner pro Spiel |
 | `save_sound` | `true` | kurzer Ton, wenn ein Clip gespeichert ist |
 | `overlay` | `true` | kurzer Hinweis oben rechts, der in keinem Clip auftaucht |

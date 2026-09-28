@@ -27,6 +27,8 @@ struct App {
     record_item: Mutex<Option<MenuItem<Wry>>>,
     /// The volume warning, asked for at most every few seconds.
     warning: Mutex<Option<(Instant, Option<String>)>>,
+    /// ffmpeg's first download: bytes so far and in total.
+    download: Mutex<Option<(u64, Option<u64>)>>,
 }
 
 fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
@@ -40,8 +42,10 @@ fn err(e: impl std::fmt::Display) -> String {
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct Status {
-    /// "starting", "running" or "stopped".
+    /// "downloading", "starting", "running" or "stopped".
     state: &'static str,
+    /// How far ffmpeg's first download is, 0 to 1, if it is going on.
+    download: Option<f64>,
     problem: Option<String>,
     warning: Option<String>,
     recording_secs: Option<f64>,
@@ -63,7 +67,10 @@ fn status_of(app: &AppHandle) -> Status {
     let st = app.state::<App>();
     let rec = lock(&st.recorder).clone();
     let running = rec.as_ref().is_some_and(|r| r.is_running());
-    let state = if st.starting.load(Ordering::Relaxed) {
+    let download = *lock(&st.download);
+    let state = if download.is_some() {
+        "downloading"
+    } else if st.starting.load(Ordering::Relaxed) {
         "starting"
     } else if running {
         "running"
@@ -82,6 +89,7 @@ fn status_of(app: &AppHandle) -> Status {
     };
     Status {
         state,
+        download: download.map(|(got, total)| total.map_or(0.0, |t| got as f64 / t.max(1) as f64)),
         problem: lock(&st.problem).clone(),
         warning,
         recording_secs: rec.as_ref().filter(|_| running).and_then(|r| r.recording_for()).map(|d| d.as_secs_f64()),
@@ -115,7 +123,20 @@ fn start_capture(app: &AppHandle) {
     let app = app.clone();
     std::thread::spawn(move || {
         let st = app.state::<App>();
-        let started = ffmpeg::find().and_then(|bin| {
+        let fetched = ffmpeg::find().or_else(|_| {
+            let progress_app = app.clone();
+            let mut last = Instant::now();
+            let got = ffmpeg::ensure(&mut |got, total| {
+                *lock(&progress_app.state::<App>().download) = Some((got, total));
+                if last.elapsed() > Duration::from_millis(400) {
+                    last = Instant::now();
+                    emit_status(&progress_app);
+                }
+            });
+            *lock(&st.download) = None;
+            got
+        });
+        let started = fetched.and_then(|bin| {
             let on_end = app.clone();
             Recorder::start(&bin, Settings::load(), move |why| {
                 *lock(&on_end.state::<App>().problem) = Some(why);
@@ -149,14 +170,24 @@ fn allow_clips(app: &AppHandle, s: &Settings) {
 }
 
 fn listen(app: &AppHandle, rec: &Arc<Recorder>) -> anyhow::Result<hotkey::Listener> {
+    use clipd::control::Request;
     let s = &rec.settings;
     let mut keys = vec![(hotkey::parse(&s.hotkey)?, s.hotkey.clone())];
+    let mut requests = vec![Request::Clip(None)];
     if !s.record_hotkey.trim().is_empty() {
         keys.push((hotkey::parse(&s.record_hotkey)?, s.record_hotkey.clone()));
+        requests.push(Request::Record);
+    }
+    if !s.long_hotkey.trim().is_empty() {
+        keys.push((hotkey::parse(&s.long_hotkey)?, s.long_hotkey.clone()));
+        requests.push(Request::Clip(Some(s.long_clip_secs)));
     }
     let (app, rec) = (app.clone(), rec.clone());
     hotkey::Listener::start(keys, move |key| {
-        let _ = if key == 0 { save(&app, &rec) } else { toggle(&app, &rec).map(|_| ()) };
+        let _ = match requests[key] {
+            Request::Clip(secs) => save_last(&app, &rec, secs).map(|_| ()),
+            Request::Record => toggle(&app, &rec).map(|_| ()),
+        };
     })
 }
 
@@ -328,7 +359,14 @@ fn rename(path: PathBuf, name: String) -> Result<PathBuf, String> {
 
 #[tauri::command]
 fn delete(path: PathBuf) -> Result<(), String> {
-    trash::delete(&path).map_err(|e| format!("Der Clip lässt sich nicht löschen: {e}"))
+    trash::delete(&path).map_err(|e| format!("Der Clip lässt sich nicht löschen: {e}"))?;
+    library::favorite_moved(&path, None);
+    Ok(())
+}
+
+#[tauri::command]
+fn set_favorite(path: PathBuf, on: bool) -> Result<(), String> {
+    library::set_favorite(&path, on).map_err(|e| format!("{e:#}"))
 }
 
 #[tauri::command]
@@ -474,6 +512,7 @@ fn main() {
             export,
             rename,
             delete,
+            set_favorite,
             reveal,
             open_clips_folder,
             settings,

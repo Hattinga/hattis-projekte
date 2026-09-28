@@ -96,6 +96,14 @@ pub struct Settings {
     pub hotkey: String,
     /// Starts and stops a recording of any length. Empty means none.
     pub record_hotkey: String,
+    /// Saves a longer clip, `long_clip_secs`. Empty means none.
+    pub long_hotkey: String,
+    pub long_clip_secs: u32,
+    /// Deletes clips older than this many days; 0 keeps them. Starred ones
+    /// always stay.
+    pub keep_days: u32,
+    /// Deletes the oldest clips beyond this many GB; 0 means no limit.
+    pub max_gb: u32,
     /// Files every clip under the game that was in front, `clips/<Spiel>/…`.
     pub game_folders: bool,
     /// A short sound when a clip is saved, because a game in front hides
@@ -129,6 +137,10 @@ impl Default for Settings {
             mic_device: String::new(),
             hotkey: "Ctrl+Alt+C".into(),
             record_hotkey: "Ctrl+Alt+R".into(),
+            long_hotkey: String::new(),
+            long_clip_secs: 120,
+            keep_days: 0,
+            max_gb: 0,
             game_folders: true,
             save_sound: true,
             overlay: true,
@@ -156,16 +168,23 @@ impl Settings {
         std::fs::write(&path, text).with_context(|| format!("{} lässt sich nicht schreiben", path.display()))
     }
 
-    /// Number of keyframe intervals that cover `buffer_secs`, at least one.
+    /// How far back the ring reaches: `buffer_secs`, or more if a clip is
+    /// set to be longer.
+    pub fn ring_secs(&self) -> u32 {
+        let long = if self.long_hotkey.trim().is_empty() { 0 } else { self.long_clip_secs };
+        self.buffer_secs.max(self.clip_secs).max(long)
+    }
+
+    /// Number of keyframe intervals that cover [`Self::ring_secs`], at least one.
     pub fn ring_len(&self) -> usize {
-        div_ceil(self.buffer_secs, self.segment_secs).max(1) as usize
+        div_ceil(self.ring_secs(), self.segment_secs).max(1) as usize
     }
 
     /// Number of keyframe intervals a clip of `secs` needs. One more than the
     /// plain division, because the newest one is only partly there — but never
     /// more than the ring holds.
     pub fn clip_len(&self, secs: u32) -> usize {
-        let secs = secs.min(self.buffer_secs);
+        let secs = secs.min(self.ring_secs());
         (div_ceil(secs, self.segment_secs).max(1) as usize + 1).min(self.ring_len() + 1)
     }
 
@@ -176,7 +195,7 @@ impl Settings {
     }
 
     pub fn clips_dir(&self) -> PathBuf {
-        if self.out_dir.as_os_str().is_empty() { base_dir().join("clips") } else { self.out_dir.clone() }
+        if self.out_dir.as_os_str().is_empty() { default_clips_dir() } else { self.out_dir.clone() }
     }
 
     /// Complains about values that would produce a broken recording instead of
@@ -196,11 +215,17 @@ impl Settings {
             && self.preset.starts_with('p')
             && self.preset[1..].parse::<u8>().is_ok_and(|n| (1..=7).contains(&n));
         anyhow::ensure!(ok_preset, "preset muss p1 bis p7 sein, nicht {:?}", self.preset);
-        let clip = crate::hotkey::parse(&self.hotkey)?;
-        if !self.record_hotkey.trim().is_empty() {
-            let record = crate::hotkey::parse(&self.record_hotkey)?;
-            anyhow::ensure!(record != clip, "hotkey und record_hotkey dürfen nicht dieselbe Taste sein");
+        let mut keys = vec![("hotkey", crate::hotkey::parse(&self.hotkey)?)];
+        for (name, spec) in [("record_hotkey", &self.record_hotkey), ("long_hotkey", &self.long_hotkey)] {
+            if !spec.trim().is_empty() {
+                let key = crate::hotkey::parse(spec)?;
+                if let Some((other, _)) = keys.iter().find(|(_, k)| *k == key) {
+                    anyhow::bail!("{name} und {other} dürfen nicht dieselbe Taste sein");
+                }
+                keys.push((name, key));
+            }
         }
+        anyhow::ensure!(self.long_clip_secs >= 1, "long_clip_secs muss mindestens 1 sein");
         Ok(())
     }
 }
@@ -239,6 +264,42 @@ fn locate_base(exe_dir: &Path, var: &dyn Fn(&str) -> Option<PathBuf>) -> PathBuf
     exe_dir.to_path_buf()
 }
 
+/// Where clips go unless the settings say otherwise: next to clipd when it
+/// is a portable folder or a development build, in `Videos\clipd` when it
+/// was installed — nobody looks for clips in a program folder.
+pub fn default_clips_dir() -> PathBuf {
+    let base = base_dir();
+    if installed(&base)
+        && let Some(videos) = videos_dir()
+    {
+        return videos.join("clipd");
+    }
+    base.join("clips")
+}
+
+/// The installer leaves its uninstaller next to the program.
+fn installed(base: &Path) -> bool {
+    base.join("uninstall.exe").is_file()
+}
+
+#[cfg(windows)]
+fn videos_dir() -> Option<PathBuf> {
+    use windows::Win32::System::Com::CoTaskMemFree;
+    use windows::Win32::UI::Shell::{FOLDERID_Videos, KF_FLAG_DEFAULT, SHGetKnownFolderPath};
+    // SAFETY: the returned string is copied and then freed as documented.
+    unsafe {
+        let p = SHGetKnownFolderPath(&FOLDERID_Videos, KF_FLAG_DEFAULT, None).ok()?;
+        let path = p.to_string().ok().map(PathBuf::from);
+        CoTaskMemFree(Some(p.0 as *const _));
+        path
+    }
+}
+
+#[cfg(not(windows))]
+fn videos_dir() -> Option<PathBuf> {
+    std::env::var_os("HOME").map(|h| PathBuf::from(h).join("Videos"))
+}
+
 pub fn config_path() -> PathBuf {
     base_dir().join("config.toml")
 }
@@ -274,6 +335,7 @@ mod tests {
         bad(|s| s.preset = "schnell".into());
         bad(|s| s.hotkey = "Strg+Ü".into());
         bad(|s| s.record_hotkey = "Strg+Alt+C".into());
+        bad(|s| s.long_hotkey = "Ctrl+Alt+R".into());
         bad(|s| {
             s.buffer_secs = 2;
             s.segment_secs = 10;
@@ -284,7 +346,8 @@ mod tests {
     /// Segmentlänge nicht glatt aufgeht.
     #[test]
     fn ring_covers_the_buffer() {
-        let s = |buffer, segment| Settings { buffer_secs: buffer, segment_secs: segment, ..Default::default() };
+        let s =
+            |buffer, segment| Settings { buffer_secs: buffer, segment_secs: segment, clip_secs: 1, ..Default::default() };
         assert_eq!(s(120, 1).ring_len(), 120);
         assert_eq!(s(120, 2).ring_len(), 60);
         assert_eq!(s(10, 3).ring_len(), 4, "aufgerundet");
@@ -292,7 +355,8 @@ mod tests {
     }
 
     /// Ein Clip nimmt ein Segment mehr mit, weil das neueste erst teilweise
-    /// gefüllt ist — aber nie mehr, als der Ring hergibt.
+    /// gefüllt ist — aber nie mehr, als der Ring hergibt. Ist die Clip-Länge
+    /// größer als der Buffer, wächst der Ring mit.
     #[test]
     fn clip_takes_one_segment_extra() {
         let s = |clip, segment, buffer| Settings {
@@ -304,8 +368,18 @@ mod tests {
         assert_eq!(s(30, 1, 120).clip_len(30), 31);
         assert_eq!(s(30, 2, 120).clip_len(30), 16);
         assert_eq!(s(30, 1, 120).clip_len(10), 11, "kürzer auf Wunsch");
-        assert_eq!(s(120, 1, 120).clip_len(120), 121, "vom Ring begrenzt");
-        assert_eq!(s(999, 1, 120).clip_len(999), 121, "länger als der Buffer geht nicht");
+        assert_eq!(s(30, 1, 120).clip_len(500), 121, "vom Ring begrenzt");
+        assert_eq!(s(999, 1, 120).clip_len(999), 1000, "der Ring wächst mit der Clip-Länge");
+    }
+
+    /// Ein langer Clip verlängert den Ring, aber nur, wenn seine Taste belegt ist.
+    #[test]
+    fn a_long_clip_lengthens_the_ring() {
+        let s = Settings { buffer_secs: 60, long_clip_secs: 300, ..Default::default() };
+        assert_eq!(s.ring_secs(), 60);
+        let s = Settings { long_hotkey: "Ctrl+Alt+V".into(), ..s };
+        assert_eq!(s.ring_secs(), 300);
+        assert_eq!(s.clip_len(300), 301);
     }
 
     /// Alle segment_secs Sekunden ein Keyframe.

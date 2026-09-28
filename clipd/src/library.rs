@@ -22,11 +22,14 @@ pub struct Entry {
     pub bytes: u64,
     /// Seconds since 1970, for sorting and showing a date.
     pub modified: u64,
+    /// Starred: kept when the clips are tidied up.
+    pub favorite: bool,
 }
 
 /// Every clip, newest first: those in the clips folder and one level down,
 /// in the game folders.
 pub fn list(clips: &Path) -> Vec<Entry> {
+    let favorites = favorites();
     let mut out = Vec::new();
     collect(clips, "", &mut out);
     if let Ok(dirs) = std::fs::read_dir(clips) {
@@ -34,8 +37,85 @@ pub fn list(clips: &Path) -> Vec<Entry> {
             collect(&dir.path(), &dir.file_name().to_string_lossy(), &mut out);
         }
     }
+    for e in &mut out {
+        e.favorite = favorites.contains(&e.path);
+    }
     out.sort_by(|a, b| b.modified.cmp(&a.modified).then_with(|| b.name.cmp(&a.name)));
     out
+}
+
+/// The starred clips, kept as a list of paths beside the settings.
+pub fn favorites() -> std::collections::BTreeSet<PathBuf> {
+    std::fs::read_to_string(favorites_path()).ok().and_then(|t| serde_json::from_str(&t).ok()).unwrap_or_default()
+}
+
+fn favorites_path() -> PathBuf {
+    crate::config::base_dir().join("favorites.json")
+}
+
+fn write_favorites(set: &std::collections::BTreeSet<PathBuf>) -> Result<()> {
+    let path = favorites_path();
+    std::fs::write(&path, serde_json::to_string_pretty(set)?)
+        .with_context(|| format!("{} lässt sich nicht schreiben", path.display()))
+}
+
+/// Stars or unstars a clip.
+pub fn set_favorite(clip: &Path, on: bool) -> Result<()> {
+    let mut set = favorites();
+    if on {
+        set.insert(clip.to_path_buf());
+    } else {
+        set.remove(clip);
+    }
+    write_favorites(&set)
+}
+
+/// Keeps a star on a clip that moved, or drops it for one that went away.
+pub fn favorite_moved(from: &Path, to: Option<&Path>) {
+    let mut set = favorites();
+    if set.remove(from) {
+        if let Some(to) = to {
+            set.insert(to.to_path_buf());
+        }
+        let _ = write_favorites(&set);
+    }
+}
+
+/// Deletes a clip for good — used when tidying up, where the point is the
+/// space. The window's own delete goes to the recycle bin instead.
+pub fn forget(clip: &Path) -> Result<()> {
+    std::fs::remove_file(clip).with_context(|| format!("{} lässt sich nicht löschen", clip.display()))?;
+    favorite_moved(clip, None);
+    Ok(())
+}
+
+/// What tidying up would remove, oldest first: clips older than `keep_days`,
+/// then the oldest until the rest fits into `max_gb`. Starred clips stay;
+/// 0 turns either rule off.
+pub fn to_tidy(clips: &[Entry], keep_days: u32, max_gb: u32, now: u64) -> Vec<PathBuf> {
+    let mut candidates: Vec<&Entry> = clips.iter().filter(|c| !c.favorite).collect();
+    candidates.sort_by_key(|c| c.modified);
+    let mut gone = Vec::new();
+    let mut total: u64 = clips.iter().map(|c| c.bytes).sum();
+    let limit = u64::from(max_gb) * 1_000_000_000;
+    for c in candidates {
+        let too_old = keep_days > 0 && now.saturating_sub(c.modified) > u64::from(keep_days) * 86_400;
+        let too_much = max_gb > 0 && total > limit;
+        if too_old || too_much {
+            total -= c.bytes;
+            gone.push(c.path.clone());
+        }
+    }
+    gone
+}
+
+/// Applies [`to_tidy`] to the clips folder and says how many clips went.
+pub fn tidy(clips_dir: &Path, keep_days: u32, max_gb: u32) -> usize {
+    if keep_days == 0 && max_gb == 0 {
+        return 0;
+    }
+    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs());
+    to_tidy(&list(clips_dir), keep_days, max_gb, now).iter().filter(|p| forget(p).is_ok()).count()
 }
 
 fn collect(dir: &Path, game: &str, out: &mut Vec<Entry>) {
@@ -49,7 +129,7 @@ fn collect(dir: &Path, game: &str, out: &mut Vec<Entry>) {
         let modified =
             meta.modified().ok().and_then(|m| m.duration_since(std::time::UNIX_EPOCH).ok()).map_or(0, |d| d.as_secs());
         let name = path.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
-        out.push(Entry { path, game: game.to_string(), name, bytes: meta.len(), modified });
+        out.push(Entry { path, game: game.to_string(), name, bytes: meta.len(), modified, favorite: false });
     }
 }
 
@@ -179,6 +259,7 @@ pub fn rename(clip: &Path, name: &str) -> Result<PathBuf> {
         bail!("Es gibt schon einen Clip namens {name}");
     }
     std::fs::rename(clip, &to).with_context(|| format!("{} lässt sich nicht umbenennen", clip.display()))?;
+    favorite_moved(clip, Some(&to));
     Ok(to)
 }
 
@@ -402,6 +483,29 @@ mod tests {
             let bytes = (b.video_kbps + b.audio_kbps) as f64 * 1000.0 / 8.0 * secs;
             assert!(bytes <= DISCORD_BYTES as f64 || b.video_kbps == 150, "{secs} s: {bytes} Bytes");
         }
+    }
+
+    fn entry(name: &str, days_old: u64, gb: f64, favorite: bool) -> Entry {
+        Entry {
+            path: PathBuf::from(name),
+            game: String::new(),
+            name: name.into(),
+            bytes: (gb * 1e9) as u64,
+            modified: 100 * 86_400 - days_old * 86_400,
+            favorite,
+        }
+    }
+
+    /// Weg kommt, was zu alt ist, dann das Älteste, bis der Rest passt —
+    /// Favoriten nie.
+    #[test]
+    fn tidying_spares_favorites() {
+        let now = 100 * 86_400;
+        let clips = [entry("alt", 40, 1.0, false), entry("alt-fav", 50, 1.0, true), entry("neu", 1, 1.0, false)];
+        assert_eq!(to_tidy(&clips, 30, 0, now), [PathBuf::from("alt")]);
+        assert_eq!(to_tidy(&clips, 0, 2, now), [PathBuf::from("alt")], "3 GB, 2 erlaubt: das älteste Nicht-Favorit");
+        assert_eq!(to_tidy(&clips, 0, 1, now), [PathBuf::from("alt"), PathBuf::from("neu")], "der Favorit bleibt");
+        assert!(to_tidy(&clips, 0, 0, now).is_empty(), "0 schaltet beides ab");
     }
 
     /// Nie größer als die Quelle.
