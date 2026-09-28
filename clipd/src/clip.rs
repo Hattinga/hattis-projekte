@@ -21,11 +21,24 @@ pub struct Saved {
     pub live_bytes: usize,
 }
 
-/// Writes the last `clip_secs` seconds to a file. The streams are copied, so
-/// this costs no encoding time and finishes in a fraction of a second.
-pub fn save(ffmpeg_bin: &Path, s: &Settings, dir: &Path) -> Result<Saved> {
+/// Writes the last `clip_secs` seconds into `out_dir`. The streams are
+/// copied, so this costs no encoding time and finishes in a fraction of a
+/// second.
+pub fn save(ffmpeg_bin: &Path, s: &Settings, dir: &Path, out_dir: &Path) -> Result<Saved> {
     let all = buffer::segments(dir, s);
-    let chosen = buffer::newest(&all, s.clip_len());
+    stitch(ffmpeg_bin, s, dir, buffer::newest(&all, s.clip_len()), out_dir)
+}
+
+/// Writes everything from segment `first` up to now into `out_dir` — a
+/// recording started by hand.
+pub fn save_since(ffmpeg_bin: &Path, s: &Settings, dir: &Path, first: &Path, out_dir: &Path) -> Result<Saved> {
+    let all = buffer::segments(dir, s);
+    stitch(ffmpeg_bin, s, dir, buffer::since(&all, first), out_dir)
+}
+
+/// Puts `chosen` end to end; the last of them is the one ffmpeg is still
+/// writing.
+fn stitch(ffmpeg_bin: &Path, s: &Settings, dir: &Path, chosen: &[PathBuf], out_dir: &Path) -> Result<Saved> {
     let Some((live, earlier)) = chosen.split_last() else {
         bail!("Der Buffer ist noch leer — läuft die Aufnahme erst gerade an?");
     };
@@ -50,9 +63,8 @@ pub fn save(ffmpeg_bin: &Path, s: &Settings, dir: &Path) -> Result<Saved> {
         bail!("Der Buffer ist noch zu kurz für einen Clip — gib ihm einen Moment.");
     }
 
-    let clips = s.clips_dir();
-    std::fs::create_dir_all(&clips).with_context(|| format!("{} lässt sich nicht anlegen", clips.display()))?;
-    let out = unique(&clips, &stamp(), "mp4");
+    std::fs::create_dir_all(out_dir).with_context(|| format!("{} lässt sich nicht anlegen", out_dir.display()))?;
+    let out = unique(out_dir, &stamp(), "mp4");
 
     let list_file = dir.join(LIST);
     std::fs::write(&list_file, ffmpeg::concat_list(&list))

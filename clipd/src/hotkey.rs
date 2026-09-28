@@ -79,36 +79,88 @@ fn vk_of(name: &str) -> Option<u32> {
     })
 }
 
-/// Registers the hotkey and runs the message loop, calling `on_press` on every
-/// press. Returns only if the loop ends, which in practice means the process is
-/// shutting down.
-#[cfg(windows)]
-pub fn listen(hk: Hotkey, spec: &str, mut on_press: impl FnMut()) -> Result<()> {
-    use windows_sys::Win32::UI::Input::KeyboardAndMouse::{RegisterHotKey, UnregisterHotKey};
-    use windows_sys::Win32::UI::WindowsAndMessaging::{GetMessageW, MSG, WM_HOTKEY};
-
-    const ID: i32 = 1;
-    // SAFETY: a null window makes the message land in this thread's own queue,
-    // which is exactly the queue pumped below.
-    if unsafe { RegisterHotKey(std::ptr::null_mut(), ID, hk.mods, hk.vk) } == 0 {
-        let err = std::io::Error::last_os_error();
-        bail!("Hotkey {spec} lässt sich nicht belegen ({err}) — nimmt ihn schon ein anderes Programm?");
-    }
-    let mut msg: MSG = unsafe { std::mem::zeroed() };
-    // SAFETY: plain message pump on a zeroed MSG we own.
-    while unsafe { GetMessageW(&mut msg, std::ptr::null_mut(), 0, 0) } > 0 {
-        if msg.message == WM_HOTKEY && msg.wParam == ID as usize {
-            on_press();
-        }
-    }
-    // SAFETY: undoing our own registration.
-    unsafe { UnregisterHotKey(std::ptr::null_mut(), ID) };
-    Ok(())
+/// Global hotkeys on a thread of their own. `on_press` gets the index of the
+/// key that was pressed; dropping the listener frees the keys again, so new
+/// settings can take them over.
+pub struct Listener {
+    #[cfg(windows)]
+    thread: u32,
+    handle: Option<std::thread::JoinHandle<()>>,
 }
 
-#[cfg(not(windows))]
-pub fn listen(_hk: Hotkey, _spec: &str, _on_press: impl FnMut()) -> Result<()> {
-    bail!("Globale Hotkeys gibt es in clipd nur unter Windows")
+impl Listener {
+    /// Registers every key or none: if one is taken by another program, the
+    /// error names it and the others are released again.
+    #[cfg(windows)]
+    pub fn start(keys: Vec<(Hotkey, String)>, mut on_press: impl FnMut(usize) + Send + 'static) -> Result<Self> {
+        use windows_sys::Win32::System::Threading::GetCurrentThreadId;
+        use windows_sys::Win32::UI::Input::KeyboardAndMouse::{RegisterHotKey, UnregisterHotKey};
+        use windows_sys::Win32::UI::WindowsAndMessaging::{GetMessageW, MSG, PM_NOREMOVE, PeekMessageW, WM_HOTKEY};
+
+        let (tx, rx) = std::sync::mpsc::channel();
+        let handle = std::thread::Builder::new()
+            .name("clipd-hotkey".into())
+            .spawn(move || {
+                let mut msg: MSG = unsafe { std::mem::zeroed() };
+                // SAFETY: creates this thread's message queue, so a WM_QUIT
+                // posted from Drop cannot get lost before the loop runs.
+                unsafe { PeekMessageW(&mut msg, std::ptr::null_mut(), 0, 0, PM_NOREMOVE) };
+                let thread = unsafe { GetCurrentThreadId() };
+                for (id, (hk, spec)) in keys.iter().enumerate() {
+                    // SAFETY: a null window puts the message into this
+                    // thread's own queue, which is the one pumped below.
+                    if unsafe { RegisterHotKey(std::ptr::null_mut(), id as i32 + 1, hk.mods, hk.vk) } == 0 {
+                        let err = std::io::Error::last_os_error();
+                        for earlier in 0..id {
+                            unsafe { UnregisterHotKey(std::ptr::null_mut(), earlier as i32 + 1) };
+                        }
+                        let _ = tx.send(Err(anyhow!(
+                            "Hotkey {spec} lässt sich nicht belegen ({err}) — nimmt ihn schon ein anderes Programm?"
+                        )));
+                        return;
+                    }
+                }
+                let _ = tx.send(Ok(thread));
+                // SAFETY: plain message pump on a MSG we own.
+                while unsafe { GetMessageW(&mut msg, std::ptr::null_mut(), 0, 0) } > 0 {
+                    if msg.message == WM_HOTKEY && (1..=keys.len()).contains(&msg.wParam) {
+                        on_press(msg.wParam - 1);
+                    }
+                }
+                for id in 0..keys.len() {
+                    // SAFETY: undoing our own registrations.
+                    unsafe { UnregisterHotKey(std::ptr::null_mut(), id as i32 + 1) };
+                }
+            })
+            .map_err(|e| anyhow!("Der Hotkey-Thread lässt sich nicht starten: {e}"))?;
+        match rx.recv() {
+            Ok(Ok(thread)) => Ok(Self { thread, handle: Some(handle) }),
+            Ok(Err(e)) => {
+                let _ = handle.join();
+                Err(e)
+            }
+            Err(_) => bail!("Der Hotkey-Thread ist abgestürzt"),
+        }
+    }
+
+    #[cfg(not(windows))]
+    pub fn start(_keys: Vec<(Hotkey, String)>, _on_press: impl FnMut(usize) + Send + 'static) -> Result<Self> {
+        bail!("Globale Hotkeys gibt es in clipd nur unter Windows")
+    }
+}
+
+impl Drop for Listener {
+    fn drop(&mut self) {
+        #[cfg(windows)]
+        {
+            use windows_sys::Win32::UI::WindowsAndMessaging::{PostThreadMessageW, WM_QUIT};
+            // SAFETY: posting to a thread whose queue exists (see start).
+            unsafe { PostThreadMessageW(self.thread, WM_QUIT, 0, 0) };
+        }
+        if let Some(h) = self.handle.take() {
+            let _ = h.join();
+        }
+    }
 }
 
 #[cfg(test)]

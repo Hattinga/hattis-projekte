@@ -1,8 +1,9 @@
 use anyhow::{Context, Result};
 use clap::{Args, Parser, Subcommand, ValueEnum};
-use clipd::buffer::Buffer;
 use clipd::config::{Codec, Gpu, Settings};
+use clipd::recorder::Recorder;
 use clipd::{buffer, clip, config, ffmpeg, hotkey, sys};
+use std::sync::Arc;
 
 #[derive(Parser)]
 #[command(name = "clipd", version, about = "Schlanker Clipper fürs Zocken: Replay-Buffer, Hotkey, schneiden, teilen")]
@@ -66,6 +67,9 @@ struct RunArgs {
     /// Nimmt nur das Bild auf, ohne Ton.
     #[arg(long)]
     no_audio: bool,
+    /// Nimmt das Mikrofon als eigene Tonspur mit auf.
+    #[arg(long)]
+    mic: bool,
 }
 
 #[derive(Clone, Copy, ValueEnum)]
@@ -135,6 +139,9 @@ impl RunArgs {
         if self.no_audio {
             s.audio = false;
         }
+        if self.mic {
+            s.mic = true;
+        }
     }
 }
 
@@ -164,19 +171,16 @@ fn settings(args: RunArgs) -> Result<Settings> {
 }
 
 fn record(args: RunArgs) -> Result<()> {
-    let mut s = settings(args)?;
-    let hk = hotkey::parse(&s.hotkey)?;
+    let s = settings(args)?;
     let bin = ffmpeg::find()?;
-    // Settled once here; the capture and the session file only ever see the
-    // card that answered.
-    s.gpu = ffmpeg::pick_gpu(&bin, &s)?;
     // Before the capture starts, so a crash cannot leave an ffmpeg behind.
     sys::kill_children_on_exit();
 
-    let mut buf = Buffer::start(&bin, &s)?;
-    buf.wait_until_recording(&s, std::time::Duration::from_secs(10))?;
-    // After the start, because starting empties the buffer folder.
-    s.save_session()?;
+    let rec = Arc::new(Recorder::start(&bin, s, |why| {
+        eprintln!("clipd: {why}");
+        std::process::exit(1);
+    })?);
+    let s = &rec.settings;
     println!(
         "clipd nimmt Bildschirm {} auf: {} fps {} mit {}, Qualität {}, Buffer {} s",
         s.monitor,
@@ -186,28 +190,47 @@ fn record(args: RunArgs) -> Result<()> {
         s.quality,
         s.buffer_secs
     );
-    match &buf.audio_device {
+    match &rec.audio_device {
         Some(device) => println!("Ton: {device} ({} kbit/s AAC)", s.audio_kbit),
         None => println!("Ton: keiner"),
     }
+    if let Some(mic) = &rec.mic_device {
+        println!("Mikrofon: {mic} (eigene Tonspur)");
+    }
+    if rec.audio_device.is_some()
+        && let Some(warning) = clipd::audio::silence_warning()
+    {
+        eprintln!("clipd: Achtung: {warning}");
+    }
     println!("{} speichert die letzten {} s nach {}", s.hotkey, s.clip_secs, s.clips_dir().display());
+    let mut keys = vec![(hotkey::parse(&s.hotkey)?, s.hotkey.clone())];
+    if !s.record_hotkey.trim().is_empty() {
+        println!("{} startet und beendet eine Aufnahme beliebiger Länge", s.record_hotkey);
+        keys.push((hotkey::parse(&s.record_hotkey)?, s.record_hotkey.clone()));
+    }
     println!("Beenden mit Strg+C.");
 
-    // The housekeeping runs alongside, because the hotkey needs the message loop
-    // on this thread and that loop blocks.
-    let tend = s.clone();
-    std::thread::spawn(move || {
-        if let Err(e) = buf.tend(tend) {
-            eprintln!("clipd: {e:#}");
-            std::process::exit(1);
+    let on_key = rec.clone();
+    let _keys = hotkey::Listener::start(keys, move |key| {
+        let done = match key {
+            0 => on_key.save_clip(),
+            _ if on_key.recording_for().is_none() => match on_key.start_recording() {
+                Ok(()) => {
+                    println!("Aufnahme läuft …");
+                    return;
+                }
+                Err(e) => Err(e),
+            },
+            _ => on_key.stop_recording(),
+        };
+        match done {
+            Ok(done) => println!("{}", clip::describe(&done)),
+            Err(e) => eprintln!("clipd: {e:#}"),
         }
-    });
-
-    let dir = config::buffer_dir();
-    hotkey::listen(hk, &s.hotkey, || match clip::save(&bin, &s, &dir) {
-        Ok(done) => println!("{}", clip::describe(&done)),
-        Err(e) => eprintln!("clipd: {e:#}"),
-    })
+    })?;
+    loop {
+        std::thread::park();
+    }
 }
 
 /// Saves from the buffer of an already running clipd, so a second terminal or a
@@ -228,7 +251,7 @@ fn clip_now(secs: Option<u32>) -> Result<()> {
         !buffer::segments(&dir, &s).is_empty(),
         "Im Buffer liegt nichts. Läuft `clipd run` in einem anderen Fenster?"
     );
-    let done = clip::save(&bin, &s, &dir)?;
+    let done = clip::save(&bin, &s, &dir, &s.clips_dir())?;
     println!("{}", clip::describe(&done));
     Ok(())
 }
@@ -255,7 +278,7 @@ fn audio_devices() -> Result<()> {
     let mut works: Option<String> = None;
     for name in &found {
         print!("  {name}\n    ");
-        match clipd::audio::open_within(name, std::time::Duration::from_secs(3)) {
+        match clipd::audio::open_within(name, None, std::time::Duration::from_secs(3)) {
             Ok(audio) => {
                 println!("Ton: ja, {} Hz, {} Kanäle", audio.format.rate, audio.format.channels);
                 works.get_or_insert_with(|| name.clone());

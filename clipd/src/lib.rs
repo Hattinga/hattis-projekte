@@ -11,5 +11,7 @@ pub mod buffer;
 pub mod clip;
 pub mod config;
 pub mod ffmpeg;
+pub mod game;
 pub mod hotkey;
+pub mod recorder;
 pub mod sys;

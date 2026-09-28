@@ -115,7 +115,20 @@ pub struct Settings {
     /// default one — which is not always one that can do loopback, so
     /// `clipd audio` exists to find a working one.
     pub audio_device: String,
+    /// Records the microphone as a second sound track, so the editor can
+    /// mute it or turn it down without touching the game.
+    pub mic: bool,
+    /// Part of the name of the microphone. Empty means the default one.
+    pub mic_device: String,
+    /// Saves the last `clip_secs`.
     pub hotkey: String,
+    /// Starts and stops a recording of any length. Empty means none.
+    pub record_hotkey: String,
+    /// Files every clip under the game that was in front, `clips/<Spiel>/…`.
+    pub game_folders: bool,
+    /// A short sound when a clip is saved, because a game in front hides
+    /// every other sign of it.
+    pub save_sound: bool,
     /// Where finished clips land. Empty means `<base>/clips`.
     pub out_dir: PathBuf,
 }
@@ -136,7 +149,12 @@ impl Default for Settings {
             audio: true,
             audio_kbit: 160,
             audio_device: String::new(),
+            mic: false,
+            mic_device: String::new(),
             hotkey: "Ctrl+Alt+C".into(),
+            record_hotkey: "Ctrl+Alt+R".into(),
+            game_folders: true,
+            save_sound: true,
             out_dir: PathBuf::new(),
         }
     }
@@ -215,7 +233,12 @@ impl Settings {
             && self.preset.starts_with('p')
             && self.preset[1..].parse::<u8>().is_ok_and(|n| (1..=7).contains(&n));
         anyhow::ensure!(ok_preset, "preset muss p1 bis p7 sein, nicht {:?}", self.preset);
-        crate::hotkey::parse(&self.hotkey).map(|_| ())
+        let clip = crate::hotkey::parse(&self.hotkey)?;
+        if !self.record_hotkey.trim().is_empty() {
+            let record = crate::hotkey::parse(&self.record_hotkey)?;
+            anyhow::ensure!(record != clip, "hotkey und record_hotkey dürfen nicht dieselbe Taste sein");
+        }
+        Ok(())
     }
 }
 
@@ -292,6 +315,7 @@ mod tests {
         bad(|s| s.preset = "p9".into());
         bad(|s| s.preset = "schnell".into());
         bad(|s| s.hotkey = "Strg+Ü".into());
+        bad(|s| s.record_hotkey = "Strg+Alt+C".into());
         bad(|s| {
             s.buffer_secs = 2;
             s.segment_secs = 10;

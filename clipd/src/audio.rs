@@ -1,11 +1,11 @@
-//! Game sound, straight from the speakers.
+//! Game sound, straight from the speakers, and the microphone beside it.
 //!
 //! ffmpeg cannot record what Windows plays: DirectShow only offers
 //! microphones, and there is no loopback device unless the sound card happens
 //! to provide "Stereo Mix". So clipd taps WASAPI itself, in loopback mode on
 //! the default playback device, and feeds raw samples into ffmpeg's stdin.
 //!
-//! Two things need care.
+//! Three things need care.
 //!
 //! **The format is the device's, not ours.** Asking WASAPI to convert to a
 //! fixed 48 kHz stereo float stream makes `IAudioClient::Initialize` hang on
@@ -20,8 +20,16 @@
 //! follows the clock, not the device: every tick it tops the stream up to the
 //! number of samples that should exist by now, with silence if there is
 //! nothing else.
+//!
+//! **The microphone shares the pipe.** ffmpeg has only one stdin, so the
+//! microphone travels in the same raw stream as two extra channels behind the
+//! game's, and ffmpeg splits them into a track of their own. The microphone is
+//! opened in the game device's rate and sample format, which WASAPI converts
+//! for a capture device without complaint, and one clock drives both — they
+//! cannot drift apart from each other either.
 
 use anyhow::{Context, Result, anyhow, bail};
+use std::collections::VecDeque;
 use std::io::Write;
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
@@ -30,14 +38,19 @@ use std::time::{Duration, Instant};
 /// pipe. Opening a virtual device can take a moment.
 const HANDSHAKE: Duration = Duration::from_secs(10);
 
-/// The raw stream the device delivers and ffmpeg has to be told about.
+/// The raw stream the devices deliver and ffmpeg has to be told about: each
+/// frame holds the game's channels, then the microphone's.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Format {
     pub rate: u32,
+    /// The game's channels, as the playback device mixes them.
     pub channels: u16,
     pub bits: u16,
     pub float: bool,
     pub device: String,
+    /// 2 with a microphone, 0 without.
+    pub mic_channels: u16,
+    pub mic_device: Option<String>,
 }
 
 impl Format {
@@ -53,8 +66,16 @@ impl Format {
         })
     }
 
-    pub fn bytes_per_frame(&self) -> usize {
+    pub fn game_frame(&self) -> usize {
         self.bits as usize / 8 * self.channels as usize
+    }
+
+    pub fn mic_frame(&self) -> usize {
+        self.bits as usize / 8 * self.mic_channels as usize
+    }
+
+    pub fn bytes_per_frame(&self) -> usize {
+        self.game_frame() + self.mic_frame()
     }
 
     pub fn bytes_per_sec(&self) -> u64 {
@@ -63,7 +84,8 @@ impl Format {
 
     /// How ffmpeg has to read the pipe.
     pub fn input_args(&self) -> Result<Vec<String>> {
-        Ok(["-f", self.sample_fmt()?, "-ar", &self.rate.to_string(), "-ac", &self.channels.to_string()]
+        let channels = (self.channels + self.mic_channels).to_string();
+        Ok(["-f", self.sample_fmt()?, "-ar", &self.rate.to_string(), "-ac", &channels]
             .iter()
             .map(|s| s.to_string())
             .collect())
@@ -81,7 +103,40 @@ pub fn target_bytes(elapsed: Duration, bytes_per_sec: u64, bytes_per_frame: usiz
     raw - raw % bytes_per_frame as u64
 }
 
-/// A sound device that is open and running, waiting for somewhere to put its
+/// Builds `frames` frames of the shared stream: the game's part from `game`,
+/// the microphone's from `mic`, silence wherever a device has nothing yet.
+pub fn interleave(frames: usize, game: &mut VecDeque<u8>, g: usize, mic: &mut VecDeque<u8>, m: usize) -> Vec<u8> {
+    let mut out = Vec::with_capacity(frames * (g + m));
+    let have_game = game.len() / g.max(1);
+    let have_mic = mic.len().checked_div(m).unwrap_or(0);
+    for i in 0..frames {
+        if i < have_game {
+            out.extend(game.drain(..g));
+        } else {
+            out.resize(out.len() + g, 0);
+        }
+        if m > 0 {
+            if i < have_mic {
+                out.extend(mic.drain(..m));
+            } else {
+                out.resize(out.len() + m, 0);
+            }
+        }
+    }
+    out
+}
+
+/// Keeps at most half a second in a queue; a backlog would only push the
+/// sound further behind the picture.
+fn cap(queue: &mut VecDeque<u8>, frame: usize, rate: u32) {
+    let limit = rate as usize / 2 * frame;
+    if frame > 0 && queue.len() > limit {
+        let drop = queue.len() - limit;
+        queue.drain(..drop - drop % frame);
+    }
+}
+
+/// Sound devices that are open and running, waiting for somewhere to put their
 /// samples.
 pub struct Audio {
     pub format: Format,
@@ -95,28 +150,30 @@ impl Audio {
     }
 }
 
-/// Opens a playback device for loopback and reports what it delivers. The
-/// capture runs from here on, but throws its samples away until
-/// [`Audio::attach`] gives it ffmpeg's pipe.
+/// Opens a playback device for loopback, and a microphone if `mic` names one
+/// (empty: the default microphone), and reports what they deliver. The capture
+/// runs from here on, but throws its samples away until [`Audio::attach`]
+/// gives it ffmpeg's pipe.
 ///
-/// `want` picks the device by a part of its name; empty means the default
-/// one. That choice matters: some virtual devices never return from
+/// `want` picks the playback device by a part of its name; empty means the
+/// default one. That choice matters: some virtual devices never return from
 /// `IAudioClient::Initialize` in loopback mode, and `clipd audio` shows which
-/// ones actually work.
+/// ones actually work. A microphone that fails only costs the microphone.
 #[cfg(windows)]
-pub fn open(want: &str) -> Result<Audio> {
-    open_within(want, HANDSHAKE)
+pub fn open(want: &str, mic: Option<&str>) -> Result<Audio> {
+    open_within(want, mic, HANDSHAKE)
 }
 
 #[cfg(windows)]
-pub fn open_within(want: &str, timeout: Duration) -> Result<Audio> {
+pub fn open_within(want: &str, mic: Option<&str>, timeout: Duration) -> Result<Audio> {
     let (info_tx, info_rx) = mpsc::channel();
     let (sink_tx, sink_rx) = mpsc::channel();
     let want = want.to_string();
+    let mic = mic.map(str::to_string);
     std::thread::Builder::new()
         .name("clipd-audio".into())
         .spawn(move || {
-            if let Err(e) = capture(&want, &info_tx, sink_rx) {
+            if let Err(e) = capture(&want, mic.as_deref(), &info_tx, sink_rx) {
                 // If the handshake already went through, nobody is listening
                 // any more and the message only belongs on the console.
                 if info_tx.send(Err(format!("{e:#}"))).is_err() {
@@ -141,14 +198,23 @@ pub fn open_within(want: &str, timeout: Duration) -> Result<Audio> {
 /// The playback devices Windows knows, with the default one first.
 #[cfg(windows)]
 pub fn devices() -> Result<Vec<String>> {
+    list(wasapi::Direction::Render)
+}
+
+/// The microphones Windows knows, with the default one first.
+#[cfg(windows)]
+pub fn microphones() -> Result<Vec<String>> {
+    list(wasapi::Direction::Capture)
+}
+
+#[cfg(windows)]
+fn list(direction: wasapi::Direction) -> Result<Vec<String>> {
     // COM has to be set up on whatever thread asks, so this gets its own.
-    std::thread::spawn(|| -> Result<Vec<String>> {
-        use wasapi::Direction;
+    std::thread::spawn(move || -> Result<Vec<String>> {
         wasapi::initialize_mta().ok().map_err(|e| anyhow!("COM lässt sich nicht starten: {e}"))?;
         let enumerator = wasapi::DeviceEnumerator::new().map_err(|e| anyhow!("Keine Geräteliste: {e}"))?;
-        let default = enumerator.get_default_device(&Direction::Render).ok().and_then(|d| d.get_friendlyname().ok());
-        let collection =
-            enumerator.get_device_collection(&Direction::Render).map_err(|e| anyhow!("Keine Geräteliste: {e}"))?;
+        let default = enumerator.get_default_device(&direction).ok().and_then(|d| d.get_friendlyname().ok());
+        let collection = enumerator.get_device_collection(&direction).map_err(|e| anyhow!("Keine Geräteliste: {e}"))?;
         let count = collection.get_nbr_devices().map_err(|e| anyhow!("Geräte nicht zählbar: {e}"))?;
         let mut names: Vec<String> =
             (0..count).filter_map(|i| collection.get_device_at_index(i).ok()?.get_friendlyname().ok()).collect();
@@ -161,9 +227,62 @@ pub fn devices() -> Result<Vec<String>> {
     .map_err(|_| anyhow!("Die Geräteliste ist abgestürzt"))?
 }
 
+/// Volume and mute of the default playback device. Loopback taps the sound
+/// behind the volume control, so at 0 % or muted every clip is silent.
+#[cfg(windows)]
+pub fn playback_volume() -> Option<(f32, bool)> {
+    use windows::Win32::Media::Audio::Endpoints::IAudioEndpointVolume;
+    use windows::Win32::Media::Audio::{IMMDeviceEnumerator, MMDeviceEnumerator, eConsole, eRender};
+    use windows::Win32::System::Com::{CLSCTX_ALL, COINIT_MULTITHREADED, CoCreateInstance, CoInitializeEx};
+    std::thread::spawn(|| {
+        // SAFETY: COM is set up on this thread before any interface is used,
+        // and every interface stays on it.
+        unsafe {
+            let _ = CoInitializeEx(None, COINIT_MULTITHREADED);
+            let e: IMMDeviceEnumerator = CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL).ok()?;
+            let device = e.GetDefaultAudioEndpoint(eRender, eConsole).ok()?;
+            let volume: IAudioEndpointVolume = device.Activate(CLSCTX_ALL, None).ok()?;
+            Some((volume.GetMasterVolumeLevelScalar().ok()?, volume.GetMute().ok()?.as_bool()))
+        }
+    })
+    .join()
+    .ok()?
+}
+
+/// Why every clip would be silent right now, if it would: loopback records
+/// behind the volume control of the default playback device.
+pub fn silence_warning() -> Option<String> {
+    match playback_volume()? {
+        (_, true) => Some("Der Ton ist stumm geschaltet — die Clips werden stumm.".into()),
+        (level, _) if level <= 0.0 => Some("Die Lautstärke steht auf 0 % — die Clips werden stumm.".into()),
+        _ => None,
+    }
+}
+
+/// A device that is open and delivering, kept together so neither half is
+/// dropped while the other is still in use.
+#[cfg(windows)]
+struct Open {
+    _client: wasapi::AudioClient,
+    capture: wasapi::AudioCaptureClient,
+}
+
+#[cfg(windows)]
+impl Open {
+    /// Moves whatever the device has into `queue`.
+    fn drain_into(&self, queue: &mut VecDeque<u8>) {
+        while self.capture.get_next_packet_size().is_ok_and(|n| n.is_some_and(|n| n > 0)) {
+            if self.capture.read_from_device_to_deque(queue).is_err() {
+                break;
+            }
+        }
+    }
+}
+
 #[cfg(windows)]
 fn capture(
     want: &str,
+    mic: Option<&str>,
     info: &mpsc::Sender<Result<Format, String>>,
     sink_rx: mpsc::Receiver<std::process::ChildStdin>,
 ) -> Result<()> {
@@ -173,19 +292,22 @@ fn capture(
     wasapi::initialize_mta().ok().map_err(|e| anyhow!("COM lässt sich nicht starten: {e}"))?;
     let enumerator = wasapi::DeviceEnumerator::new().map_err(|e| anyhow!("Keine Geräteliste: {e}"))?;
     // A playback device opened for reading is what loopback means.
-    let device = pick(&enumerator, want)?;
+    let device = pick(&enumerator, want, Direction::Render)?;
     let name = device.get_friendlyname().unwrap_or_else(|_| "Wiedergabegerät".into());
     let mut client = device.get_iaudioclient().map_err(|e| anyhow!("Gerät lässt sich nicht öffnen: {e}"))?;
 
     // The device's own format. Asking for a different one and letting WASAPI
     // convert is what hangs on some virtual devices.
     let mix = client.get_mixformat().map_err(|e| anyhow!("Kein Tonformat zu bekommen: {e}"))?;
-    let format = Format {
+    let sample_type = mix.get_subformat().map_err(|e| anyhow!("Unbekanntes Tonformat: {e}"))?;
+    let mut format = Format {
         rate: mix.get_samplespersec(),
         channels: mix.get_nchannels(),
         bits: mix.get_bitspersample(),
-        float: matches!(mix.get_subformat(), Ok(SampleType::Float)),
+        float: matches!(sample_type, SampleType::Float),
         device: name,
+        mic_channels: 0,
+        mic_device: None,
     };
     // Fails early for a format ffmpeg could not read anyway.
     format.sample_fmt()?;
@@ -197,8 +319,24 @@ fn capture(
     client
         .initialize_client(&mix, &Direction::Capture, &mode)
         .map_err(|e| anyhow!("Mitschnitt lässt sich nicht einrichten: {e}"))?;
-    let capture = client.get_audiocaptureclient().map_err(|e| anyhow!("Kein Aufnahmezugriff: {e}"))?;
+    let game_capture = client.get_audiocaptureclient().map_err(|e| anyhow!("Kein Aufnahmezugriff: {e}"))?;
     client.start_stream().map_err(|e| anyhow!("Der Mitschnitt startet nicht: {e}"))?;
+    let game = Open { _client: client, capture: game_capture };
+
+    let microphone = match mic {
+        None => None,
+        Some(want) => match open_mic(&enumerator, want, &format, &sample_type) {
+            Ok((open, name)) => {
+                format.mic_channels = 2;
+                format.mic_device = Some(name);
+                Some(open)
+            }
+            Err(e) => {
+                eprintln!("clipd: Aufnahme ohne Mikrofon — {e:#}");
+                None
+            }
+        },
+    };
 
     // From here on there is sound to be had; the caller may start ffmpeg.
     let _ = info.send(Ok(format.clone()));
@@ -210,74 +348,82 @@ fn capture(
         Err(mpsc::RecvTimeoutError::Timeout) => bail!("ffmpeg hat keine Eingabe für den Ton geliefert"),
     };
 
-    let frame = format.bytes_per_frame();
+    let (g, m, frame) = (format.game_frame(), format.mic_frame(), format.bytes_per_frame());
     let per_sec = format.bytes_per_sec();
-    let mut queue: std::collections::VecDeque<u8> = std::collections::VecDeque::new();
-    let silence = vec![0u8; 8192 - 8192 % frame.max(1)];
+    let (mut game_q, mut mic_q) = (VecDeque::new(), VecDeque::new());
     // Only now, so the wait for ffmpeg does not count as recorded time.
     let start = Instant::now();
     let mut written: u64 = 0;
     loop {
-        while capture.get_next_packet_size().is_ok_and(|n| n.is_some_and(|n| n > 0)) {
-            if capture.read_from_device_to_deque(&mut queue).is_err() {
-                break;
-            }
+        game.drain_into(&mut game_q);
+        if let Some(mic) = &microphone {
+            mic.drain_into(&mut mic_q);
         }
-        // Never hoard more than a moment; a backlog would only push the sound
-        // further behind the picture.
-        let cap = per_sec as usize / 2;
-        if queue.len() > cap {
-            let drop = queue.len() - cap;
-            queue.drain(..drop - drop % frame);
-        }
+        cap(&mut game_q, g, format.rate);
+        cap(&mut mic_q, m, format.rate);
 
         let target = target_bytes(start.elapsed(), per_sec, frame);
-        while written < target {
-            let need = (target - written) as usize - (target - written) as usize % frame;
-            if need == 0 {
-                break;
+        if written < target {
+            let chunk = interleave(((target - written) / frame as u64) as usize, &mut game_q, g, &mut mic_q, m);
+            // A closed pipe means ffmpeg has ended, which whoever watches
+            // ffmpeg reports; there is nothing to add here.
+            if sink.write_all(&chunk).and_then(|_| sink.flush()).is_err() {
+                return Ok(());
             }
-            let from_device = (queue.len() - queue.len() % frame).min(need);
-            let n = if from_device > 0 {
-                let chunk: Vec<u8> = queue.drain(..from_device).collect();
-                sink.write_all(&chunk).context("ffmpeg nimmt keinen Ton mehr an")?;
-                from_device
-            } else {
-                let fill = need.min(silence.len());
-                sink.write_all(&silence[..fill]).context("ffmpeg nimmt keinen Ton mehr an")?;
-                fill
-            };
-            written += n as u64;
+            written += chunk.len() as u64;
         }
-        sink.flush().context("ffmpeg nimmt keinen Ton mehr an")?;
         std::thread::sleep(Duration::from_millis(5));
     }
+}
+
+/// Opens a microphone in the game device's rate and sample format, stereo.
+/// Unlike loopback, a capture device converts without trouble.
+#[cfg(windows)]
+fn open_mic(
+    enumerator: &wasapi::DeviceEnumerator,
+    want: &str,
+    game: &Format,
+    sample_type: &wasapi::SampleType,
+) -> Result<(Open, String)> {
+    use wasapi::{Direction, StreamMode, WaveFormat};
+    let device = pick(enumerator, want, Direction::Capture)?;
+    let name = device.get_friendlyname().unwrap_or_else(|_| "Mikrofon".into());
+    let mut client = device.get_iaudioclient().map_err(|e| anyhow!("Mikrofon lässt sich nicht öffnen: {e}"))?;
+    let bits = game.bits as usize;
+    let wanted = WaveFormat::new(bits, bits, sample_type, game.rate as usize, 2, None);
+    let mode = StreamMode::PollingShared { autoconvert: true, buffer_duration_hns: 0 };
+    client
+        .initialize_client(&wanted, &Direction::Capture, &mode)
+        .map_err(|e| anyhow!("Mikrofon lässt sich nicht einrichten: {e}"))?;
+    let capture = client.get_audiocaptureclient().map_err(|e| anyhow!("Kein Zugriff aufs Mikrofon: {e}"))?;
+    client.start_stream().map_err(|e| anyhow!("Das Mikrofon startet nicht: {e}"))?;
+    Ok((Open { _client: client, capture }, name))
 }
 
 /// The device whose name contains `want`, or the default one when `want` is
 /// empty.
 #[cfg(windows)]
-fn pick(enumerator: &wasapi::DeviceEnumerator, want: &str) -> Result<wasapi::Device> {
-    use wasapi::Direction;
+fn pick(enumerator: &wasapi::DeviceEnumerator, want: &str, direction: wasapi::Direction) -> Result<wasapi::Device> {
+    let kind = if direction == wasapi::Direction::Render { "Wiedergabegerät" } else { "Mikrofon" };
     if want.trim().is_empty() {
-        return enumerator.get_default_device(&Direction::Render).map_err(|e| anyhow!("Kein Wiedergabegerät: {e}"));
+        return enumerator.get_default_device(&direction).map_err(|e| anyhow!("Kein {kind}: {e}"));
     }
-    let collection = enumerator.get_device_collection(&Direction::Render).map_err(|e| anyhow!("Keine Geräteliste: {e}"))?;
+    let collection = enumerator.get_device_collection(&direction).map_err(|e| anyhow!("Keine Geräteliste: {e}"))?;
     let count = collection.get_nbr_devices().map_err(|e| anyhow!("Geräte nicht zählbar: {e}"))?;
     let needle = want.to_lowercase();
     (0..count)
         .filter_map(|i| collection.get_device_at_index(i).ok())
         .find(|d| d.get_friendlyname().is_ok_and(|n| n.to_lowercase().contains(&needle)))
-        .ok_or_else(|| anyhow!("Kein Wiedergabegerät heißt so etwas wie {want:?}"))
+        .ok_or_else(|| anyhow!("Kein {kind} heißt so etwas wie {want:?}"))
 }
 
 #[cfg(not(windows))]
-pub fn open(_want: &str) -> Result<Audio> {
+pub fn open(_want: &str, _mic: Option<&str>) -> Result<Audio> {
     bail!("Ton nimmt clipd nur unter Windows auf")
 }
 
 #[cfg(not(windows))]
-pub fn open_within(_want: &str, _timeout: Duration) -> Result<Audio> {
+pub fn open_within(_want: &str, _mic: Option<&str>, _timeout: Duration) -> Result<Audio> {
     bail!("Ton nimmt clipd nur unter Windows auf")
 }
 
@@ -286,12 +432,22 @@ pub fn devices() -> Result<Vec<String>> {
     bail!("Ton nimmt clipd nur unter Windows auf")
 }
 
+#[cfg(not(windows))]
+pub fn microphones() -> Result<Vec<String>> {
+    bail!("Ton nimmt clipd nur unter Windows auf")
+}
+
+#[cfg(not(windows))]
+pub fn playback_volume() -> Option<(f32, bool)> {
+    None
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     fn stereo_float() -> Format {
-        Format { rate: 48_000, channels: 2, bits: 32, float: true, device: "Test".into() }
+        Format { rate: 48_000, channels: 2, bits: 32, float: true, device: "Test".into(), mic_channels: 0, mic_device: None }
     }
 
     /// Der Ton muss echtzeitgenau nachgefüllt werden, sonst laufen Bild und
@@ -308,10 +464,10 @@ mod tests {
     }
 
     /// Ein angeschnittenes Sample darf nie entstehen, auch nicht bei 44,1 kHz
-    /// und fünf Kanälen, wo nichts glatt aufgeht.
+    /// und fünf Kanälen plus Mikrofon, wo nichts glatt aufgeht.
     #[test]
     fn target_never_splits_a_frame() {
-        let odd = Format { rate: 44_100, channels: 5, bits: 32, float: true, device: "Test".into() };
+        let odd = Format { rate: 44_100, channels: 5, mic_channels: 2, ..stereo_float() };
         for f in [stereo_float(), odd] {
             let (ps, bf) = (f.bytes_per_sec(), f.bytes_per_frame());
             for ms in [1, 7, 13, 99, 1234, 5000] {
@@ -326,15 +482,23 @@ mod tests {
     #[test]
     fn tells_ffmpeg_the_device_format() {
         assert_eq!(stereo_float().input_args().unwrap(), ["-f", "f32le", "-ar", "48000", "-ac", "2"]);
-        let cd = Format { rate: 44_100, channels: 2, bits: 16, float: false, device: "Test".into() };
+        let cd = Format { rate: 44_100, bits: 16, float: false, ..stereo_float() };
         assert_eq!(cd.input_args().unwrap(), ["-f", "s16le", "-ar", "44100", "-ac", "2"]);
+    }
+
+    /// Mit Mikrofon trägt die Pipe dessen zwei Kanäle hinter denen des Spiels.
+    #[test]
+    fn the_microphone_adds_two_channels() {
+        let f = Format { mic_channels: 2, ..stereo_float() };
+        assert_eq!(f.input_args().unwrap(), ["-f", "f32le", "-ar", "48000", "-ac", "4"]);
+        assert_eq!((f.game_frame(), f.mic_frame(), f.bytes_per_frame()), (8, 8, 16));
     }
 
     /// Ein Format, das ffmpeg nicht lesen könnte, muss auffallen, bevor die
     /// Aufnahme läuft — sonst nimmt clipd stillschweigend Rauschen auf.
     #[test]
     fn strange_formats_are_rejected() {
-        let odd = Format { rate: 48_000, channels: 2, bits: 24, float: false, device: "Test".into() };
+        let odd = Format { bits: 24, float: false, ..stereo_float() };
         assert!(odd.sample_fmt().is_err());
         assert!(odd.input_args().is_err());
     }
@@ -342,8 +506,37 @@ mod tests {
     #[test]
     fn frame_size_follows_bits_and_channels() {
         assert_eq!(stereo_float().bytes_per_frame(), 8);
-        let surround = Format { rate: 48_000, channels: 6, bits: 16, float: false, device: "T".into() };
+        let surround = Format { channels: 6, bits: 16, float: false, ..stereo_float() };
         assert_eq!(surround.bytes_per_frame(), 12);
         assert_eq!(surround.bytes_per_sec(), 48_000 * 12);
+    }
+
+    /// Jeder Frame trägt erst das Spiel, dann das Mikrofon; wo ein Gerät
+    /// nichts geliefert hat, steht Stille, und nichts verrutscht.
+    #[test]
+    fn interleaves_game_and_microphone() {
+        let mut game: VecDeque<u8> = [1, 1, 2, 2, 3, 3].into_iter().collect();
+        let mut mic: VecDeque<u8> = [9].into_iter().collect();
+        let out = interleave(4, &mut game, 2, &mut mic, 1);
+        assert_eq!(out, [1, 1, 9, 2, 2, 0, 3, 3, 0, 0, 0, 0]);
+        assert!(game.is_empty() && mic.is_empty());
+    }
+
+    /// Ohne Mikrofon ist der Strom einfach der des Spiels.
+    #[test]
+    fn without_microphone_only_the_game() {
+        let mut game: VecDeque<u8> = [1, 2, 3, 4, 5].into_iter().collect();
+        let out = interleave(2, &mut game, 2, &mut VecDeque::new(), 0);
+        assert_eq!(out, [1, 2, 3, 4]);
+        assert_eq!(game.len(), 1, "ein halber Frame bleibt liegen");
+    }
+
+    /// Ein Rückstau wird gekappt, und zwar nur in ganzen Frames.
+    #[test]
+    fn cap_keeps_half_a_second_of_whole_frames() {
+        let mut q: VecDeque<u8> = std::iter::repeat_n(0u8, 1000 * 8 + 3).collect();
+        cap(&mut q, 8, 1000);
+        assert!(q.len() <= 500 * 8 + 7);
+        assert_eq!((1000 * 8 + 3 - q.len()) % 8, 0);
     }
 }

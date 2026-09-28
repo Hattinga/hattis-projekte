@@ -133,7 +133,18 @@ pub fn capture_args(s: &Settings, dir: &Path, audio: Option<&crate::audio::Forma
         // up anyway, the writer in `crate::audio` follows the clock, so a
         // stall costs a gap in the sound but never pushes it off the picture.
         push(a, &["-i", "pipe:0"]);
-        push(a, &["-map", "0:v:0", "-map", "1:a:0"]);
+        push(a, &["-map", "0:v:0"]);
+        if format.mic_channels == 0 {
+            push(a, &["-map", "1:a:0"]);
+        } else {
+            // The pipe carries the game's channels and then the microphone's;
+            // two tracks of their own let the editor mute one of them.
+            push(
+                a,
+                &["-filter_complex", &split_mic(format.channels, format.mic_channels), "-map", "[game]", "-map", "[mic]"],
+            );
+            push(a, &["-metadata:s:a:0", "title=Spiel", "-metadata:s:a:1", "title=Mikrofon"]);
+        }
         push(a, &["-c:a", "aac", "-b:a", &format!("{}k", s.audio_kbit)]);
     }
     a.extend(encoder);
@@ -149,6 +160,13 @@ pub fn capture_args(s: &Settings, dir: &Path, audio: Option<&crate::audio::Forma
     Ok(std::mem::take(a))
 }
 
+/// Splits the shared sound input into the game's channels and the
+/// microphone's, which follow them.
+pub fn split_mic(game: u16, mic: u16) -> String {
+    let pan = |from: u16, n: u16| (0..n).map(|c| format!("|c{c}=c{}", from + c)).collect::<String>();
+    format!("[1:a]asplit[a0][a1];[a0]pan={game}c{}[game];[a1]pan={mic}c{}[mic]", pan(0, game), pan(game, mic))
+}
+
 /// Stitching buffer segments into the finished clip. Copies the streams, so no
 /// second encode happens and a clip is ready in well under a second.
 pub fn concat_args(list: &Path, out: &Path) -> Vec<String> {
@@ -162,6 +180,10 @@ pub fn concat_args(list: &Path, out: &Path) -> Vec<String> {
         "0".into(),
         "-i".into(),
         list.to_string_lossy().into_owned(),
+        // Every stream: without this ffmpeg keeps one sound track and drops
+        // the microphone's.
+        "-map".into(),
+        "0".into(),
         "-c".into(),
         "copy".into(),
         "-movflags".into(),
@@ -310,7 +332,15 @@ mod tests {
     }
 
     fn stereo() -> crate::audio::Format {
-        crate::audio::Format { rate: 48_000, channels: 2, bits: 32, float: true, device: "Test".into() }
+        crate::audio::Format {
+            rate: 48_000,
+            channels: 2,
+            bits: 32,
+            float: true,
+            device: "Test".into(),
+            mic_channels: 0,
+            mic_device: None,
+        }
     }
 
     fn args(s: &Settings, audio: Option<&crate::audio::Format>) -> Vec<String> {
@@ -368,6 +398,31 @@ mod tests {
         assert!(!a.contains(&"-thread_queue_size".to_string()), "neue ffmpeg-Builds lehnen das an einer Eingabe ab");
     }
 
+    /// Mit Mikrofon entstehen zwei Tonspuren aus der einen Pipe: erst die
+    /// Kanäle des Spiels, dann die des Mikrofons.
+    #[test]
+    fn microphone_becomes_a_second_track() {
+        let f = crate::audio::Format { mic_channels: 2, ..stereo() };
+        let a = args(&settings(), Some(&f));
+        let at = |flag: &str| a.iter().position(|x| x == flag).map(|i| a[i + 1].clone());
+        assert_eq!(
+            at("-filter_complex").as_deref(),
+            Some("[1:a]asplit[a0][a1];[a0]pan=2c|c0=c0|c1=c1[game];[a1]pan=2c|c0=c2|c1=c3[mic]")
+        );
+        assert!(a.windows(2).any(|w| w[0] == "-map" && w[1] == "[game]"));
+        assert!(a.windows(2).any(|w| w[0] == "-map" && w[1] == "[mic]"));
+        assert!(!a.windows(2).any(|w| w[0] == "-map" && w[1] == "1:a:0"));
+        assert!(a.contains(&"-ac".to_string()) && a.contains(&"4".to_string()));
+    }
+
+    #[test]
+    fn surround_game_keeps_its_channels() {
+        assert_eq!(
+            split_mic(6, 2),
+            "[1:a]asplit[a0][a1];[a0]pan=6c|c0=c0|c1=c1|c2=c2|c3=c3|c4=c4|c5=c5[game];[a1]pan=2c|c0=c6|c1=c7[mic]"
+        );
+    }
+
     /// Ohne Ton darf keine Spur gemappt und kein Tonkodierer genannt werden.
     #[test]
     fn without_audio_nothing_audio_is_named() {
@@ -396,6 +451,7 @@ mod tests {
         let at = |flag: &str| a.iter().position(|x| x == flag).map(|i| a[i + 1].clone());
         assert_eq!(at("-c").as_deref(), Some("copy"));
         assert_eq!(at("-safe").as_deref(), Some("0"), "absolute Pfade in der Liste");
+        assert_eq!(at("-map").as_deref(), Some("0"), "sonst fehlt die Mikrofonspur");
         assert_eq!(a.last().unwrap(), r"C:\clips\a.mp4");
     }
 

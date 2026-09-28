@@ -17,6 +17,8 @@ pub struct Buffer {
     child: Child,
     /// The playback device the sound is taken from, if there is sound.
     pub audio_device: Option<String>,
+    /// The microphone on the second sound track, if there is one.
+    pub mic_device: Option<String>,
 }
 
 impl Buffer {
@@ -32,12 +34,15 @@ impl Buffer {
         clear(&dir);
         if s.audio {
             match with_audio(ffmpeg_bin, s, &dir) {
-                Ok((child, device)) => return Ok(Self { dir, child, audio_device: Some(device) }),
+                Ok((child, format)) => {
+                    let (audio_device, mic_device) = (Some(format.describe()), format.mic_device);
+                    return Ok(Self { dir, child, audio_device, mic_device });
+                }
                 Err(e) => eprintln!("clipd: Aufnahme ohne Ton — {e:#}"),
             }
         }
         let child = spawn(ffmpeg_bin, s, &dir, None)?.0;
-        Ok(Self { dir, child, audio_device: None })
+        Ok(Self { dir, child, audio_device: None, mic_device: None })
     }
 
     /// Waits until the first segment shows up, so a capture that fails straight
@@ -59,17 +64,9 @@ impl Buffer {
         }
     }
 
-    /// Keeps the ring short and watches the capture. Runs until ffmpeg stops,
-    /// which is why it takes ownership of the child.
-    pub fn tend(mut self, s: Settings) -> Result<()> {
-        let keep = s.ring_len();
-        loop {
-            if let Some(status) = self.child.try_wait().context("ffmpeg lässt sich nicht abfragen")? {
-                bail!("Die Aufnahme ist beendet ({status})");
-            }
-            prune(&self.dir, &s, keep);
-            std::thread::sleep(Duration::from_millis(500));
-        }
+    /// How ffmpeg ended, if it has.
+    pub fn exited(&mut self) -> Option<std::process::ExitStatus> {
+        self.child.try_wait().ok().flatten()
     }
 }
 
@@ -102,9 +99,9 @@ fn spawn(
 
 /// Starts the capture with sound. The device comes first: only it knows the
 /// sample format, and ffmpeg has to be told that format on its command line.
-fn with_audio(ffmpeg_bin: &Path, s: &Settings, dir: &Path) -> Result<(Child, String)> {
-    let audio = crate::audio::open(&s.audio_device)?;
-    let described = audio.format.describe();
+fn with_audio(ffmpeg_bin: &Path, s: &Settings, dir: &Path) -> Result<(Child, crate::audio::Format)> {
+    let audio = crate::audio::open(&s.audio_device, s.mic.then_some(s.mic_device.as_str()))?;
+    let format = audio.format.clone();
     let (mut child, stdin) = spawn(ffmpeg_bin, s, dir, Some(&audio.format))?;
     let Some(stdin) = stdin else {
         let _ = child.kill();
@@ -117,7 +114,7 @@ fn with_audio(ffmpeg_bin: &Path, s: &Settings, dir: &Path) -> Result<(Child, Str
         let _ = child.wait();
         return Err(e);
     }
-    Ok((child, described))
+    Ok((child, format))
 }
 
 /// The buffer segments, oldest first. The names are zero padded, so sorting
@@ -137,12 +134,22 @@ pub fn segments(dir: &Path, s: &Settings) -> Vec<PathBuf> {
     found
 }
 
-/// Deletes everything beyond the newest `keep` segments.
-pub fn prune(dir: &Path, s: &Settings, keep: usize) {
+/// Deletes everything beyond the newest `keep` segments — except `spare` and
+/// what came after it, the part a running recording still needs.
+pub fn prune(dir: &Path, s: &Settings, keep: usize, spare: Option<&Path>) {
     let all = segments(dir, s);
     for old in drop_newest(&all, keep) {
+        if spare.is_some_and(|first| old.as_path() >= first) {
+            break;
+        }
         let _ = std::fs::remove_file(old);
     }
+}
+
+/// `first` and every segment after it, oldest first.
+pub fn since<'a>(all: &'a [PathBuf], first: &Path) -> &'a [PathBuf] {
+    let at = all.iter().position(|p| p.as_path() >= first).unwrap_or(all.len());
+    &all[at..]
 }
 
 /// The segments that have fallen out of the ring.
@@ -206,6 +213,30 @@ mod tests {
         assert_eq!(drop_newest(&all, 4), &[] as &[PathBuf], "voll, aber nicht übervoll");
         assert_eq!(drop_newest(&all, 9), &[] as &[PathBuf], "noch nicht voll");
         assert_eq!(drop_newest(&[], 2), &[] as &[PathBuf]);
+    }
+
+    /// Eine laufende Aufnahme braucht ihre Segmente noch, auch wenn sie aus dem
+    /// Ring gefallen sind.
+    #[test]
+    fn a_recording_spares_its_segments() {
+        let dir = std::env::temp_dir().join(format!("clipd-spare-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        for n in 1..=6 {
+            std::fs::write(dir.join(format!("seg0000000{n}.ts")), b"x").unwrap();
+        }
+        let s = Settings::default();
+        prune(&dir, &s, 2, Some(&dir.join("seg00000003.ts")));
+        let left: Vec<_> =
+            segments(&dir, &s).iter().map(|p| p.file_name().unwrap().to_string_lossy().into_owned()).collect();
+        std::fs::remove_dir_all(&dir).ok();
+        assert_eq!(left, ["seg00000003.ts", "seg00000004.ts", "seg00000005.ts", "seg00000006.ts"]);
+    }
+
+    #[test]
+    fn since_starts_at_the_first_segment() {
+        let all = paths(&["seg1.ts", "seg2.ts", "seg3.ts"]);
+        assert_eq!(since(&all, Path::new("seg2.ts")), paths(&["seg2.ts", "seg3.ts"]).as_slice());
+        assert_eq!(since(&all, Path::new("seg9.ts")), &[] as &[PathBuf]);
     }
 
     /// Ein Clip nimmt die jüngsten Segmente, in zeitlicher Reihenfolge.

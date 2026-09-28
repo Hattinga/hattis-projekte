@@ -48,3 +48,18 @@ pub fn use_utf8_console() {
 
 #[cfg(not(windows))]
 pub fn use_utf8_console() {}
+
+/// The system's short "done" sound, so a clip saved from inside a game is
+/// heard even though nothing on screen changes.
+#[cfg(windows)]
+pub fn chime() {
+    use windows_sys::Win32::System::Diagnostics::Debug::MessageBeep;
+    use windows_sys::Win32::UI::WindowsAndMessaging::MB_ICONASTERISK;
+    // SAFETY: plays a system sound asynchronously; a failure is simply silence.
+    unsafe {
+        MessageBeep(MB_ICONASTERISK);
+    }
+}
+
+#[cfg(not(windows))]
+pub fn chime() {}
