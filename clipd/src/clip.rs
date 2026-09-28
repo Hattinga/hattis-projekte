@@ -15,7 +15,7 @@ pub struct Saved {
 /// Writes `ts`, a piece of the stream that starts at a keyframe, into a new
 /// MP4 in `out_dir`. The streams are copied, so this costs no encoding time
 /// and finishes in a fraction of a second.
-pub fn save(ffmpeg_bin: &Path, ts: &[u8], out_dir: &Path) -> Result<Saved> {
+pub fn save(ffmpeg_bin: &Path, ts: Vec<u8>, out_dir: &Path) -> Result<Saved> {
     if ts.is_empty() {
         bail!("Der Buffer ist noch leer — läuft die Aufnahme erst gerade an?");
     }
@@ -30,8 +30,7 @@ pub fn save(ffmpeg_bin: &Path, ts: &[u8], out_dir: &Path) -> Result<Saved> {
     let mut stdin = child.stdin.take().context("ffmpeg nimmt keine Eingabe an")?;
     // Written from a thread, so ffmpeg can talk on stderr meanwhile without
     // the two blocking each other.
-    let data = ts.to_vec();
-    let writer = std::thread::spawn(move || stdin.write_all(&data));
+    let writer = std::thread::spawn(move || stdin.write_all(&ts));
     let done = child.wait_with_output().context("ffmpeg lässt sich nicht abfragen")?;
     let _ = writer.join();
     finish(ffmpeg_bin, out, &done)

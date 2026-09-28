@@ -58,7 +58,12 @@ pub struct Ring {
 
 #[derive(Default)]
 struct State {
-    segments: VecDeque<Vec<u8>>,
+    /// Finished keyframe intervals, oldest first. Shared rather than copied,
+    /// so saving a clip holds the lock for a moment only and the stream
+    /// reader never waits.
+    segments: VecDeque<Arc<Vec<u8>>>,
+    /// The interval being written now; `None` before the first keyframe.
+    current: Option<Vec<u8>>,
     /// The start of a packet whose end has not arrived yet.
     carry: Vec<u8>,
     recording: Option<Recording>,
@@ -92,14 +97,20 @@ impl Ring {
             }
             if is_keyframe(pkt) {
                 let _ = self.first_keyframe.set(std::time::Instant::now());
-                st.segments.push_back(Vec::with_capacity(self.average()));
-                while st.segments.len() > self.keep + 1 {
-                    st.segments.pop_front();
+                let size = st.current.as_ref().map_or(64 * 1024, |c| c.len() + c.len() / 4);
+                if let Some(mut done) = st.current.replace(Vec::with_capacity(size)) {
+                    // Growing by doubling leaves up to half of it unused;
+                    // for the minutes a segment is kept that adds up.
+                    done.shrink_to_fit();
+                    st.segments.push_back(Arc::new(done));
+                    while st.segments.len() > self.keep {
+                        st.segments.pop_front();
+                    }
                 }
             }
             // Before the first keyframe nothing can be decoded, so nothing is kept.
-            if let Some(last) = st.segments.back_mut() {
-                last.extend_from_slice(pkt);
+            if let Some(current) = st.current.as_mut() {
+                current.extend_from_slice(pkt);
             }
             if let Some(rec) = st.recording.as_mut().filter(|r| r.failed.is_none())
                 && let Err(e) = rec.file.write_all(pkt)
@@ -110,26 +121,32 @@ impl Ring {
         st.carry = buf[whole..].to_vec();
     }
 
-    /// A reasonable capacity for a new segment, so it rarely has to grow.
-    fn average(&self) -> usize {
-        64 * 1024
-    }
-
     /// Whether a first keyframe has arrived.
     pub fn is_empty(&self) -> bool {
-        lock(&self.state).segments.is_empty()
+        lock(&self.state).current.is_none()
     }
 
     pub fn bytes(&self) -> usize {
-        lock(&self.state).segments.iter().map(Vec::len).sum()
+        let st = lock(&self.state);
+        st.segments.iter().map(|s| s.len()).sum::<usize>() + st.current.as_ref().map_or(0, Vec::len)
     }
 
     /// The newest `n` segments end to end — the last one reaching up to what
-    /// ffmpeg wrote a moment ago.
+    /// ffmpeg wrote a moment ago. Only the growing segment is copied while
+    /// the lock is held; the finished ones are shared and joined after.
     pub fn last(&self, n: usize) -> Vec<u8> {
-        let st = lock(&self.state);
-        let from = st.segments.len().saturating_sub(n);
-        st.segments.range(from..).flat_map(|s| s.iter().copied()).collect()
+        let (finished, current) = {
+            let st = lock(&self.state);
+            let Some(current) = st.current.clone() else { return Vec::new() };
+            let from = st.segments.len().saturating_sub(n.saturating_sub(1));
+            (st.segments.range(from..).cloned().collect::<Vec<_>>(), current)
+        };
+        let mut out = Vec::with_capacity(finished.iter().map(|s| s.len()).sum::<usize>() + current.len());
+        for s in &finished {
+            out.extend_from_slice(s);
+        }
+        out.extend_from_slice(&current);
+        out
     }
 
     /// Starts copying the stream into `path`, beginning with the segment
@@ -139,7 +156,7 @@ impl Ring {
         if st.recording.is_some() {
             bail!("Es läuft schon eine Aufnahme");
         }
-        let Some(current) = st.segments.back() else { bail!("Der Buffer ist noch leer") };
+        let Some(current) = st.current.as_ref() else { bail!("Der Buffer ist noch leer") };
         let file = std::fs::File::create(path).with_context(|| format!("{} lässt sich nicht anlegen", path.display()))?;
         let mut file = BufWriter::with_capacity(1 << 20, file);
         file.write_all(current).with_context(|| format!("{} lässt sich nicht schreiben", path.display()))?;

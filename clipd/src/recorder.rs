@@ -69,7 +69,7 @@ impl Recorder {
         // arrive, at the price of a little picture after the press.
         std::thread::sleep(Duration::from_millis(300));
         let ts = self.ring().last(self.settings.clip_len(secs));
-        let done = clip::save(&self.ffmpeg, &ts, &out_dir)?;
+        let done = clip::save(&self.ffmpeg, ts, &out_dir)?;
         self.saved("Clip gespeichert", &done);
         Ok(done)
     }
@@ -179,7 +179,9 @@ fn tend(mut buf: Buffer, mut s: Settings, ffmpeg_bin: &Path, shared: &Shared, on
         let recording = lock(&shared.recording).is_some();
         if s.capture == crate::config::Capture::Game && !recording && last_look.elapsed() >= Duration::from_secs(1) {
             last_look = Instant::now();
-            let wanted = game::game_window(&game::foreground());
+            // Once a second: only the window and whether it covers the
+            // screen, not the name from the program's version resource.
+            let wanted = game::game_window(&game::foreground_window());
             if wanted != s.window && wanted != refused {
                 let next = Settings { window: wanted, ..s.clone() };
                 match restart(ffmpeg_bin, &next, shared) {

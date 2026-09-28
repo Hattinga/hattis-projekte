@@ -14,6 +14,8 @@ pub struct Foreground {
     pub fullscreen: bool,
     /// The window itself, for recording just it.
     pub hwnd: u64,
+    /// The program's full path.
+    pub path: String,
 }
 
 /// The window to record in game mode: a fullscreen game's, or none for the
@@ -92,10 +94,21 @@ pub fn folder_name(name: &str) -> String {
     s
 }
 
-/// The window in front right now. clipd's own window counts as the desktop,
-/// so saving from the library does not file the clip under "clipd".
-#[cfg(windows)]
+/// The window in front right now, with the name its program gives itself.
+/// clipd's own window counts as the desktop, so saving from the library does
+/// not file the clip under "clipd".
 pub fn foreground() -> Foreground {
+    let mut fg = foreground_window();
+    if !fg.path.is_empty() {
+        fg.description = version_string(&fg.path);
+    }
+    fg
+}
+
+/// The window in front without reading the program's version resource —
+/// cheap enough to ask every second.
+#[cfg(windows)]
+pub fn foreground_window() -> Foreground {
     use windows::Win32::Foundation::{CloseHandle, RECT};
     use windows::Win32::Graphics::Gdi::{GetMonitorInfoW, MONITOR_DEFAULTTONEAREST, MONITORINFO, MonitorFromWindow};
     use windows::Win32::System::Threading::{
@@ -147,14 +160,18 @@ pub fn foreground() -> Foreground {
                 fullscreen = rect.left <= m.left && rect.top <= m.top && rect.right >= m.right && rect.bottom >= m.bottom;
             }
         }
-        let description = if path.is_empty() { String::new() } else { version_string(&path) };
-        Foreground { exe, title, description, fullscreen, hwnd: hwnd.0 as u64 }
+        Foreground { exe, title, description: String::new(), fullscreen, hwnd: hwnd.0 as u64, path }
     }
 }
 
 #[cfg(not(windows))]
-pub fn foreground() -> Foreground {
+pub fn foreground_window() -> Foreground {
     Foreground::default()
+}
+
+#[cfg(not(windows))]
+fn version_string(_path: &str) -> String {
+    String::new()
 }
 
 /// FileDescription, else ProductName, from a program's version resource.
@@ -208,7 +225,14 @@ mod tests {
     use super::*;
 
     fn fg(exe: &str, desc: &str, title: &str) -> Foreground {
-        Foreground { exe: exe.into(), description: desc.into(), title: title.into(), fullscreen: true, hwnd: 7 }
+        Foreground {
+            exe: exe.into(),
+            description: desc.into(),
+            title: title.into(),
+            fullscreen: true,
+            hwnd: 7,
+            path: String::new(),
+        }
     }
 
     /// Die Beschreibung im Programm nennt die meisten Spiele richtig.

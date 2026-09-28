@@ -14,7 +14,7 @@ use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{Duration, Instant};
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
-use tauri::{AppHandle, Emitter, Manager, WindowEvent, Wry};
+use tauri::{AppHandle, Emitter, Manager, RunEvent, Wry};
 
 #[derive(Default)]
 struct App {
@@ -80,7 +80,9 @@ fn status_of(app: &AppHandle) -> Status {
     let s = rec.as_ref().map(|r| r.settings.clone()).unwrap_or_else(Settings::load);
     let warning = if running && rec.as_ref().is_some_and(|r| r.audio_device.is_some()) {
         let mut w = lock(&st.warning);
-        if w.as_ref().is_none_or(|(at, _)| at.elapsed() > Duration::from_secs(3)) {
+        // Asking Windows means a thread and COM each time, and the volume
+        // does not change every second.
+        if w.as_ref().is_none_or(|(at, _)| at.elapsed() > Duration::from_secs(10)) {
             *w = Some((Instant::now(), clipd::audio::silence_warning()));
         }
         w.as_ref().and_then(|(_, text)| text.clone())
@@ -242,8 +244,15 @@ fn update_tray(app: &AppHandle) {
     }
 }
 
+/// Shows the window, building it first if it was closed. A closed window is
+/// gone for good rather than hidden: WebView2 keeps about 200 MB in six
+/// processes while it exists, which a game running meanwhile can use better.
 fn show_main(app: &AppHandle) {
-    if let Some(w) = app.get_webview_window("main") {
+    let window = app.get_webview_window("main").or_else(|| {
+        let config = app.config().app.windows.iter().find(|w| w.label == "main")?.clone();
+        tauri::WebviewWindowBuilder::from_config(app, &config).ok()?.build().ok()
+    });
+    if let Some(w) = window {
         let _ = w.unminimize();
         let _ = w.show();
         let _ = w.set_focus();
@@ -515,13 +524,6 @@ fn main() {
             }
             Ok(())
         })
-        .on_window_event(|window, event| {
-            // Closing the window keeps clipd recording in the tray.
-            if let WindowEvent::CloseRequested { api, .. } = event {
-                api.prevent_close();
-                let _ = window.hide();
-            }
-        })
         .invoke_handler(tauri::generate_handler![
             status,
             save_clip,
@@ -543,6 +545,13 @@ fn main() {
             restart_capture,
             devices
         ])
-        .run(tauri::generate_context!())
-        .expect("clipd lässt sich nicht starten");
+        .build(tauri::generate_context!())
+        .expect("clipd lässt sich nicht starten")
+        .run(|_app, event| {
+            // Closing the window keeps clipd recording in the tray; only
+            // "Beenden" (an exit with a code) ends it.
+            if let RunEvent::ExitRequested { api, code: None, .. } = event {
+                api.prevent_exit();
+            }
+        });
 }
