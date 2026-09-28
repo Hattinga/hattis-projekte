@@ -13,5 +13,6 @@ pub mod config;
 pub mod ffmpeg;
 pub mod game;
 pub mod hotkey;
+pub mod library;
 pub mod recorder;
 pub mod sys;

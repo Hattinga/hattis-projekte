@@ -116,6 +116,26 @@ fn video(s: &Settings) -> Result<(String, Vec<String>)> {
     Ok((source, std::mem::take(e)))
 }
 
+/// The encoder half of [`video`], for encoding a clip again at the quality
+/// it was recorded with.
+pub fn encoder_args(s: &Settings) -> Result<Vec<String>> {
+    Ok(video(s)?.1)
+}
+
+/// The card's encoder aiming at a bitrate instead of a quality, for a file
+/// that has to stay under a size.
+pub fn bitrate_args(s: &Settings, kbps: u32) -> Result<Vec<String>> {
+    let (b, max, buf) = (format!("{kbps}k"), format!("{}k", kbps * 13 / 10), format!("{}k", kbps * 2));
+    let e = &mut Vec::new();
+    match s.gpu {
+        Gpu::Nvidia => push(e, &["-c:v", s.codec.nvenc(), "-preset", "p6", "-rc", "vbr"]),
+        Gpu::Amd => push(e, &["-c:v", s.codec.amf(), "-usage", "transcoding", "-quality", "quality", "-rc", "vbr_peak"]),
+        Gpu::Auto => bail!("Welche Grafikkarte kodiert, steht noch nicht fest"),
+    }
+    push(e, &["-b:v", &b, "-maxrate", &max, "-bufsize", &buf, "-pix_fmt", "yuv420p"]);
+    Ok(std::mem::take(e))
+}
+
 /// The capture that keeps the buffer full. Writes numbered segments into `dir`.
 ///
 /// With `audio`, ffmpeg reads raw samples from its stdin as a second input;

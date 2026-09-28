@@ -102,10 +102,8 @@ impl Recorder {
         self.tender.as_ref().is_some_and(|t| !t.is_finished())
     }
 
-    /// `clips/<Spiel>` for the window in front, or plain `clips`.
     fn out_dir(&self) -> PathBuf {
-        let clips = self.settings.clips_dir();
-        if self.settings.game_folders { clips.join(game::folder_name(&game::game_name(&game::foreground()))) } else { clips }
+        clip_dir(&self.settings)
     }
 
     fn saved_sound(&self) {
@@ -122,6 +120,12 @@ impl Drop for Recorder {
             let _ = t.join();
         }
     }
+}
+
+/// `clips/<Spiel>` for the window in front, or plain `clips`.
+pub fn clip_dir(s: &Settings) -> PathBuf {
+    let clips = s.clips_dir();
+    if s.game_folders { clips.join(game::folder_name(&game::game_name(&game::foreground()))) } else { clips }
 }
 
 /// Keeps the ring short and watches ffmpeg until told to stop. Owns the

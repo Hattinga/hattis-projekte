@@ -22,6 +22,25 @@ enum Cmd {
         #[arg(long)]
         secs: Option<u32>,
     },
+    /// Schneidet einen Clip zu oder macht ihn klein genug für Discord.
+    Export {
+        file: std::path::PathBuf,
+        /// Ab Sekunde.
+        #[arg(long, default_value_t = 0.0)]
+        start: f64,
+        /// Bis Sekunde; ohne bis zum Ende.
+        #[arg(long)]
+        end: Option<f64>,
+        /// H.264 mit einer Tonspur, unter 10 MB.
+        #[arg(long)]
+        discord: bool,
+        /// Lautstärke des Spiels, 0 bis 2.
+        #[arg(long, default_value_t = 1.0)]
+        game: f32,
+        /// Lautstärke des Mikrofons, 0 bis 2.
+        #[arg(long, default_value_t = 1.0)]
+        mic: f32,
+    },
     /// Zeigt, welche Bildschirme aufgenommen werden können.
     Monitors,
     /// Probiert jedes Wiedergabegerät durch und zeigt, welches Ton liefert.
@@ -157,6 +176,11 @@ fn run() -> Result<()> {
     match Cli::parse().cmd.unwrap_or_else(|| Cmd::Run(RunArgs::default())) {
         Cmd::Run(args) => record(args),
         Cmd::Clip { secs } => clip_now(secs),
+        Cmd::Export { file, start, end, discord, game, mic } => {
+            let edit = clipd::library::Edit { start, end: end.unwrap_or(f64::MAX), game_volume: game, mic_volume: mic };
+            let target = if discord { clipd::library::Target::Discord } else { clipd::library::Target::Trim };
+            export(&file, &edit, target)
+        }
         Cmd::Monitors => monitors(),
         Cmd::Audio => audio_devices(),
         Cmd::Config { init } => show_config(init),
@@ -251,8 +275,26 @@ fn clip_now(secs: Option<u32>) -> Result<()> {
         !buffer::segments(&dir, &s).is_empty(),
         "Im Buffer liegt nichts. Läuft `clipd run` in einem anderen Fenster?"
     );
-    let done = clip::save(&bin, &s, &dir, &s.clips_dir())?;
+    let done = clip::save(&bin, &s, &dir, &clipd::recorder::clip_dir(&s))?;
     println!("{}", clip::describe(&done));
+    Ok(())
+}
+
+fn export(file: &std::path::Path, edit: &clipd::library::Edit, target: clipd::library::Target) -> Result<()> {
+    let mut s = settings(RunArgs::default())?;
+    let bin = ffmpeg::find()?;
+    s.gpu = ffmpeg::pick_gpu(&bin, &s)?;
+    let started = std::time::Instant::now();
+    let mut shown = 0;
+    let out = clipd::library::export(&bin, &s, file, edit, target, &mut |f| {
+        let pct = (f * 100.0) as u32;
+        if pct >= shown + 10 || pct == 100 {
+            shown = pct;
+            eprintln!("{pct:3} %");
+        }
+    })?;
+    let bytes = std::fs::metadata(&out).map(|m| m.len()).unwrap_or(0);
+    println!("{} ({:.1} MB, {:.1} s)", out.display(), bytes as f64 / 1e6, started.elapsed().as_secs_f64());
     Ok(())
 }
 
