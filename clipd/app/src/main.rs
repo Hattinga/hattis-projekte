@@ -170,10 +170,14 @@ struct Saved {
 }
 
 fn save(app: &AppHandle, rec: &Recorder) -> Result<(), String> {
-    match rec.save_clip() {
+    save_last(app, rec, None).map(|_| ())
+}
+
+fn save_last(app: &AppHandle, rec: &Recorder, secs: Option<u32>) -> Result<PathBuf, String> {
+    match secs.map_or_else(|| rec.save_clip(), |s| rec.save_last(s)) {
         Ok(done) => {
-            let _ = app.emit("saved", Saved { path: done.path, secs: done.secs, kind: "clip" });
-            Ok(())
+            let _ = app.emit("saved", Saved { path: done.path.clone(), secs: done.secs, kind: "clip" });
+            Ok(done.path)
         }
         Err(e) => {
             let msg = format!("{e:#}");
@@ -185,14 +189,12 @@ fn save(app: &AppHandle, rec: &Recorder) -> Result<(), String> {
 
 /// Starts a recording, or ends and saves the one running.
 fn toggle(app: &AppHandle, rec: &Recorder) -> Result<Option<PathBuf>, String> {
-    let result = if rec.recording_for().is_none() {
-        rec.start_recording().map(|_| None)
-    } else {
-        rec.stop_recording().map(|done| {
+    let result = rec.toggle_recording().map(|done| {
+        done.map(|done| {
             let _ = app.emit("saved", Saved { path: done.path.clone(), secs: done.secs, kind: "recording" });
-            Some(done.path)
+            done.path
         })
-    };
+    });
     update_tray(app);
     emit_status(app);
     result.map_err(|e| {
@@ -437,6 +439,17 @@ fn main() {
             tray(&handle)?;
             allow_clips(&handle, &Settings::load());
             start_capture(&handle);
+            // `clipd clip` and `clipd record` from a terminal or a Stream Deck.
+            let control = handle.clone();
+            clipd::control::serve(move |request| {
+                let rec = recorder(&control).ok_or("Es läuft keine Aufnahme")?;
+                match request {
+                    clipd::control::Request::Clip(secs) => save_last(&control, &rec, secs).map(|p| p.display().to_string()),
+                    clipd::control::Request::Record => {
+                        toggle(&control, &rec).map(|p| p.map_or("Aufnahme läuft …".into(), |p| p.display().to_string()))
+                    }
+                }
+            });
             if !hidden {
                 show_main(&handle);
             }

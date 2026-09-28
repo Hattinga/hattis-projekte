@@ -136,18 +136,36 @@ fn cap(queue: &mut VecDeque<u8>, frame: usize, rate: u32) {
     }
 }
 
+/// When the picture began: ffmpeg's first keyframe arrived at `at`, and it
+/// was captured `lead` earlier.
+pub type PictureStart = std::sync::Arc<std::sync::OnceLock<Instant>>;
+
 /// Sound devices that are open and running, waiting for somewhere to put their
 /// samples.
 pub struct Audio {
     pub format: Format,
-    sink: mpsc::Sender<std::process::ChildStdin>,
+    sink: mpsc::Sender<(std::process::ChildStdin, PictureStart, Duration)>,
 }
 
 impl Audio {
     /// Hands ffmpeg's pipe to the capture, which starts writing immediately.
-    pub fn attach(self, sink: std::process::ChildStdin) -> Result<()> {
-        self.sink.send(sink).map_err(|_| anyhow!("Die Tonaufnahme ist nicht mehr da"))
+    ///
+    /// ffmpeg starts the sound and the picture each at 0, but the sound flows
+    /// from the moment the pipe opens while the first picture takes a few
+    /// hundred milliseconds to set up the capture. Left alone, everything
+    /// after would be off by that much. So once `picture` knows when the first
+    /// keyframe came out (captured about `lead` before), the writer moves the
+    /// start of its clock there and drops the sound that came before it.
+    pub fn attach(self, sink: std::process::ChildStdin, picture: PictureStart, lead: Duration) -> Result<()> {
+        self.sink.send((sink, picture, lead)).map_err(|_| anyhow!("Die Tonaufnahme ist nicht mehr da"))
     }
+}
+
+/// Where the sound's clock has to start so that it lines up with the
+/// picture: the first frame's capture time, never earlier than the sound's
+/// own start.
+pub fn aligned_start(sound: Instant, keyframe_seen: Instant, lead: Duration) -> Instant {
+    keyframe_seen.checked_sub(lead).unwrap_or(keyframe_seen).max(sound)
 }
 
 /// Opens a playback device for loopback, and a microphone if `mic` names one
@@ -284,7 +302,7 @@ fn capture(
     want: &str,
     mic: Option<&str>,
     info: &mpsc::Sender<Result<Format, String>>,
-    sink_rx: mpsc::Receiver<std::process::ChildStdin>,
+    sink_rx: mpsc::Receiver<(std::process::ChildStdin, PictureStart, Duration)>,
 ) -> Result<()> {
     use wasapi::{Direction, SampleType, StreamMode};
 
@@ -340,8 +358,8 @@ fn capture(
 
     // From here on there is sound to be had; the caller may start ffmpeg.
     let _ = info.send(Ok(format.clone()));
-    let mut sink = match sink_rx.recv_timeout(HANDSHAKE) {
-        Ok(sink) => sink,
+    let (mut sink, picture, lead) = match sink_rx.recv_timeout(HANDSHAKE) {
+        Ok(handed) => handed,
         // Whoever opened the device only wanted to know that it works
         // (`clipd audio`) and has let go of it again.
         Err(mpsc::RecvTimeoutError::Disconnected) => return Ok(()),
@@ -352,7 +370,8 @@ fn capture(
     let per_sec = format.bytes_per_sec();
     let (mut game_q, mut mic_q) = (VecDeque::new(), VecDeque::new());
     // Only now, so the wait for ffmpeg does not count as recorded time.
-    let start = Instant::now();
+    let mut start = Instant::now();
+    let mut aligned = false;
     let mut written: u64 = 0;
     loop {
         game.drain_into(&mut game_q);
@@ -362,7 +381,18 @@ fn capture(
         cap(&mut game_q, g, format.rate);
         cap(&mut mic_q, m, format.rate);
 
+        if !aligned && let Some(&seen) = picture.get() {
+            start = aligned_start(start, seen, lead);
+            aligned = true;
+        }
         let target = target_bytes(start.elapsed(), per_sec, frame);
+        // Ahead of the clock (just after lining up with the picture): what
+        // the devices deliver meanwhile has no picture to go with, and kept
+        // it would put the sound behind for good.
+        if written > target + per_sec / 100 {
+            game_q.clear();
+            mic_q.clear();
+        }
         if written < target {
             let chunk = interleave(((target - written) / frame as u64) as usize, &mut game_q, g, &mut mic_q, m);
             // A closed pipe means ffmpeg has ended, which whoever watches
@@ -529,6 +559,16 @@ mod tests {
         let out = interleave(2, &mut game, 2, &mut VecDeque::new(), 0);
         assert_eq!(out, [1, 2, 3, 4]);
         assert_eq!(game.len(), 1, "ein halber Frame bleibt liegen");
+    }
+
+    /// Der Ton beginnt dort, wo das erste Bild aufgenommen wurde — nie vor
+    /// dem eigenen Anfang.
+    #[test]
+    fn sound_starts_with_the_picture() {
+        let sound = Instant::now();
+        let seen = sound + Duration::from_millis(400);
+        assert_eq!(aligned_start(sound, seen, Duration::from_millis(33)), seen - Duration::from_millis(33));
+        assert_eq!(aligned_start(sound, sound + Duration::from_millis(10), Duration::from_millis(33)), sound);
     }
 
     /// Ein Rückstau wird gekappt, und zwar nur in ganzen Frames.

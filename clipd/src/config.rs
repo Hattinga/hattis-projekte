@@ -24,25 +24,21 @@ impl Gpu {
     }
 }
 
-/// The hardware encoders clipd drives. All three run on the graphics card; the
-/// buffer container follows from the codec, because the trick of reading the
-/// segment that is still being written only works in a stream format.
+/// The hardware encoders clipd drives, both on the graphics card. AV1 is not
+/// among them: the ring is an MPEG-TS stream, and ffmpeg can write AV1 into
+/// MPEG-TS but not read it back out.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Codec {
     H264,
     Hevc,
-    Av1,
 }
 
 impl Codec {
-    pub const ALL: [Codec; 3] = [Codec::H264, Codec::Hevc, Codec::Av1];
-
     pub fn nvenc(self) -> &'static str {
         match self {
             Codec::H264 => "h264_nvenc",
             Codec::Hevc => "hevc_nvenc",
-            Codec::Av1 => "av1_nvenc",
         }
     }
 
@@ -50,7 +46,6 @@ impl Codec {
         match self {
             Codec::H264 => "h264_amf",
             Codec::Hevc => "hevc_amf",
-            Codec::Av1 => "av1_amf",
         }
     }
 
@@ -58,31 +53,7 @@ impl Codec {
         match self {
             Codec::H264 => "H.264",
             Codec::Hevc => "HEVC",
-            Codec::Av1 => "AV1",
         }
-    }
-
-    /// Container for the buffer segments. MPEG-TS survives being cut off
-    /// mid-write, which is what lets a clip reach up to the current moment;
-    /// AV1 has no place in TS, so it falls back to Matroska.
-    pub fn segment_format(self) -> &'static str {
-        match self {
-            Codec::H264 | Codec::Hevc => "mpegts",
-            Codec::Av1 => "matroska",
-        }
-    }
-
-    pub fn segment_ext(self) -> &'static str {
-        match self {
-            Codec::H264 | Codec::Hevc => "ts",
-            Codec::Av1 => "mkv",
-        }
-    }
-
-    /// Whether the segment still being written can be used for a clip. Only a
-    /// stream container tolerates a missing tail.
-    pub fn tolerates_partial_segment(self) -> bool {
-        self.segment_format() == "mpegts"
     }
 }
 
@@ -95,7 +66,8 @@ pub struct Settings {
     pub fps: u32,
     /// How far back a clip may reach. The buffer on disk holds this much.
     pub buffer_secs: u32,
-    /// Length of one buffer file. Shorter means finer cuts and more files.
+    /// Seconds between keyframes: a clip starts on one, so this is how
+    /// precisely its length is kept. Shorter costs a little quality.
     pub segment_secs: u32,
     /// How much a hotkey press saves, at most `buffer_secs`.
     pub clip_secs: u32,
@@ -181,35 +153,21 @@ impl Settings {
         std::fs::write(&path, text).with_context(|| format!("{} lässt sich nicht schreiben", path.display()))
     }
 
-    /// Notes down what the running capture actually settled on. Without this a
-    /// separate `clipd clip` would fall back to config.toml and cut a different
-    /// length than the recording was started with.
-    pub fn save_session(&self) -> Result<()> {
-        let path = session_path();
-        let text = toml::to_string_pretty(self).context("Sitzung lässt sich nicht schreiben")?;
-        std::fs::write(&path, text).with_context(|| format!("{} lässt sich nicht schreiben", path.display()))
-    }
-
-    /// The settings of a capture that is currently running, if there is one.
-    pub fn load_session() -> Option<Self> {
-        toml::from_str(&std::fs::read_to_string(session_path()).ok()?).ok()
-    }
-
-    /// Number of buffer files that cover `buffer_secs`, at least one.
+    /// Number of keyframe intervals that cover `buffer_secs`, at least one.
     pub fn ring_len(&self) -> usize {
         div_ceil(self.buffer_secs, self.segment_secs).max(1) as usize
     }
 
-    /// Number of buffer files a clip needs. One more than the plain division,
-    /// because the newest file is usually only partly filled.
-    pub fn clip_len(&self) -> usize {
-        let secs = self.clip_secs.min(self.buffer_secs);
-        (div_ceil(secs, self.segment_secs).max(1) as usize + 1).min(self.ring_len())
+    /// Number of keyframe intervals a clip of `secs` needs. One more than the
+    /// plain division, because the newest one is only partly there — but never
+    /// more than the ring holds.
+    pub fn clip_len(&self, secs: u32) -> usize {
+        let secs = secs.min(self.buffer_secs);
+        (div_ceil(secs, self.segment_secs).max(1) as usize + 1).min(self.ring_len() + 1)
     }
 
-    /// Distance between keyframes. The segment muxer can only start a new file
-    /// on a keyframe, so this has to divide the segment length — otherwise
-    /// ffmpeg writes one endless file.
+    /// Distance between keyframes. A clip can only begin on one, so this is
+    /// how finely its start is placed.
     pub fn gop(&self) -> u32 {
         (self.fps * self.segment_secs).max(1)
     }
@@ -288,11 +246,6 @@ pub fn buffer_dir() -> PathBuf {
     base_dir().join("buffer")
 }
 
-/// What the capture that is running right now was started with.
-pub fn session_path() -> PathBuf {
-    buffer_dir().join("session.toml")
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -345,26 +298,18 @@ mod tests {
             buffer_secs: buffer,
             ..Default::default()
         };
-        assert_eq!(s(30, 1, 120).clip_len(), 31);
-        assert_eq!(s(30, 2, 120).clip_len(), 16);
-        assert_eq!(s(120, 1, 120).clip_len(), 120, "vom Ring begrenzt");
-        assert_eq!(s(999, 1, 120).clip_len(), 120, "länger als der Buffer geht nicht");
+        assert_eq!(s(30, 1, 120).clip_len(30), 31);
+        assert_eq!(s(30, 2, 120).clip_len(30), 16);
+        assert_eq!(s(30, 1, 120).clip_len(10), 11, "kürzer auf Wunsch");
+        assert_eq!(s(120, 1, 120).clip_len(120), 121, "vom Ring begrenzt");
+        assert_eq!(s(999, 1, 120).clip_len(999), 121, "länger als der Buffer geht nicht");
     }
 
-    /// Ohne passenden Keyframe-Abstand schreibt ffmpeg eine einzige Datei.
+    /// Alle segment_secs Sekunden ein Keyframe.
     #[test]
     fn gop_matches_the_segment_length() {
         let s = Settings { fps: 60, segment_secs: 2, ..Default::default() };
         assert_eq!(s.gop(), 120);
-    }
-
-    /// AV1 passt nicht in MPEG-TS; dann ist das angeschnittene Segment tabu.
-    #[test]
-    fn container_follows_the_codec() {
-        assert_eq!(Codec::Hevc.segment_format(), "mpegts");
-        assert!(Codec::H264.tolerates_partial_segment());
-        assert_eq!(Codec::Av1.segment_ext(), "mkv");
-        assert!(!Codec::Av1.tolerates_partial_segment());
     }
 
     #[test]
@@ -391,11 +336,11 @@ mod tests {
     /// Die Einstellungen müssen den Weg durch TOML unverändert überleben.
     #[test]
     fn settings_survive_toml() {
-        let s = Settings { codec: Codec::Av1, gpu: Gpu::Amd, out_dir: PathBuf::from(r"D:\Clips"), ..Default::default() };
+        let s = Settings { codec: Codec::Hevc, gpu: Gpu::Amd, out_dir: PathBuf::from(r"D:\Clips"), ..Default::default() };
         let text = toml::to_string_pretty(&s).unwrap();
         assert!(text.contains(r#"gpu = "amd""#), "{text}");
         let back: Settings = toml::from_str(&text).unwrap();
-        assert_eq!(back.codec, Codec::Av1);
+        assert_eq!(back.codec, Codec::Hevc);
         assert_eq!(back.gpu, Gpu::Amd);
         assert_eq!(back.out_dir, PathBuf::from(r"D:\Clips"));
         assert_eq!(back.hotkey, s.hotkey);

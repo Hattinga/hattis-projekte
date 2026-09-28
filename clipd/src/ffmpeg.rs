@@ -136,13 +136,13 @@ pub fn bitrate_args(s: &Settings, kbps: u32) -> Result<Vec<String>> {
     Ok(std::mem::take(e))
 }
 
-/// The capture that keeps the buffer full. Writes numbered segments into `dir`.
+/// The capture that keeps the buffer full: one MPEG-TS stream on stdout,
+/// which `crate::buffer` keeps in memory.
 ///
 /// With `audio`, ffmpeg reads raw samples from its stdin as a second input;
 /// `crate::audio` keeps that pipe fed.
-pub fn capture_args(s: &Settings, dir: &Path, audio: Option<&crate::audio::Format>) -> Result<Vec<String>> {
+pub fn capture_args(s: &Settings, audio: Option<&crate::audio::Format>) -> Result<Vec<String>> {
     let (source, encoder) = video(s)?;
-    let pattern = dir.join(format!("seg%08d.{}", s.codec.segment_ext()));
     let a = &mut Vec::new();
     push(a, &["-loglevel", "error"]);
     push(a, &["-f", "lavfi", "-i", &source]);
@@ -168,15 +168,11 @@ pub fn capture_args(s: &Settings, dir: &Path, audio: Option<&crate::audio::Forma
         push(a, &["-c:a", "aac", "-b:a", &format!("{}k", s.audio_kbit)]);
     }
     a.extend(encoder);
-    push(a, &["-f", "segment"]);
-    push(a, &["-segment_time", &s.segment_secs.to_string()]);
-    push(a, &["-segment_format", s.codec.segment_format()]);
-    push(a, &["-reset_timestamps", "1"]);
-    // Hands every packet straight to the output layer. That layer still
-    // collects 256 KiB before it writes, so this does not make an open segment
-    // readable right away — it only shortens the wait.
-    push(a, &["-flush_packets", "1"]);
-    a.push(pattern.to_string_lossy().into_owned());
+    // Every packet goes down the pipe as soon as it is muxed, so the ring is
+    // never more than a frame behind. The muxer would otherwise gather the
+    // sound into PES packets of about 3 KB — a sixth of a second — and a clip
+    // would end with that much silence.
+    push(a, &["-f", "mpegts", "-pes_payload_size", "0", "-flush_packets", "1", "pipe:1"]);
     Ok(std::mem::take(a))
 }
 
@@ -187,42 +183,17 @@ pub fn split_mic(game: u16, mic: u16) -> String {
     format!("[1:a]asplit[a0][a1];[a0]pan={game}c{}[game];[a1]pan={mic}c{}[mic]", pan(0, game), pan(game, mic))
 }
 
-/// Stitching buffer segments into the finished clip. Copies the streams, so no
+/// Puts a piece of the MPEG-TS stream into an MP4. Copies the streams, so no
 /// second encode happens and a clip is ready in well under a second.
-pub fn concat_args(list: &Path, out: &Path) -> Vec<String> {
-    vec![
-        "-loglevel".into(),
-        "error".into(),
-        "-f".into(),
-        "concat".into(),
-        // The list holds absolute paths, which concat refuses to trust by default.
-        "-safe".into(),
-        "0".into(),
-        "-i".into(),
-        list.to_string_lossy().into_owned(),
-        // Every stream: without this ffmpeg keeps one sound track and drops
-        // the microphone's.
-        "-map".into(),
-        "0".into(),
-        "-c".into(),
-        "copy".into(),
-        "-movflags".into(),
-        "+faststart".into(),
-        "-y".into(),
-        out.to_string_lossy().into_owned(),
-    ]
-}
-
-/// The list file the concat demuxer reads. Written without a byte order mark,
-/// which the demuxer would report as an unknown keyword, and with forward
-/// slashes so no backslash is read as an escape.
-pub fn concat_list(segments: &[PathBuf]) -> String {
-    let mut out = String::new();
-    for seg in segments {
-        let path = seg.to_string_lossy().replace('\\', "/").replace('\'', r"'\''");
-        out.push_str(&format!("file '{path}'\n"));
-    }
-    out
+pub fn remux_args(input: &str, out: &Path) -> Vec<String> {
+    let mut a: Vec<String> = ["-loglevel", "error", "-f", "mpegts", "-i", input].map(String::from).to_vec();
+    // Every stream: without this ffmpeg keeps one sound track and drops the
+    // microphone's.
+    a.extend(["-map", "0", "-c", "copy"].map(String::from));
+    // The piece starts wherever the stream happened to be; the clip starts at 0.
+    a.extend(["-avoid_negative_ts", "make_zero", "-movflags", "+faststart", "-y"].map(String::from));
+    a.push(out.to_string_lossy().into_owned());
+    a
 }
 
 /// Asks ddagrab which desktops it can see, by grabbing a single frame from each
@@ -372,23 +343,22 @@ mod tests {
     }
 
     fn args(s: &Settings, audio: Option<&crate::audio::Format>) -> Vec<String> {
-        capture_args(s, Path::new(r"C:\buf"), audio).expect("Argumente")
+        capture_args(s, audio).expect("Argumente")
     }
 
-    /// Der Keyframe-Abstand muss zur Segmentlänge passen, sonst entsteht eine
-    /// einzige endlose Datei statt eines Rings.
+    /// Alle segment_secs ein Keyframe, und der Strom geht Paket für Paket in
+    /// die Pipe, damit der Ring nie hinterherhängt.
     #[test]
-    fn capture_keeps_gop_and_segment_together() {
+    fn capture_streams_to_stdout_with_regular_keyframes() {
         let a = args(&settings(), None);
         let at = |flag: &str| a.iter().position(|x| x == flag).map(|i| a[i + 1].clone());
         assert_eq!(at("-g").as_deref(), Some("120"), "60 fps * 2 s");
-        assert_eq!(at("-segment_time").as_deref(), Some("2"));
-        assert_eq!(at("-segment_format").as_deref(), Some("mpegts"));
+        assert_eq!(at("-f").as_deref(), Some("lavfi"));
+        assert!(a.ends_with(&["-flush_packets".to_string(), "1".into(), "pipe:1".into()]));
+        assert!(a.windows(2).any(|w| w[0] == "-pes_payload_size" && w[1] == "0"), "sonst fehlt dem Clip der Ton am Ende");
         assert_eq!(at("-c:v").as_deref(), Some("hevc_nvenc"));
         assert_eq!(at("-cq").as_deref(), Some("20"));
         assert_eq!(at("-b:v").as_deref(), Some("0"), "ohne das greift -cq nicht");
-        assert!(a.contains(&"-flush_packets".to_string()), "sonst fehlt dem Clip das Ende");
-        assert!(a.last().unwrap().ends_with(r"buf\seg%08d.ts"));
     }
 
     /// Die Quelle muss den gewählten Monitor und die Bildrate nennen.
@@ -397,15 +367,6 @@ mod tests {
         assert_eq!(ddagrab(&settings()), "ddagrab=output_idx=1:framerate=60:draw_mouse=0");
         let s = Settings { draw_mouse: true, ..settings() };
         assert!(ddagrab(&s).ends_with("draw_mouse=1"));
-    }
-
-    /// AV1 landet in Matroska, weil MPEG-TS es nicht trägt.
-    #[test]
-    fn av1_uses_matroska_segments() {
-        let s = Settings { codec: Codec::Av1, ..settings() };
-        let a = args(&s, None);
-        assert!(a.contains(&"matroska".to_string()));
-        assert!(a.last().unwrap().ends_with(".mkv"));
     }
 
     /// Mit Ton liest ffmpeg die Samples aus der eigenen Eingabe und muss
@@ -460,27 +421,16 @@ mod tests {
         assert!(!a.contains(&"pipe:0".to_string()));
     }
 
-    /// Die Liste braucht Schrägstriche und darf kein BOM bekommen; Apostrophe
-    /// im Pfad müssen maskiert werden.
+    /// Ein Clip wird nicht neu kodiert, behält jede Spur und beginnt bei 0.
     #[test]
-    fn concat_list_is_demuxer_safe() {
-        let segs = [PathBuf::from(r"C:\buf\seg1.ts"), PathBuf::from(r"C:\Hattis Clips\seg2.ts")];
-        let text = concat_list(&segs);
-        assert_eq!(text, "file 'C:/buf/seg1.ts'\nfile 'C:/Hattis Clips/seg2.ts'\n");
-        assert!(!text.starts_with('\u{feff}'), "kein BOM");
-        let odd = concat_list(&[PathBuf::from(r"C:\Peter's\a.ts")]);
-        assert_eq!(odd, "file 'C:/Peter'\\''s/a.ts'\n");
-    }
-
-    /// Ein Clip darf nicht neu kodiert werden, sonst dauert das Speichern lange.
-    #[test]
-    fn concat_copies_the_streams() {
-        let a = concat_args(Path::new(r"C:\buf\list.txt"), Path::new(r"C:\clips\a.mp4"));
+    fn remux_copies_every_stream() {
+        let a = remux_args("pipe:0", Path::new(r"C:\clips.mp4"));
         let at = |flag: &str| a.iter().position(|x| x == flag).map(|i| a[i + 1].clone());
         assert_eq!(at("-c").as_deref(), Some("copy"));
-        assert_eq!(at("-safe").as_deref(), Some("0"), "absolute Pfade in der Liste");
         assert_eq!(at("-map").as_deref(), Some("0"), "sonst fehlt die Mikrofonspur");
-        assert_eq!(a.last().unwrap(), r"C:\clips\a.mp4");
+        assert_eq!(at("-i").as_deref(), Some("pipe:0"));
+        assert_eq!(at("-avoid_negative_ts").as_deref(), Some("make_zero"));
+        assert_eq!(a.last().unwrap(), r"C:\clips.mp4");
     }
 
     /// AMD nimmt wie NVIDIA mit ddagrab auf und wandelt auf dem Chip um;
@@ -499,7 +449,7 @@ mod tests {
         assert_eq!(at("-qp_p").as_deref(), Some("20"));
         assert_eq!(at("-g").as_deref(), Some("120"), "60 fps * 2 s");
         assert_eq!(at("-quality").as_deref(), Some("balanced"), "p5");
-        assert_eq!(at("-segment_time").as_deref(), Some("2"));
+        assert!(a.contains(&"pipe:1".to_string()));
     }
 
     /// nvenc-Optionen hätten bei AMF eine andere Bedeutung oder wären ungültig
@@ -515,7 +465,7 @@ mod tests {
 
     #[test]
     fn amd_codecs_use_amf_encoders() {
-        for (codec, enc) in [(Codec::H264, "h264_amf"), (Codec::Av1, "av1_amf")] {
+        for (codec, enc) in [(Codec::H264, "h264_amf"), (Codec::Hevc, "hevc_amf")] {
             let a = args(&Settings { gpu: Gpu::Amd, codec, ..settings() }, None);
             assert!(a.contains(&enc.to_string()), "{enc}");
         }
@@ -533,7 +483,7 @@ mod tests {
     #[test]
     fn auto_must_be_settled_first() {
         let s = Settings { gpu: Gpu::Auto, ..settings() };
-        assert!(capture_args(&s, Path::new(r"C:\buf"), None).is_err());
+        assert!(capture_args(&s, None).is_err());
     }
 
     /// Was einem ffmpeg-Build fehlt, soll beim Namen genannt werden.
@@ -546,8 +496,8 @@ mod tests {
         let amd = Settings { gpu: Gpu::Amd, ..settings() };
         assert_eq!(build_lacks(encoders, filters, &nvidia), None);
         assert!(build_lacks(encoders, filters, &amd).is_some_and(|m| m.contains("vpp_amf")), "vpp_amf fehlt");
-        let av1 = Settings { codec: Codec::Av1, ..nvidia.clone() };
-        assert!(build_lacks(encoders, filters, &av1).is_some_and(|m| m.contains("av1_nvenc")));
+        let h264 = Settings { codec: Codec::H264, ..nvidia.clone() };
+        assert!(build_lacks(encoders, filters, &h264).is_some_and(|m| m.contains("h264_nvenc")));
         let hevc_only = " V....D hevc_nvenc_extra";
         assert!(build_lacks(hevc_only, filters, &nvidia).is_some(), "nur ganze Namen zählen");
     }

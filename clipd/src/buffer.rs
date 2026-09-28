@@ -1,64 +1,250 @@
-//! The rolling buffer: an ffmpeg that writes numbered segments, and the
-//! housekeeping that throws the old ones away.
+//! The rolling buffer, in memory: ffmpeg writes one MPEG-TS stream to its
+//! stdout, and clipd keeps the last minutes of it, cut at video keyframes.
+//!
+//! This used to be a ring of one-second files on disk. ffmpeg hands its file
+//! output to the file system in blocks of 256 KiB, so the segment being
+//! written was either empty or a quarter megabyte behind, and a clip ended up
+//! to a second before the key press. Through a pipe the stream arrives in
+//! small pieces as it is written, so a clip now reaches the key press.
+//!
+//! A slice of an MPEG-TS stream that starts at a keyframe is itself a valid
+//! stream — PAT and PMT repeat every 0.1 s and the encoder repeats its headers
+//! with every keyframe — so a clip is simply the newest few segments, end to
+//! end, handed to ffmpeg to put into an MP4 without encoding anything.
 
 use crate::config::Settings;
 use crate::ffmpeg;
 use anyhow::{Context, Result, bail};
+use std::collections::VecDeque;
+use std::io::{BufWriter, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Stdio};
+use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::Duration;
 
-/// One MPEG-TS packet. A segment that is still being written usually ends in
-/// the middle of one, and cutting back to a whole packet keeps the clip clean.
-pub const TS_PACKET: u64 = 188;
+pub const TS_PACKET: usize = 188;
+/// ffmpeg's MPEG-TS muxer numbers the streams from 0x100, and the picture is
+/// always mapped first.
+pub const VIDEO_PID: u16 = 0x100;
+
+fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
+    m.lock().unwrap_or_else(|e| e.into_inner())
+}
+
+fn pid(pkt: &[u8]) -> u16 {
+    (u16::from(pkt[1] & 0x1f) << 8) | u16::from(pkt[2])
+}
+
+/// Whether `pkt` begins a video keyframe. ffmpeg marks those packets with the
+/// random access indicator in the adaptation field.
+pub fn is_keyframe(pkt: &[u8]) -> bool {
+    pkt.len() >= 6
+        && pkt[0] == 0x47
+        && pid(pkt) == VIDEO_PID
+        && pkt[1] & 0x40 != 0 // payload unit start
+        && pkt[3] & 0x20 != 0 // adaptation field present
+        && pkt[4] > 0
+        && pkt[5] & 0x40 != 0 // random access indicator
+}
+
+/// The last minutes of the stream, one entry per keyframe interval.
+pub struct Ring {
+    state: Mutex<State>,
+    /// When the first keyframe came out of ffmpeg; the sound lines up on it.
+    pub first_keyframe: crate::audio::PictureStart,
+    /// Finished segments to keep; the growing one comes on top.
+    keep: usize,
+}
+
+#[derive(Default)]
+struct State {
+    segments: VecDeque<Vec<u8>>,
+    /// The start of a packet whose end has not arrived yet.
+    carry: Vec<u8>,
+    recording: Option<Recording>,
+}
+
+/// A recording started by hand: everything from a keyframe on also goes into
+/// a file, so it can outlast the ring.
+struct Recording {
+    path: PathBuf,
+    file: BufWriter<std::fs::File>,
+    failed: Option<std::io::Error>,
+}
+
+impl Ring {
+    pub fn new(keep: usize) -> Self {
+        Self { state: Mutex::new(State::default()), first_keyframe: Default::default(), keep: keep.max(1) }
+    }
+
+    /// Takes the next piece of ffmpeg's output, which may end mid-packet.
+    pub fn push(&self, data: &[u8]) {
+        let mut st = lock(&self.state);
+        let st = &mut *st;
+        let mut buf = std::mem::take(&mut st.carry);
+        buf.extend_from_slice(data);
+        let whole = buf.len() - buf.len() % TS_PACKET;
+        for pkt in buf[..whole].as_chunks::<TS_PACKET>().0 {
+            if pkt[0] != 0x47 {
+                // ffmpeg writes whole packets, so this would be a bug
+                // upstream; skipping keeps the ring usable.
+                continue;
+            }
+            if is_keyframe(pkt) {
+                let _ = self.first_keyframe.set(std::time::Instant::now());
+                st.segments.push_back(Vec::with_capacity(self.average()));
+                while st.segments.len() > self.keep + 1 {
+                    st.segments.pop_front();
+                }
+            }
+            // Before the first keyframe nothing can be decoded, so nothing is kept.
+            if let Some(last) = st.segments.back_mut() {
+                last.extend_from_slice(pkt);
+            }
+            if let Some(rec) = st.recording.as_mut().filter(|r| r.failed.is_none())
+                && let Err(e) = rec.file.write_all(pkt)
+            {
+                rec.failed = Some(e);
+            }
+        }
+        st.carry = buf[whole..].to_vec();
+    }
+
+    /// A reasonable capacity for a new segment, so it rarely has to grow.
+    fn average(&self) -> usize {
+        64 * 1024
+    }
+
+    /// Whether a first keyframe has arrived.
+    pub fn is_empty(&self) -> bool {
+        lock(&self.state).segments.is_empty()
+    }
+
+    pub fn bytes(&self) -> usize {
+        lock(&self.state).segments.iter().map(Vec::len).sum()
+    }
+
+    /// The newest `n` segments end to end — the last one reaching up to what
+    /// ffmpeg wrote a moment ago.
+    pub fn last(&self, n: usize) -> Vec<u8> {
+        let st = lock(&self.state);
+        let from = st.segments.len().saturating_sub(n);
+        st.segments.range(from..).flat_map(|s| s.iter().copied()).collect()
+    }
+
+    /// Starts copying the stream into `path`, beginning with the segment
+    /// being written now, so at most one keyframe interval early.
+    pub fn start_recording(&self, path: &Path) -> Result<()> {
+        let mut st = lock(&self.state);
+        if st.recording.is_some() {
+            bail!("Es läuft schon eine Aufnahme");
+        }
+        let Some(current) = st.segments.back() else { bail!("Der Buffer ist noch leer") };
+        let file = std::fs::File::create(path).with_context(|| format!("{} lässt sich nicht anlegen", path.display()))?;
+        let mut file = BufWriter::with_capacity(1 << 20, file);
+        file.write_all(current).with_context(|| format!("{} lässt sich nicht schreiben", path.display()))?;
+        st.recording = Some(Recording { path: path.to_path_buf(), file, failed: None });
+        Ok(())
+    }
+
+    /// Ends the recording and returns its file.
+    pub fn stop_recording(&self) -> Result<PathBuf> {
+        let Some(mut rec) = lock(&self.state).recording.take() else { bail!("Es läuft keine Aufnahme") };
+        if let Some(e) = rec.failed.take() {
+            bail!("Die Aufnahme ließ sich nicht schreiben: {e}");
+        }
+        rec.file.flush().with_context(|| format!("{} lässt sich nicht schreiben", rec.path.display()))?;
+        Ok(rec.path)
+    }
+
+    pub fn is_recording(&self) -> bool {
+        lock(&self.state).recording.is_some()
+    }
+}
 
 pub struct Buffer {
-    pub dir: PathBuf,
     child: Child,
+    pub ring: Arc<Ring>,
     /// The playback device the sound is taken from, if there is sound.
     pub audio_device: Option<String>,
     /// The microphone on the second sound track, if there is one.
     pub mic_device: Option<String>,
+    /// ffmpeg's last complaints, for saying why it stopped.
+    stderr: Arc<Mutex<VecDeque<String>>>,
+    reader: Option<std::thread::JoinHandle<()>>,
 }
 
 impl Buffer {
-    /// Empties the buffer folder and starts the capture. Whatever an earlier
-    /// run left behind is worthless, because its timeline has no relation to
-    /// the new one.
-    ///
-    /// If the sound cannot be opened, the recording carries on without it: a
-    /// clip without sound still beats no clip at all.
+    /// Starts the capture. If the sound cannot be opened, the recording
+    /// carries on without it: a clip without sound still beats no clip at all.
     pub fn start(ffmpeg_bin: &Path, s: &Settings) -> Result<Self> {
         let dir = crate::config::buffer_dir();
         std::fs::create_dir_all(&dir).with_context(|| format!("{} lässt sich nicht anlegen", dir.display()))?;
         clear(&dir);
+        let ring = Arc::new(Ring::new(s.ring_len()));
         if s.audio {
-            match with_audio(ffmpeg_bin, s, &dir) {
+            match with_audio(ffmpeg_bin, s, &ring) {
                 Ok((child, format)) => {
-                    let (audio_device, mic_device) = (Some(format.describe()), format.mic_device);
-                    return Ok(Self { dir, child, audio_device, mic_device });
+                    let (audio_device, mic_device) = (Some(format.describe()), format.mic_device.clone());
+                    return Ok(Self::watch(child, ring, audio_device, mic_device));
                 }
                 Err(e) => eprintln!("clipd: Aufnahme ohne Ton — {e:#}"),
             }
         }
-        let child = spawn(ffmpeg_bin, s, &dir, None)?.0;
-        Ok(Self { dir, child, audio_device: None, mic_device: None })
+        let child = spawn(ffmpeg_bin, s, None)?.0;
+        Ok(Self::watch(child, ring, None, None))
     }
 
-    /// Waits until the first segment shows up, so a capture that fails straight
-    /// away (wrong monitor, encoder in use) is reported instead of leaving a
+    /// Feeds ffmpeg's stdout into the ring and keeps its last words.
+    fn watch(mut child: Child, ring: Arc<Ring>, audio_device: Option<String>, mic_device: Option<String>) -> Self {
+        let stderr = Arc::new(Mutex::new(VecDeque::new()));
+        if let Some(err) = child.stderr.take() {
+            let lines = stderr.clone();
+            std::thread::spawn(move || {
+                use std::io::BufRead;
+                for line in std::io::BufReader::new(err).lines().map_while(Result::ok) {
+                    eprintln!("{line}");
+                    let mut l = lock(&lines);
+                    l.push_back(line);
+                    if l.len() > 6 {
+                        l.pop_front();
+                    }
+                }
+            });
+        }
+        let reader = child.stdout.take().map(|mut out| {
+            let ring = ring.clone();
+            std::thread::Builder::new()
+                .name("clipd-stream".into())
+                .spawn(move || {
+                    let mut buf = vec![0u8; 64 * 1024];
+                    while let Ok(n) = out.read(&mut buf) {
+                        if n == 0 {
+                            break;
+                        }
+                        ring.push(&buf[..n]);
+                    }
+                })
+                .expect("Thread für den Datenstrom")
+        });
+        Self { child, ring, audio_device, mic_device, stderr, reader }
+    }
+
+    /// Waits for the first keyframe, so a capture that fails straight away
+    /// (wrong monitor, encoder in use) is reported instead of leaving a
     /// silently empty buffer behind.
-    pub fn wait_until_recording(&mut self, s: &Settings, timeout: Duration) -> Result<()> {
+    pub fn wait_until_recording(&mut self, timeout: Duration) -> Result<()> {
         let deadline = std::time::Instant::now() + timeout;
         loop {
             if let Some(status) = self.child.try_wait().context("ffmpeg lässt sich nicht abfragen")? {
-                bail!("ffmpeg hat die Aufnahme sofort beendet ({status}) — siehe die Meldung darüber");
+                std::thread::sleep(Duration::from_millis(100));
+                bail!("ffmpeg hat die Aufnahme sofort beendet ({status}){}", self.last_words());
             }
-            if !segments(&self.dir, s).is_empty() {
+            if !self.ring.is_empty() {
                 return Ok(());
             }
             if std::time::Instant::now() >= deadline {
-                bail!("Nach {:?} liegt noch kein Segment im Buffer — läuft die Aufnahme?", timeout);
+                bail!("Nach {timeout:?} kommt noch kein Bild — läuft die Aufnahme?");
             }
             std::thread::sleep(Duration::from_millis(50));
         }
@@ -68,12 +254,21 @@ impl Buffer {
     pub fn exited(&mut self) -> Option<std::process::ExitStatus> {
         self.child.try_wait().ok().flatten()
     }
+
+    /// ": <what ffmpeg said last>", or nothing.
+    pub fn last_words(&self) -> String {
+        let l = lock(&self.stderr);
+        l.back().map(|w| format!(": {w}")).unwrap_or_default()
+    }
 }
 
 impl Drop for Buffer {
     fn drop(&mut self) {
         let _ = self.child.kill();
         let _ = self.child.wait();
+        if let Some(r) = self.reader.take() {
+            let _ = r.join();
+        }
     }
 }
 
@@ -82,15 +277,13 @@ impl Drop for Buffer {
 fn spawn(
     ffmpeg_bin: &Path,
     s: &Settings,
-    dir: &Path,
     audio: Option<&crate::audio::Format>,
 ) -> Result<(Child, Option<std::process::ChildStdin>)> {
     let mut child = ffmpeg::command(ffmpeg_bin)
-        .args(ffmpeg::capture_args(s, dir, audio)?)
+        .args(ffmpeg::capture_args(s, audio)?)
         .stdin(if audio.is_some() { Stdio::piped() } else { Stdio::null() })
-        // ffmpeg's own complaints belong on our console.
-        .stderr(Stdio::inherit())
-        .stdout(Stdio::null())
+        .stderr(Stdio::piped())
+        .stdout(Stdio::piped())
         .spawn()
         .with_context(|| format!("{} lässt sich nicht starten", ffmpeg_bin.display()))?;
     let stdin = child.stdin.take();
@@ -99,17 +292,20 @@ fn spawn(
 
 /// Starts the capture with sound. The device comes first: only it knows the
 /// sample format, and ffmpeg has to be told that format on its command line.
-fn with_audio(ffmpeg_bin: &Path, s: &Settings, dir: &Path) -> Result<(Child, crate::audio::Format)> {
+fn with_audio(ffmpeg_bin: &Path, s: &Settings, ring: &Ring) -> Result<(Child, crate::audio::Format)> {
     let audio = crate::audio::open(&s.audio_device, s.mic.then_some(s.mic_device.as_str()))?;
     let format = audio.format.clone();
-    let (mut child, stdin) = spawn(ffmpeg_bin, s, dir, Some(&audio.format))?;
+    let (mut child, stdin) = spawn(ffmpeg_bin, s, Some(&audio.format))?;
     let Some(stdin) = stdin else {
         let _ = child.kill();
         anyhow::bail!("ffmpeg gibt keine Eingabe für den Ton her");
     };
     // Without the pipe ffmpeg would sit and wait forever, so a failure here
     // has to take it down again.
-    if let Err(e) = audio.attach(stdin) {
+    // Capturing and encoding a frame takes about two frames' time before its
+    // keyframe comes out of ffmpeg.
+    let lead = Duration::from_secs_f64(2.0 / s.fps.max(1) as f64);
+    if let Err(e) = audio.attach(stdin, ring.first_keyframe.clone(), lead) {
         let _ = child.kill();
         let _ = child.wait();
         return Err(e);
@@ -117,53 +313,8 @@ fn with_audio(ffmpeg_bin: &Path, s: &Settings, dir: &Path) -> Result<(Child, cra
     Ok((child, format))
 }
 
-/// The buffer segments, oldest first. The names are zero padded, so sorting
-/// them as text is the same as sorting them by time.
-pub fn segments(dir: &Path, s: &Settings) -> Vec<PathBuf> {
-    let ext = s.codec.segment_ext();
-    let Ok(entries) = std::fs::read_dir(dir) else { return Vec::new() };
-    let mut found: Vec<PathBuf> = entries
-        .filter_map(|e| e.ok())
-        .map(|e| e.path())
-        .filter(|p| {
-            p.extension().is_some_and(|x| x == ext)
-                && p.file_name().and_then(|n| n.to_str()).is_some_and(|n| n.starts_with("seg"))
-        })
-        .collect();
-    found.sort();
-    found
-}
-
-/// Deletes everything beyond the newest `keep` segments — except `spare` and
-/// what came after it, the part a running recording still needs.
-pub fn prune(dir: &Path, s: &Settings, keep: usize, spare: Option<&Path>) {
-    let all = segments(dir, s);
-    for old in drop_newest(&all, keep) {
-        if spare.is_some_and(|first| old.as_path() >= first) {
-            break;
-        }
-        let _ = std::fs::remove_file(old);
-    }
-}
-
-/// `first` and every segment after it, oldest first.
-pub fn since<'a>(all: &'a [PathBuf], first: &Path) -> &'a [PathBuf] {
-    let at = all.iter().position(|p| p.as_path() >= first).unwrap_or(all.len());
-    &all[at..]
-}
-
-/// The segments that have fallen out of the ring.
-fn drop_newest(all: &[PathBuf], keep: usize) -> &[PathBuf] {
-    &all[..all.len().saturating_sub(keep)]
-}
-
-/// The newest `n` segments, oldest first.
-pub fn newest(all: &[PathBuf], n: usize) -> &[PathBuf] {
-    &all[all.len().saturating_sub(n)..]
-}
-
-/// Throws out everything in the buffer folder. It belongs to clipd alone, and
-/// after a restart none of it lines up with the new recording any more.
+/// Throws out what an earlier run left in the buffer folder: half-written
+/// recordings belong to a stream that no longer exists.
 fn clear(dir: &Path) {
     let Ok(entries) = std::fs::read_dir(dir) else { return };
     for entry in entries.filter_map(|e| e.ok()) {
@@ -173,111 +324,105 @@ fn clear(dir: &Path) {
     }
 }
 
-/// Reads a file that another program is still writing to. Windows only allows
-/// this if we explicitly grant the writer its access, which plain `read` does
-/// not do — it would fail with a sharing violation.
-pub fn read_shared(path: &Path) -> std::io::Result<Vec<u8>> {
-    #[cfg(windows)]
-    {
-        use std::io::Read;
-        use std::os::windows::fs::OpenOptionsExt;
-        const FILE_SHARE_READ_WRITE_DELETE: u32 = 0x1 | 0x2 | 0x4;
-        let mut file = std::fs::OpenOptions::new().read(true).share_mode(FILE_SHARE_READ_WRITE_DELETE).open(path)?;
-        let mut buf = Vec::new();
-        file.read_to_end(&mut buf)?;
-        Ok(buf)
-    }
-    #[cfg(not(windows))]
-    std::fs::read(path)
-}
-
-/// Cuts a length back to whole MPEG-TS packets.
-pub fn whole_packets(len: u64) -> u64 {
-    len - len % TS_PACKET
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::Codec;
 
-    fn paths(names: &[&str]) -> Vec<PathBuf> {
-        names.iter().map(PathBuf::from).collect()
+    /// Ein TS-Paket: Video oder Ton, auf Wunsch als Keyframe markiert, mit
+    /// einer Kennung im Rest, um es wiederzuerkennen.
+    fn packet(pid: u16, key: bool, tag: u8) -> Vec<u8> {
+        let mut p = vec![tag; TS_PACKET];
+        p[0] = 0x47;
+        p[1] = ((pid >> 8) as u8 & 0x1f) | if key { 0x40 } else { 0 };
+        p[2] = pid as u8;
+        p[3] = if key { 0x30 } else { 0x10 };
+        p[4] = if key { 7 } else { tag };
+        p[5] = if key { 0x40 } else { tag };
+        p
     }
 
-    /// Nur die ältesten Segmente dürfen weg, und nur wenn der Ring voll ist.
     #[test]
-    fn prune_keeps_the_newest() {
-        let all = paths(&["seg1.ts", "seg2.ts", "seg3.ts", "seg4.ts"]);
-        assert_eq!(drop_newest(&all, 2), paths(&["seg1.ts", "seg2.ts"]).as_slice());
-        assert_eq!(drop_newest(&all, 4), &[] as &[PathBuf], "voll, aber nicht übervoll");
-        assert_eq!(drop_newest(&all, 9), &[] as &[PathBuf], "noch nicht voll");
-        assert_eq!(drop_newest(&[], 2), &[] as &[PathBuf]);
+    fn recognises_keyframes() {
+        assert!(is_keyframe(&packet(VIDEO_PID, true, 1)));
+        assert!(!is_keyframe(&packet(VIDEO_PID, false, 1)));
+        assert!(!is_keyframe(&packet(0x101, true, 1)), "nur das Bild zählt, nicht der Ton");
+        // Ein echter Keyframe aus hevc_amf/h264_amf-Aufnahmen: 47 41 00 30 07 50 …
+        let real = [0x47, 0x41, 0x00, 0x30, 0x07, 0x50];
+        assert!(is_keyframe(&real));
     }
 
-    /// Eine laufende Aufnahme braucht ihre Segmente noch, auch wenn sie aus dem
-    /// Ring gefallen sind.
+    fn stream(pkts: &[Vec<u8>]) -> Vec<u8> {
+        pkts.concat()
+    }
+
+    /// Vor dem ersten Keyframe lässt sich nichts dekodieren, also bleibt
+    /// davon nichts im Ring; danach beginnt jedes Segment mit einem Keyframe.
     #[test]
-    fn a_recording_spares_its_segments() {
-        let dir = std::env::temp_dir().join(format!("clipd-spare-{}", std::process::id()));
-        std::fs::create_dir_all(&dir).unwrap();
-        for n in 1..=6 {
-            std::fs::write(dir.join(format!("seg0000000{n}.ts")), b"x").unwrap();
+    fn segments_start_at_keyframes() {
+        let ring = Ring::new(10);
+        ring.push(&stream(&[packet(0x101, false, 1), packet(VIDEO_PID, true, 2), packet(0x101, false, 3)]));
+        ring.push(&stream(&[packet(VIDEO_PID, true, 4), packet(VIDEO_PID, false, 5)]));
+        let all = ring.last(99);
+        assert_eq!(all.len(), 4 * TS_PACKET, "das Tonpaket vor dem ersten Keyframe fällt weg");
+        assert!(is_keyframe(&all[..TS_PACKET]));
+        assert_eq!(ring.last(1), stream(&[packet(VIDEO_PID, true, 4), packet(VIDEO_PID, false, 5)]));
+    }
+
+    /// Pakete, die über zwei Lesevorgänge verteilt ankommen, werden
+    /// zusammengesetzt statt verworfen.
+    #[test]
+    fn packets_may_arrive_in_pieces() {
+        let ring = Ring::new(10);
+        let data = stream(&[packet(VIDEO_PID, true, 1), packet(0x101, false, 2), packet(VIDEO_PID, false, 3)]);
+        for piece in data.chunks(50) {
+            ring.push(piece);
         }
-        let s = Settings::default();
-        prune(&dir, &s, 2, Some(&dir.join("seg00000003.ts")));
-        let left: Vec<_> =
-            segments(&dir, &s).iter().map(|p| p.file_name().unwrap().to_string_lossy().into_owned()).collect();
-        std::fs::remove_dir_all(&dir).ok();
-        assert_eq!(left, ["seg00000003.ts", "seg00000004.ts", "seg00000005.ts", "seg00000006.ts"]);
+        assert_eq!(ring.last(1), data);
     }
 
+    /// Der Ring hält so viele fertige Segmente wie verlangt, plus das
+    /// wachsende.
     #[test]
-    fn since_starts_at_the_first_segment() {
-        let all = paths(&["seg1.ts", "seg2.ts", "seg3.ts"]);
-        assert_eq!(since(&all, Path::new("seg2.ts")), paths(&["seg2.ts", "seg3.ts"]).as_slice());
-        assert_eq!(since(&all, Path::new("seg9.ts")), &[] as &[PathBuf]);
-    }
-
-    /// Ein Clip nimmt die jüngsten Segmente, in zeitlicher Reihenfolge.
-    #[test]
-    fn newest_returns_them_in_order() {
-        let all = paths(&["seg1.ts", "seg2.ts", "seg3.ts"]);
-        assert_eq!(newest(&all, 2), paths(&["seg2.ts", "seg3.ts"]).as_slice());
-        assert_eq!(newest(&all, 99), all.as_slice(), "mehr als da ist");
-        assert_eq!(newest(&all, 0), &[] as &[PathBuf]);
-    }
-
-    /// Achtstellige Namen sortieren als Text genauso wie nach der Zeit — das
-    /// ist die Annahme, auf der die ganze Reihenfolge beruht.
-    #[test]
-    fn padded_names_sort_chronologically() {
-        let mut names = paths(&["seg00000010.ts", "seg00000002.ts", "seg00000001.ts"]);
-        names.sort();
-        assert_eq!(names, paths(&["seg00000001.ts", "seg00000002.ts", "seg00000010.ts"]));
-    }
-
-    #[test]
-    fn trims_to_whole_ts_packets() {
-        assert_eq!(whole_packets(188), 188);
-        assert_eq!(whole_packets(200), 188, "halbes Paket abschneiden");
-        assert_eq!(whole_packets(187), 0);
-        // Der 256-KiB-Block, den ffmpeg am Stück schreibt, endet mitten im Paket.
-        assert_eq!(whole_packets(262_144), 262_072, "188 * 1394, die 72 Restbytes fallen weg");
-    }
-
-    /// Im Buffer liegen auch die Liste und die Kopie des laufenden Segments;
-    /// gezählt werden darf nur, was ffmpeg geschrieben hat.
-    #[test]
-    fn only_segments_are_listed() {
-        let dir = std::env::temp_dir().join(format!("clipd-test-{}", std::process::id()));
-        std::fs::create_dir_all(&dir).unwrap();
-        for name in ["seg00000001.ts", "seg00000002.ts", "concat.txt", "live.ts", "seg00000001.mkv"] {
-            std::fs::write(dir.join(name), b"x").unwrap();
+    fn the_ring_forgets_old_segments() {
+        let ring = Ring::new(2);
+        for k in 1..=5 {
+            ring.push(&packet(VIDEO_PID, true, k));
         }
-        let s = Settings { codec: Codec::Hevc, ..Default::default() };
-        let got: Vec<_> = segments(&dir, &s).iter().map(|p| p.file_name().unwrap().to_string_lossy().into_owned()).collect();
+        assert_eq!(
+            ring.last(99),
+            stream(&[packet(VIDEO_PID, true, 3), packet(VIDEO_PID, true, 4), packet(VIDEO_PID, true, 5)])
+        );
+    }
+
+    /// Eine Aufnahme beginnt mit dem laufenden Segment und schreibt alles
+    /// Weitere mit, auch über den Ring hinaus.
+    #[test]
+    fn a_recording_outlasts_the_ring() {
+        let dir = std::env::temp_dir().join(format!("clipd-rec-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("a.ts");
+        let ring = Ring::new(1);
+        ring.push(&stream(&[packet(VIDEO_PID, true, 1), packet(0x101, false, 2)]));
+        ring.start_recording(&path).unwrap();
+        assert!(ring.start_recording(&path).is_err(), "nur eine zugleich");
+        for k in 3..=6 {
+            ring.push(&packet(VIDEO_PID, true, k));
+        }
+        let done = ring.stop_recording().unwrap();
+        let got = std::fs::read(&done).unwrap();
         std::fs::remove_dir_all(&dir).ok();
-        assert_eq!(got, ["seg00000001.ts", "seg00000002.ts"], "kein live.ts, keine Liste, kein .mkv");
+        let mut want = stream(&[packet(VIDEO_PID, true, 1), packet(0x101, false, 2)]);
+        for k in 3..=6 {
+            want.extend(packet(VIDEO_PID, true, k));
+        }
+        assert_eq!(got, want);
+        assert!(ring.stop_recording().is_err());
+    }
+
+    #[test]
+    fn an_empty_ring_cannot_record() {
+        let ring = Ring::new(3);
+        assert!(ring.is_empty());
+        assert!(ring.start_recording(Path::new("egal.ts")).is_err());
     }
 }

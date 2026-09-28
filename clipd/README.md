@@ -11,15 +11,15 @@ NVENC oder AMF. Welche Karte es wird, findet clipd beim Start selbst heraus.
 ## Wie es funktioniert
 
 ```
-ddagrab ──┬───────────────► hevc_nvenc ──┐
-(Desktop  │                 (NVIDIA)     │
- Dupli-   └─► vpp_amf ────► hevc_amf ────┼─► seg00000001.ts, seg00000002.ts, …
- cation)      (nach nv12)   (AMD)        │   1 Sekunde pro Datei (Ring auf Platte)
+ddagrab ──┬───────────────► h264_nvenc ──┐
+(Desktop  │                 (NVIDIA)     │   MPEG-TS über stdout
+ Dupli-   └─► vpp_amf ────► h264_amf ────┼─► Ring im Arbeitsspeicher,
+ cation)      (nach nv12)   (AMD)        │   an jedem Keyframe geteilt
                                          │          │
 WASAPI-Loopback ──────────► aac ─────────┘          │
 (was die Boxen spielen)                             ▼
-                                   Hotkey ─► die neuesten Segmente
-                                             aneinanderhängen (ohne neu zu
+                                   Hotkey ─► die neuesten Stücke am Stück
+                                             ins MP4 (ohne neu zu
                                              kodieren) ─► clip-….mp4
 ```
 
@@ -30,9 +30,12 @@ Drei Dinge daran sind wichtiger, als sie aussehen:
   in den Hauptspeicher, und die CPU wandelt keine Farben um. NVENC macht aus dem
   BGRA des Desktops selbst yuv420p. AMF nimmt BGRA nicht an, deshalb wandelt
   bei AMD `vpp_amf` vorher um — ebenfalls auf dem Chip.
-- **Ein Clip wird nicht neu kodiert.** Er hängt fertige Segmente aneinander und
-  kopiert die Streams. Ein 30-Sekunden-Clip ist deshalb in Bruchteilen einer
-  Sekunde geschrieben, egal wie lang er ist.
+- **Ein Clip wird nicht neu kodiert und reicht bis zum Tastendruck.** Der
+  Ring liegt im Arbeitsspeicher, ein Clip ist einfach ein zusammenhängendes
+  Stück davon ab einem Keyframe, das ffmpeg ohne neues Kodieren in ein MP4
+  packt. 30 Sekunden sind in Bruchteilen einer Sekunde geschrieben. Der Ring
+  kostet so viel Arbeitsspeicher, wie er Sekunden hält: bei 120 s rund 25 bis
+  50 MB.
 - **Den Ton holt clipd selbst.** ffmpeg kann unter Windows nicht mitschneiden,
   was die Boxen spielen — DirectShow kennt nur Mikrofone. clipd zapft deshalb
   WASAPI im Loopback-Modus an und schiebt die Samples in ffmpegs Eingabe.
@@ -69,6 +72,7 @@ clipd monitors                # zeigt, was aufgenommen werden kann
 clipd audio                   # probiert jedes Wiedergabegerät auf Ton durch
 clipd clip                    # speichert jetzt, aus einem anderen Fenster
 clipd clip --secs 10          # kürzer als eingestellt
+clipd record                  # Aufnahme beliebiger Länge starten/beenden
 clipd export clip.mp4 --start 3 --end 12   # zuschneiden
 clipd export clip.mp4 --discord --mic 0     # unter 10 MB, ohne Mikrofon
 clipd config --init           # legt die config.toml an
@@ -81,8 +85,9 @@ und beendet sie wieder. Jeder Clip landet im Ordner des Spiels, das gerade
 vorne war (`clips/Valorant/…`); ein Fenster, das nicht den ganzen Bildschirm
 füllt, zählt als `Desktop`.
 
-`clipd clip` speichert aus dem Puffer der laufenden Aufnahme und eignet sich
-für ein Stream Deck oder eine zweite Tastenbelegung. Es benutzt die
+`clipd clip` und `clipd record` sprechen über eine Named Pipe mit dem
+clipd, das gerade aufnimmt — egal ob Terminal oder Fenster — und eignen sich
+für ein Stream Deck oder eine zweite Tastenbelegung. Sie benutzen die
 Einstellungen, mit denen die Aufnahme gestartet wurde.
 
 ## Einstellungen
@@ -95,10 +100,10 @@ standardmäßig in `clips/`.
 | `monitor` | `0` | Bildschirm, wie ihn `clipd monitors` zählt |
 | `fps` | `60` | Bildrate |
 | `buffer_secs` | `120` | wie weit ein Clip zurückreichen kann |
-| `segment_secs` | `1` | Länge einer Pufferdatei |
+| `segment_secs` | `1` | Abstand der Keyframes; so genau hält ein Clip seine Länge |
 | `clip_secs` | `30` | was ein Tastendruck speichert |
 | `gpu` | `auto` | `auto`, `nvidia` oder `amd`; `auto` probiert NVIDIA, dann AMD |
-| `codec` | `h264` | `h264`, `hevc` oder `av1`; nur H.264 spielt das Fenster selbst ab |
+| `codec` | `h264` | `h264` oder `hevc`; nur H.264 spielt das Fenster selbst ab |
 | `quality` | `22` | 0 (riesig) bis 51 (schlecht); bei AMD ein fester QP |
 | `preset` | `p5` | `p1` (schnell) bis `p7` (beste Qualität); AMD kennt nur drei Stufen: p1–p2, p3–p5, p6–p7 |
 | `audio` | `true` | nimmt mit auf, was die Boxen spielen |
@@ -112,7 +117,7 @@ standardmäßig in `clips/`.
 | `save_sound` | `true` | kurzer Ton, wenn ein Clip gespeichert ist |
 | `out_dir` | leer | leer heißt `clips/` |
 
-Der Puffer kostet Platz: 1080p60 mit `quality = 22` sind je nach Bild und
+Der Puffer kostet Arbeitsspeicher: 1080p60 mit `quality = 22` sind je nach Bild und
 Format rund 200 bis 400 KB pro Sekunde, also 25 bis 50 MB für die
 voreingestellten 120 Sekunden.
 
@@ -124,27 +129,25 @@ voreingestellten 120 Sekunden.
 
 ## Bekannte Eigenheiten
 
-- **Ein Clip endet bis zu einer Sekunde vor dem Tastendruck.** ffmpeg gibt
-  seine Ausgabe in Blöcken von 256 KiB an das Dateisystem weiter; weder
-  `-flush_packets` noch `-avioflags direct` ändern daran etwas. Eine Sekunde
-  Aufnahme ist etwa 270 KB groß, eine gerade offene Segmentdatei ist also
-  entweder noch ganz leer oder schon 256 KiB lang. clipd nimmt mit, was da ist —
-  deshalb ist ein Clip mal 5,00 und mal 5,62 Sekunden lang. Wer das nicht will,
-  muss den Ring in den Arbeitsspeicher holen, statt ihn über Dateien zu führen.
+- **Ein Clip ist bis zu einer Sekunde länger als eingestellt.** Er beginnt
+  auf einem Keyframe, und davon gibt es einen pro `segment_secs`.
+- **Kein AV1.** ffmpeg schreibt AV1 zwar in MPEG-TS, kann es daraus aber nicht
+  wieder lesen — und der Ring ist MPEG-TS.
+- **Ton und Bild starten nicht gleichzeitig.** ffmpeg beginnt beide bei 0,
+  der Ton fließt aber sofort, das erste Bild erst nach ein paar hundert
+  Millisekunden. clipd legt deshalb den Anfang des Tons auf das erste Bild und
+  wirft den Ton davor weg; ohne das lief der Ton rund 0,4 s hinterher.
 - **Bei NVIDIA ist der Farbraum als BT.601 ausgezeichnet.** NVENC rechnet das
   BGRA des Desktops selbst nach yuv420p um und schreibt dazu `bt470bg` in die Datei.
   Das ist in sich stimmig — ein Testbild kommt Pixel für Pixel wieder heraus —
   aber für HD-Material ungewöhnlich. Wer eine Datei weiterverarbeitet, sollte
   die Auszeichnung nicht einfach auf BT.709 umschreiben. Bei AMD rechnet
   `vpp_amf` ausdrücklich nach BT.709 um, und so steht es auch in der Datei.
-- **Nicht jede Karte kann jeden Codec.** AV1 etwa braucht eine neuere Karte.
-  clipd probiert beim Start ein einzelnes Bild durch und nennt, woran es
+- **Nicht jede Karte kann jeden Codec.** clipd probiert beim Start ein einzelnes Bild durch und nennt, woran es
   scheitert, statt mit leerem Buffer weiterzulaufen.
 - **Der Ton ist, was man hört.** Der Loopback greift hinter dem
   Lautstärkeregler ab: Steht Windows auf 0 % oder ist stumm geschaltet, wird
   auch der Clip stumm.
-- **AV1 landet in Matroska.** MPEG-TS trägt kein AV1. Dann ist auch das gerade
-  offene Segment tabu, weil Matroska einen fehlenden Schluss nicht verzeiht.
 - **Nicht jedes Wiedergabegerät kann Loopback.** Manche virtuellen Geräte —
   SteelSeries Sonar zum Beispiel — kehren aus
   `IAudioClient::Initialize` nie zurück, wenn man sie zum Mitschneiden öffnet.

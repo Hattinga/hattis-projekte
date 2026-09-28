@@ -1,115 +1,72 @@
-//! Turning the buffer into a finished clip.
+//! Turning a piece of the stream into a finished clip.
 
-use crate::buffer;
-use crate::config::Settings;
 use crate::ffmpeg;
 use anyhow::{Context, Result, bail};
+use std::io::Write;
 use std::path::{Path, PathBuf};
-
-/// Name of the copy of the segment that is still being written.
-const LIVE: &str = "live";
-const LIST: &str = "concat.txt";
+use std::process::Stdio;
 
 pub struct Saved {
     pub path: PathBuf,
     /// Length of the clip, as ffprobe reads it back.
     pub secs: Option<f64>,
-    pub segments: usize,
-    /// How much of the segment that was still being written made it in. Zero
-    /// means the clip ends at the last finished segment instead of at the key
-    /// press, so it is worth seeing.
-    pub live_bytes: usize,
 }
 
-/// Writes the last `clip_secs` seconds into `out_dir`. The streams are
-/// copied, so this costs no encoding time and finishes in a fraction of a
-/// second.
-pub fn save(ffmpeg_bin: &Path, s: &Settings, dir: &Path, out_dir: &Path) -> Result<Saved> {
-    let all = buffer::segments(dir, s);
-    stitch(ffmpeg_bin, s, dir, buffer::newest(&all, s.clip_len()), out_dir)
-}
-
-/// Writes everything from segment `first` up to now into `out_dir` — a
-/// recording started by hand.
-pub fn save_since(ffmpeg_bin: &Path, s: &Settings, dir: &Path, first: &Path, out_dir: &Path) -> Result<Saved> {
-    let all = buffer::segments(dir, s);
-    stitch(ffmpeg_bin, s, dir, buffer::since(&all, first), out_dir)
-}
-
-/// Puts `chosen` end to end; the last of them is the one ffmpeg is still
-/// writing.
-fn stitch(ffmpeg_bin: &Path, s: &Settings, dir: &Path, chosen: &[PathBuf], out_dir: &Path) -> Result<Saved> {
-    let Some((live, earlier)) = chosen.split_last() else {
+/// Writes `ts`, a piece of the stream that starts at a keyframe, into a new
+/// MP4 in `out_dir`. The streams are copied, so this costs no encoding time
+/// and finishes in a fraction of a second.
+pub fn save(ffmpeg_bin: &Path, ts: &[u8], out_dir: &Path) -> Result<Saved> {
+    if ts.is_empty() {
         bail!("Der Buffer ist noch leer — läuft die Aufnahme erst gerade an?");
-    };
-
-    let mut list: Vec<PathBuf> = earlier.to_vec();
-    let mut live_bytes = 0;
-    // Take what is already on disk of the segment ffmpeg is still writing, so
-    // the clip reaches past the last finished segment.
-    //
-    // This is a bonus, not a guarantee: ffmpeg hands its output to the file
-    // system in blocks of 256 KiB, and neither -flush_packets nor
-    // -avioflags direct changes that. So an open segment is either still
-    // completely empty or already 256 KiB long, and a clip ends somewhere
-    // between the last finished segment and the key press.
-    if s.codec.tolerates_partial_segment()
-        && let Some((copy, len)) = copy_live(live, dir)?
-    {
-        list.push(copy);
-        live_bytes = len;
     }
-    if list.is_empty() {
-        bail!("Der Buffer ist noch zu kurz für einen Clip — gib ihm einen Moment.");
-    }
+    let out = target(out_dir)?;
+    let mut child = ffmpeg::command(ffmpeg_bin)
+        .args(ffmpeg::remux_args("pipe:0", &out))
+        .stdin(Stdio::piped())
+        .stdout(Stdio::null())
+        .stderr(Stdio::piped())
+        .spawn()
+        .context("ffmpeg lässt sich nicht starten")?;
+    let mut stdin = child.stdin.take().context("ffmpeg nimmt keine Eingabe an")?;
+    // Written from a thread, so ffmpeg can talk on stderr meanwhile without
+    // the two blocking each other.
+    let data = ts.to_vec();
+    let writer = std::thread::spawn(move || stdin.write_all(&data));
+    let done = child.wait_with_output().context("ffmpeg lässt sich nicht abfragen")?;
+    let _ = writer.join();
+    finish(ffmpeg_bin, out, &done)
+}
 
-    std::fs::create_dir_all(out_dir).with_context(|| format!("{} lässt sich nicht anlegen", out_dir.display()))?;
-    let out = unique(out_dir, &stamp(), "mp4");
-
-    let list_file = dir.join(LIST);
-    std::fs::write(&list_file, ffmpeg::concat_list(&list))
-        .with_context(|| format!("{} lässt sich nicht schreiben", list_file.display()))?;
-
+/// Turns a recording file (MPEG-TS) into an MP4 in `out_dir` and removes it.
+pub fn save_file(ffmpeg_bin: &Path, ts: &Path, out_dir: &Path) -> Result<Saved> {
+    let out = target(out_dir)?;
     let done = ffmpeg::command(ffmpeg_bin)
-        .args(ffmpeg::concat_args(&list_file, &out))
+        .args(ffmpeg::remux_args(&ts.to_string_lossy(), &out))
         .output()
         .context("ffmpeg lässt sich nicht starten")?;
-    let _ = std::fs::remove_file(&list_file);
-    let _ = std::fs::remove_file(dir.join(format!("{LIVE}.{}", s.codec.segment_ext())));
-    if !done.status.success() {
-        let why = String::from_utf8_lossy(&done.stderr);
-        bail!("Der Clip lässt sich nicht schreiben: {}", why.trim());
-    }
-
-    let secs = ffmpeg::duration(&ffmpeg::probe_tool(ffmpeg_bin), &out);
-    Ok(Saved { path: out, secs, segments: list.len(), live_bytes })
+    let saved = finish(ffmpeg_bin, out, &done)?;
+    let _ = std::fs::remove_file(ts);
+    Ok(saved)
 }
 
-/// One line about a saved clip. Names the part taken from the segment that was
-/// still being written, because that is what decides whether the clip reaches
-/// the key press or stops up to one segment short of it.
+fn target(out_dir: &Path) -> Result<PathBuf> {
+    std::fs::create_dir_all(out_dir).with_context(|| format!("{} lässt sich nicht anlegen", out_dir.display()))?;
+    Ok(unique(out_dir, &stamp(), "mp4"))
+}
+
+fn finish(ffmpeg_bin: &Path, out: PathBuf, done: &std::process::Output) -> Result<Saved> {
+    if !done.status.success() {
+        let _ = std::fs::remove_file(&out);
+        bail!("Der Clip lässt sich nicht schreiben: {}", String::from_utf8_lossy(&done.stderr).trim());
+    }
+    let secs = ffmpeg::duration(&ffmpeg::probe_tool(ffmpeg_bin), &out);
+    Ok(Saved { path: out, secs })
+}
+
+/// One line about a saved clip.
 pub fn describe(done: &Saved) -> String {
     let len = done.secs.map(|v| format!("{v:.2} s")).unwrap_or_else(|| "?".into());
-    let live = match done.live_bytes {
-        0 => "ohne das laufende Segment".to_string(),
-        n => format!("davon {} KiB aus dem laufenden Segment", n / 1024),
-    };
-    format!("Clip: {} ({len}, {} Segmente, {live})", done.path.display(), done.segments)
-}
-
-/// Copies the segment ffmpeg is still writing, cut back to whole MPEG-TS
-/// packets. Returns nothing if there is not yet a single packet in it.
-fn copy_live(live: &Path, dir: &Path) -> Result<Option<(PathBuf, usize)>> {
-    let ext = live.extension().and_then(|e| e.to_str()).unwrap_or("ts");
-    let mut data = buffer::read_shared(live).with_context(|| format!("{} lässt sich nicht lesen", live.display()))?;
-    data.truncate(buffer::whole_packets(data.len() as u64) as usize);
-    if data.is_empty() {
-        return Ok(None);
-    }
-    let len = data.len();
-    let copy = dir.join(format!("{LIVE}.{ext}"));
-    std::fs::write(&copy, data).with_context(|| format!("{} lässt sich nicht schreiben", copy.display()))?;
-    Ok(Some((copy, len)))
+    format!("Clip: {} ({len})", done.path.display())
 }
 
 fn stamp() -> String {

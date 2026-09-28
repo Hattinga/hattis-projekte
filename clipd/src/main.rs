@@ -1,8 +1,9 @@
 use anyhow::{Context, Result};
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use clipd::config::{Codec, Gpu, Settings};
+use clipd::control::{self, Request};
 use clipd::recorder::Recorder;
-use clipd::{buffer, clip, config, ffmpeg, hotkey, sys};
+use clipd::{clip, config, ffmpeg, hotkey, sys};
 use std::sync::Arc;
 
 #[derive(Parser)]
@@ -22,6 +23,8 @@ enum Cmd {
         #[arg(long)]
         secs: Option<u32>,
     },
+    /// Startet eine Aufnahme beliebiger Länge oder beendet sie.
+    Record,
     /// Schneidet einen Clip zu oder macht ihn klein genug für Discord.
     Export {
         file: std::path::PathBuf,
@@ -112,7 +115,6 @@ impl From<GpuArg> for Gpu {
 enum CodecArg {
     H264,
     Hevc,
-    Av1,
 }
 
 impl From<CodecArg> for Codec {
@@ -120,7 +122,6 @@ impl From<CodecArg> for Codec {
         match c {
             CodecArg::H264 => Codec::H264,
             CodecArg::Hevc => Codec::Hevc,
-            CodecArg::Av1 => Codec::Av1,
         }
     }
 }
@@ -175,7 +176,8 @@ fn main() {
 fn run() -> Result<()> {
     match Cli::parse().cmd.unwrap_or_else(|| Cmd::Run(RunArgs::default())) {
         Cmd::Run(args) => record(args),
-        Cmd::Clip { secs } => clip_now(secs),
+        Cmd::Clip { secs } => ask(&secs.map_or("clip".into(), |s| format!("clip {s}"))),
+        Cmd::Record => ask("record"),
         Cmd::Export { file, start, end, discord, game, mic } => {
             let edit = clipd::library::Edit { start, end: end.unwrap_or(f64::MAX), game_volume: game, mic_volume: mic };
             let target = if discord { clipd::library::Target::Discord } else { clipd::library::Target::Trim };
@@ -236,47 +238,45 @@ fn record(args: RunArgs) -> Result<()> {
 
     let on_key = rec.clone();
     let _keys = hotkey::Listener::start(keys, move |key| {
-        let done = match key {
-            0 => on_key.save_clip(),
-            _ if on_key.recording_for().is_none() => match on_key.start_recording() {
-                Ok(()) => {
-                    println!("Aufnahme läuft …");
-                    return;
-                }
-                Err(e) => Err(e),
-            },
-            _ => on_key.stop_recording(),
-        };
-        match done {
-            Ok(done) => println!("{}", clip::describe(&done)),
-            Err(e) => eprintln!("clipd: {e:#}"),
+        let request = if key == 0 { Request::Clip(None) } else { Request::Record };
+        match act(&on_key, request) {
+            Ok(text) => println!("{text}"),
+            Err(e) => eprintln!("clipd: {e}"),
         }
     })?;
+    // `clipd clip` and `clipd record` from another window land here.
+    let on_request = rec.clone();
+    control::serve(move |request| {
+        let answer = act(&on_request, request);
+        match &answer {
+            Ok(text) => println!("{text}"),
+            Err(e) => eprintln!("clipd: {e}"),
+        }
+        answer
+    });
     loop {
         std::thread::park();
     }
 }
 
-/// Saves from the buffer of an already running clipd, so a second terminal or a
-/// stream deck can trigger a clip too. Uses the settings that capture was
-/// started with, not what config.toml happens to say now.
-fn clip_now(secs: Option<u32>) -> Result<()> {
-    let mut s = match Settings::load_session() {
-        Some(s) => s,
-        None => settings(RunArgs::default())?,
+/// What a hotkey or a request from outside asks the capture to do.
+fn act(rec: &Recorder, request: Request) -> Result<String, String> {
+    let done = match request {
+        Request::Clip(None) => rec.save_clip(),
+        Request::Clip(Some(secs)) => rec.save_last(secs),
+        Request::Record => match rec.toggle_recording() {
+            Ok(None) => return Ok("Aufnahme läuft …".into()),
+            Ok(Some(done)) => Ok(done),
+            Err(e) => Err(e),
+        },
     };
-    if let Some(secs) = secs {
-        s.clip_secs = secs;
-        s.check()?;
-    }
-    let bin = ffmpeg::find()?;
-    let dir = config::buffer_dir();
-    anyhow::ensure!(
-        !buffer::segments(&dir, &s).is_empty(),
-        "Im Buffer liegt nichts. Läuft `clipd run` in einem anderen Fenster?"
-    );
-    let done = clip::save(&bin, &s, &dir, &clipd::recorder::clip_dir(&s))?;
-    println!("{}", clip::describe(&done));
+    done.map(|d| clip::describe(&d)).map_err(|e| format!("{e:#}"))
+}
+
+/// Asks an already running clipd, so a second terminal or a Stream Deck can
+/// trigger a clip too.
+fn ask(command: &str) -> Result<()> {
+    println!("{}", control::request(command)?);
     Ok(())
 }
 

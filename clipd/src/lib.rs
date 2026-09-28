@@ -10,6 +10,7 @@ pub mod audio;
 pub mod buffer;
 pub mod clip;
 pub mod config;
+pub mod control;
 pub mod ffmpeg;
 pub mod game;
 pub mod hotkey;
