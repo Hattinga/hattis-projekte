@@ -47,6 +47,21 @@ pub fn parse(spec: &str) -> Result<Hotkey> {
     Ok(Hotkey { mods, vk })
 }
 
+/// A combination the way a German keyboard names it: `Strg+Alt+C`.
+pub fn display(spec: &str) -> String {
+    spec.split('+')
+        .map(str::trim)
+        .filter(|p| !p.is_empty())
+        .map(|p| match p.to_lowercase().as_str() {
+            "ctrl" | "control" => "Strg".to_string(),
+            "shift" => "Umschalt".to_string(),
+            "super" | "meta" => "Win".to_string(),
+            _ => p.to_string(),
+        })
+        .collect::<Vec<_>>()
+        .join("+")
+}
+
 /// Virtual key code for a single, already lowercased key name.
 fn vk_of(name: &str) -> Option<u32> {
     if let Some(n) = name.strip_prefix('f').and_then(|n| n.parse::<u32>().ok()) {
@@ -193,6 +208,12 @@ mod tests {
     #[test]
     fn always_asks_for_norepeat() {
         assert_eq!(parse("Win+K").unwrap().mods & MOD_NOREPEAT, MOD_NOREPEAT);
+    }
+
+    #[test]
+    fn shows_german_names() {
+        assert_eq!(display("Ctrl+Shift+F9"), "Strg+Umschalt+F9");
+        assert_eq!(display(""), "");
     }
 
     #[test]

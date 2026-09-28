@@ -115,6 +115,7 @@ standardmäßig in `clips/`.
 | `record_hotkey` | `Ctrl+Alt+R` | Aufnahme beliebiger Länge; leer schaltet sie ab |
 | `game_folders` | `true` | ein Ordner pro Spiel |
 | `save_sound` | `true` | kurzer Ton, wenn ein Clip gespeichert ist |
+| `overlay` | `true` | kurzer Hinweis oben rechts, der in keinem Clip auftaucht |
 | `out_dir` | leer | leer heißt `clips/` |
 
 Der Puffer kostet Arbeitsspeicher: 1080p60 mit `quality = 22` sind je nach Bild und

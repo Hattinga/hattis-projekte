@@ -561,7 +561,7 @@ async function openSettings() {
     row('Bildschirm', popup(monitors, draft.monitor, (v) => (draft.monitor = +v))),
     row('Bildrate', segmented([[30, '30 fps'], [60, '60 fps']], draft.fps === 30 ? 30 : 60, (v) => (draft.fps = v))),
     row('Qualität', segmented(QUALITY, q, (v) => (draft.quality = v))),
-    row('Format', segmented([['h264', 'H.264'], ['hevc', 'HEVC'], ['av1', 'AV1']], draft.codec, (v) => (draft.codec = v)), 'Nur H.264 spielt die Vorschau hier ab'),
+    row('Format', segmented([['h264', 'H.264'], ['hevc', 'HEVC']], draft.codec, (v) => (draft.codec = v)), 'Nur H.264 spielt die Vorschau hier ab'),
     row('Grafikkarte', popup([['auto', 'Automatisch'], ['nvidia', 'NVIDIA'], ['amd', 'AMD']], draft.gpu, (v) => (draft.gpu = v))),
     row('Mauszeiger aufnehmen', toggle(draft.draw_mouse, (v) => (draft.draw_mouse = v))),
   ]));
@@ -581,6 +581,7 @@ async function openSettings() {
     row('Clip-Länge', popup(lengths.map((s) => [s, s < 60 ? `${s} Sekunden` : `${s / 60} ${s === 60 ? 'Minute' : 'Minuten'}`]), draft.clip_secs, (v) => (draft.clip_secs = +v))),
     row('Nach Spiel sortieren', toggle(draft.game_folders, (v) => (draft.game_folders = v)), 'Jedes Spiel bekommt einen eigenen Ordner'),
     row('Ton beim Speichern', toggle(draft.save_sound, (v) => (draft.save_sound = v))),
+    row('Hinweis im Spiel', toggle(draft.overlay, (v) => (draft.overlay = v)), 'Kurz oben rechts, taucht in keinem Clip auf'),
     where,
   ]));
 

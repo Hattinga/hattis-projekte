@@ -101,6 +101,8 @@ pub struct Settings {
     /// A short sound when a clip is saved, because a game in front hides
     /// every other sign of it.
     pub save_sound: bool,
+    /// A short note in the top right corner when a clip is saved.
+    pub overlay: bool,
     /// Where finished clips land. Empty means `<base>/clips`.
     pub out_dir: PathBuf,
 }
@@ -129,6 +131,7 @@ impl Default for Settings {
             record_hotkey: "Ctrl+Alt+R".into(),
             game_folders: true,
             save_sound: true,
+            overlay: true,
             out_dir: PathBuf::new(),
         }
     }

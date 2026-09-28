@@ -82,7 +82,7 @@ impl Recorder {
         std::thread::sleep(Duration::from_millis(300));
         let ts = self.ring.last(self.settings.clip_len(secs));
         let done = clip::save(&self.ffmpeg, &ts, &out_dir)?;
-        self.saved_sound();
+        self.saved("Clip gespeichert", &done);
         Ok(done)
     }
 
@@ -97,6 +97,13 @@ impl Recorder {
         let file = crate::config::buffer_dir().join(format!("aufnahme-{}.ts", std::process::id()));
         self.ring.start_recording(&file)?;
         *rec = Some((clip_dir(&self.settings), Instant::now()));
+        if self.settings.overlay {
+            let how = crate::hotkey::display(&self.settings.record_hotkey);
+            crate::overlay::flash(
+                "Aufnahme läuft",
+                &if how.is_empty() { String::new() } else { format!("{how} beendet sie") },
+            );
+        }
         Ok(())
     }
 
@@ -105,7 +112,7 @@ impl Recorder {
         let Some((out_dir, _)) = lock(&self.shared.recording).take() else { bail!("Es läuft keine Aufnahme") };
         let file = self.ring.stop_recording()?;
         let done = clip::save_file(&self.ffmpeg, &file, &out_dir)?;
-        self.saved_sound();
+        self.saved("Aufnahme gespeichert", &done);
         Ok(done)
     }
 
@@ -130,9 +137,17 @@ impl Recorder {
         self.tender.as_ref().is_some_and(|t| !t.is_finished())
     }
 
-    fn saved_sound(&self) {
+    /// The signs that a save worked, since a game in front hides every other.
+    fn saved(&self, what: &str, done: &Saved) {
         if self.settings.save_sound {
             crate::sys::chime();
+        }
+        if self.settings.overlay {
+            let game = done.path.parent().filter(|_| self.settings.game_folders).and_then(|p| p.file_name());
+            let length = done.secs.map(|s| format!("{}:{:02}", s as u64 / 60, s as u64 % 60));
+            let detail: Vec<String> =
+                [game.map(|g| g.to_string_lossy().into_owned()), length].into_iter().flatten().collect();
+            crate::overlay::flash(what, &detail.join(" · "));
         }
     }
 }
