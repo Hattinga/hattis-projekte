@@ -35,8 +35,14 @@ enum Cmd {
         #[arg(long)]
         end: Option<f64>,
         /// H.264 mit einer Tonspur, unter 10 MB.
-        #[arg(long)]
+        #[arg(long, group = "format")]
         discord: bool,
+        /// Als GIF, 15 fps, 480 px breit.
+        #[arg(long, group = "format")]
+        gif: bool,
+        /// Hochformat 9:16 für TikTok und Shorts.
+        #[arg(long, group = "format")]
+        hochformat: bool,
         /// Lautstärke des Spiels, 0 bis 2.
         #[arg(long, default_value_t = 1.0)]
         game: f32,
@@ -178,9 +184,15 @@ fn run() -> Result<()> {
         Cmd::Run(args) => record(args),
         Cmd::Clip { secs } => ask(&secs.map_or("clip".into(), |s| format!("clip {s}"))),
         Cmd::Record => ask("record"),
-        Cmd::Export { file, start, end, discord, game, mic } => {
+        Cmd::Export { file, start, end, discord, gif, hochformat, game, mic } => {
+            use clipd::library::Target;
             let edit = clipd::library::Edit { start, end: end.unwrap_or(f64::MAX), game_volume: game, mic_volume: mic };
-            let target = if discord { clipd::library::Target::Discord } else { clipd::library::Target::Trim };
+            let target = match (discord, gif, hochformat) {
+                (true, _, _) => Target::Discord,
+                (_, true, _) => Target::Gif,
+                (_, _, true) => Target::Vertical,
+                _ => Target::Trim,
+            };
             export(&file, &edit, target)
         }
         Cmd::Monitors => monitors(),

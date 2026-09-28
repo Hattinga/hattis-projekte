@@ -24,6 +24,17 @@ impl Gpu {
     }
 }
 
+/// What clipd records.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Capture {
+    /// The whole screen, always.
+    Screen,
+    /// The game's own window while a game is in front — nothing that pops up
+    /// over it ends up in a clip — and the screen otherwise.
+    Game,
+}
+
 /// The hardware encoders clipd drives, both on the graphics card. AV1 is not
 /// among them: the ring is an MPEG-TS stream, and ffmpeg can write AV1 into
 /// MPEG-TS but not read it back out.
@@ -72,6 +83,11 @@ pub struct Settings {
     /// How much a hotkey press saves, at most `buffer_secs`.
     pub clip_secs: u32,
     pub gpu: Gpu,
+    pub capture: Capture,
+    /// The window being recorded instead of the screen. Set by the recorder
+    /// while it runs, never read from or written to config.toml.
+    #[serde(skip)]
+    pub window: Option<u64>,
     pub codec: Codec,
     /// Constant quality, 0 (huge) to 51 (poor). 22 is a good starting point.
     pub quality: u8,
@@ -104,6 +120,8 @@ pub struct Settings {
     pub keep_days: u32,
     /// Deletes the oldest clips beyond this many GB; 0 means no limit.
     pub max_gb: u32,
+    /// A Discord channel's webhook, for sending clips there straight away.
+    pub discord_webhook: String,
     /// Files every clip under the game that was in front, `clips/<Spiel>/…`.
     pub game_folders: bool,
     /// A short sound when a clip is saved, because a game in front hides
@@ -124,6 +142,8 @@ impl Default for Settings {
             segment_secs: 1,
             clip_secs: 30,
             gpu: Gpu::Auto,
+            capture: Capture::Screen,
+            window: None,
             // H.264, because it plays everywhere a clip ends up: the window's
             // own player (WebView2 cannot decode HEVC), Discord, browsers.
             codec: Codec::H264,
@@ -141,6 +161,7 @@ impl Default for Settings {
             long_clip_secs: 120,
             keep_days: 0,
             max_gb: 0,
+            discord_webhook: String::new(),
             game_folders: true,
             save_sound: true,
             overlay: true,

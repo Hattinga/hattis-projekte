@@ -262,6 +262,7 @@ async function openDetail(clip) {
   $('title').textContent = clip.game || 'Clip';
   $('name').value = clip.name;
   starButton();
+  invoke('settings').then((s) => $('send').classList.toggle('hidden', !s.discord_webhook)).catch(() => {});
   $('novideo-text').textContent = 'Die Vorschau spielt nur H.264 ab — dieser Clip ist in einem anderen Format.';
   $('info').textContent = `${when(clip.modified)} · ${size(clip.bytes)}`;
   $('novideo').classList.add('hidden');
@@ -381,6 +382,8 @@ function updateVolumes() {
 $('vol-game').oninput = updateVolumes;
 $('vol-mic').oninput = updateVolumes;
 
+const currentEdit = () => ({ start: trimIn, end: trimOut, game_volume: $('vol-game').value / 100, mic_volume: $('vol-mic').value / 100 });
+
 function setBusy(text) {
   $('busy').classList.toggle('hidden', !text);
   $('exports').classList.toggle('hidden', !!text);
@@ -392,13 +395,9 @@ async function exportClip(target) {
   if (!current) return;
   const clip = current.clip;
   video.pause();
-  setBusy(target === 'discord' ? 'Für Discord verkleinern …' : 'Zuschneiden …');
+  setBusy({ discord: 'Für Discord verkleinern …', gif: 'GIF erstellen …', vertical: 'Hochformat erstellen …' }[target] || 'Zuschneiden …');
   try {
-    const out = await invoke('export', {
-      path: clip.path,
-      edit: { start: trimIn, end: trimOut, game_volume: $('vol-game').value / 100, mic_volume: $('vol-mic').value / 100 },
-      target,
-    });
+    const out = await invoke('export', { path: clip.path, edit: currentEdit(), target });
     await loadClips();
     const name = out.split(/[\\/]/).pop();
     if (target === 'discord') {
@@ -411,6 +410,18 @@ async function exportClip(target) {
   setBusy(null);
 }
 $('trim').onclick = () => exportClip('trim');
+$('more').onchange = () => { const v = $('more').value; $('more').selectedIndex = 0; if (v) exportClip(v); };
+$('send').onclick = async () => {
+  if (!current) return;
+  video.pause();
+  setBusy('An Discord senden …');
+  try {
+    await invoke('send_discord', { path: current.clip.path, edit: currentEdit() });
+    await loadClips();
+    toast('Im Discord-Kanal gepostet');
+  } catch (e) { fail(e); }
+  setBusy(null);
+};
 $('discord').onclick = () => exportClip('discord');
 
 function starButton() {
@@ -591,6 +602,7 @@ async function openSettings() {
     row('Qualität', segmented(QUALITY, q, (v) => (draft.quality = v))),
     row('Format', segmented([['h264', 'H.264'], ['hevc', 'HEVC']], draft.codec, (v) => (draft.codec = v)), 'Nur H.264 spielt die Vorschau hier ab'),
     row('Grafikkarte', popup([['auto', 'Automatisch'], ['nvidia', 'NVIDIA'], ['amd', 'AMD']], draft.gpu, (v) => (draft.gpu = v))),
+    row('Nur das Spielfenster', toggle(draft.capture === 'game', (v) => (draft.capture = v ? 'game' : 'screen')), 'Was über dem Spiel aufpoppt, landet in keinem Clip'),
     row('Mauszeiger aufnehmen', toggle(draft.draw_mouse, (v) => (draft.draw_mouse = v))),
   ]));
 
@@ -643,6 +655,16 @@ async function openSettings() {
     row('Alte Clips löschen', popup(days, draft.keep_days, (v) => (draft.keep_days = +v))),
     row('Höchstens', popup(gbs, draft.max_gb, (v) => (draft.max_gb = +v)), 'Darüber gehen die ältesten'),
   ], 'Favoriten ⭐ bleiben immer. Aufgeräumt wird nach jedem neuen Clip.'));
+
+  const hook = el('input', 'text-input');
+  hook.type = 'url';
+  hook.placeholder = 'https://discord.com/api/webhooks/…';
+  hook.value = draft.discord_webhook || '';
+  hook.spellcheck = false;
+  hook.oninput = () => (draft.discord_webhook = hook.value.trim());
+  const hookRow = el('div', 'row');
+  hookRow.append(el('div', 'label', 'Discord-Webhook'), hook);
+  body.append(group('Teilen', [hookRow], 'In Discord: Kanal bearbeiten → Integrationen → Webhooks → Webhook-URL kopieren. Dann schickt „An Discord senden“ den Clip direkt in diesen Kanal.'));
 
   body.append(group('Allgemein', [
     row('Mit Windows starten', toggle(autostart, (v) => (autostartWanted = v)), 'clipd startet unsichtbar im Infobereich'),

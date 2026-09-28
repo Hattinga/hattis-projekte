@@ -352,6 +352,28 @@ fn open_external(path: PathBuf) -> Result<(), String> {
     tauri_plugin_opener::open_path(path, None::<&str>).map_err(err)
 }
 
+/// Makes the Discord version of the selection and posts it into the channel
+/// set in the settings.
+#[tauri::command]
+async fn send_discord(app: AppHandle, path: PathBuf, edit: Edit) -> Result<PathBuf, String> {
+    blocking(move || {
+        let webhook = Settings::load().discord_webhook;
+        if !library::webhook_ok(&webhook) {
+            return Err("In den Einstellungen fehlt der Webhook des Discord-Kanals".into());
+        }
+        let (bin, s) = settled_settings(&app)?;
+        let progress_app = app.clone();
+        let out = library::export(&bin, &s, &path, &edit, Target::Discord, &mut |f| {
+            let _ = progress_app.emit("export-progress", f * 0.9);
+        })
+        .map_err(|e| format!("{e:#}"))?;
+        library::send_to_discord(&webhook, &out).map_err(|e| format!("{e:#}"))?;
+        let _ = app.emit("export-progress", 1.0);
+        Ok(out)
+    })
+    .await
+}
+
 #[tauri::command]
 fn rename(path: PathBuf, name: String) -> Result<PathBuf, String> {
     library::rename(&path, &name).map_err(|e| format!("{e:#}"))
@@ -510,6 +532,7 @@ fn main() {
             copy_file,
             open_external,
             export,
+            send_discord,
             rename,
             delete,
             set_favorite,

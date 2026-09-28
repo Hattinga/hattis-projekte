@@ -136,6 +136,26 @@ pub fn ddagrab(s: &Settings) -> String {
     format!("ddagrab=output_idx={}:framerate={}:draw_mouse={}", s.monitor, s.fps, u8::from(s.draw_mouse))
 }
 
+/// One window instead of the screen, through Windows Graphics Capture. It
+/// only delivers a frame when the window changes, so `fps` makes the rate
+/// steady again for the keyframe spacing; the size is rounded to even numbers,
+/// which H.264 needs, and kept when the window is resized.
+pub fn gfxcapture(s: &Settings, hwnd: u64) -> String {
+    format!(
+        "gfxcapture=hwnd={hwnd}:max_framerate={fps}:capture_cursor={mouse}:width=-2:height=-2:resize_mode=scale_aspect,fps={fps}",
+        fps = s.fps,
+        mouse = u8::from(s.draw_mouse)
+    )
+}
+
+/// The picture source: the chosen window, or the screen.
+fn grab(s: &Settings) -> String {
+    match s.window {
+        Some(hwnd) => gfxcapture(s, hwnd),
+        None => ddagrab(s),
+    }
+}
+
 /// ddagrab for an AMD card. AMF's encoders refuse ddagrab's BGRA textures
 /// (`SubmitInput` error 18), but `vpp_amf` takes them and makes nv12 on the
 /// chip, so the picture still never leaves the graphics card.
@@ -145,7 +165,7 @@ pub fn ddagrab(s: &Settings) -> String {
 /// pointer, and it records the first monitor rather than fail on a missing
 /// one. The CPU way round costs five times the time.
 pub fn ddagrab_amf(s: &Settings) -> String {
-    format!("{},vpp_amf=format=nv12:color_profile=bt709:out_color_range=studio", ddagrab(s))
+    format!("{},vpp_amf=format=nv12:color_profile=bt709:out_color_range=studio", grab(s))
 }
 
 /// AMF knows three speeds where nvenc has seven presets; p5, the default,
@@ -176,7 +196,7 @@ fn video(s: &Settings) -> Result<(String, Vec<String>)> {
             // Constant quality. nvenc only honours -cq once the bitrate cap is lifted.
             push(e, &["-rc", "vbr", "-cq", &q, "-b:v", "0"]);
             push(e, &["-g", &gop]);
-            ddagrab(s)
+            grab(s)
         }
         Gpu::Amd => {
             push(e, &["-c:v", s.codec.amf(), "-usage", "lowlatency", "-quality", amf_quality(&s.preset)]);
@@ -435,6 +455,22 @@ mod tests {
         assert_eq!(at("-c:v").as_deref(), Some("hevc_nvenc"));
         assert_eq!(at("-cq").as_deref(), Some("20"));
         assert_eq!(at("-b:v").as_deref(), Some("0"), "ohne das greift -cq nicht");
+    }
+
+    /// Ein einzelnes Fenster kommt über Windows Graphics Capture, mit fester
+    /// Bildrate und geraden Maßen; bei AMD folgt trotzdem vpp_amf.
+    #[test]
+    fn a_window_replaces_the_screen() {
+        let s = Settings { window: Some(4242), ..settings() };
+        let a = args(&s, None);
+        let at = |flag: &str| a.iter().position(|x| x == flag).map(|i| a[i + 1].clone());
+        let source = at("-i").unwrap();
+        assert!(source.starts_with("gfxcapture=hwnd=4242:max_framerate=60:"), "{source}");
+        assert!(source.contains("width=-2:height=-2"));
+        assert!(source.ends_with(",fps=60"), "{source}");
+        let amd = Settings { gpu: Gpu::Amd, ..s };
+        let a = args(&amd, None);
+        assert!(a.iter().any(|x| x.starts_with("gfxcapture=") && x.ends_with("out_color_range=studio")));
     }
 
     /// Die Quelle muss den gewählten Monitor und die Bildrate nennen.

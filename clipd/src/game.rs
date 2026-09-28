@@ -12,6 +12,14 @@ pub struct Foreground {
     /// FileDescription (or ProductName) from the program's version resource.
     pub description: String,
     pub fullscreen: bool,
+    /// The window itself, for recording just it.
+    pub hwnd: u64,
+}
+
+/// The window to record in game mode: a fullscreen game's, or none for the
+/// screen.
+pub fn game_window(fg: &Foreground) -> Option<u64> {
+    (fg.fullscreen && !fg.exe.is_empty() && fg.hwnd != 0).then_some(fg.hwnd)
 }
 
 /// The name a clip's folder gets.
@@ -140,7 +148,7 @@ pub fn foreground() -> Foreground {
             }
         }
         let description = if path.is_empty() { String::new() } else { version_string(&path) };
-        Foreground { exe, title, description, fullscreen }
+        Foreground { exe, title, description, fullscreen, hwnd: hwnd.0 as u64 }
     }
 }
 
@@ -200,7 +208,7 @@ mod tests {
     use super::*;
 
     fn fg(exe: &str, desc: &str, title: &str) -> Foreground {
-        Foreground { exe: exe.into(), description: desc.into(), title: title.into(), fullscreen: true }
+        Foreground { exe: exe.into(), description: desc.into(), title: title.into(), fullscreen: true, hwnd: 7 }
     }
 
     /// Die Beschreibung im Programm nennt die meisten Spiele richtig.
@@ -225,6 +233,15 @@ mod tests {
         f.fullscreen = false;
         assert_eq!(game_name(&f), DESKTOP);
         assert_eq!(game_name(&Foreground::default()), DESKTOP);
+    }
+
+    /// Nur ein Spiel im Vollbild wird allein aufgenommen.
+    #[test]
+    fn only_a_fullscreen_game_gets_its_own_capture() {
+        assert_eq!(game_window(&fg("cs2.exe", "Counter-Strike 2", "")), Some(7));
+        let windowed = Foreground { fullscreen: false, ..fg("cs2.exe", "", "") };
+        assert_eq!(game_window(&windowed), None);
+        assert_eq!(game_window(&Foreground::default()), None);
     }
 
     #[test]

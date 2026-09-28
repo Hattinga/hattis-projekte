@@ -19,14 +19,14 @@ pub struct Recorder {
     pub audio_device: Option<String>,
     /// The microphone on the second track, if there is one.
     pub mic_device: Option<String>,
-    ring: Arc<Ring>,
     shared: Arc<Shared>,
     tender: Option<std::thread::JoinHandle<()>>,
 }
 
-#[derive(Default)]
 struct Shared {
     stop: AtomicBool,
+    /// The ring of the capture running now; following a game starts a new one.
+    ring: Mutex<Arc<Ring>>,
     /// Where a recording started by hand goes, and since when it runs.
     recording: Mutex<Option<(PathBuf, Instant)>>,
 }
@@ -43,29 +43,17 @@ impl Recorder {
         s.gpu = ffmpeg::pick_gpu(ffmpeg_bin, &s)?;
         let mut buf = Buffer::start(ffmpeg_bin, &s)?;
         buf.wait_until_recording(Duration::from_secs(10))?;
-        let shared = Arc::new(Shared::default());
-        let (audio_device, mic_device, ring) = (buf.audio_device.clone(), buf.mic_device.clone(), buf.ring.clone());
-        let tend_shared = shared.clone();
-        let tender = std::thread::Builder::new().name("clipd-watch".into()).spawn(move || {
-            while !tend_shared.stop.load(Ordering::Relaxed) {
-                if let Some(status) = buf.exited() {
-                    std::thread::sleep(Duration::from_millis(100));
-                    on_end(format!("Die Aufnahme ist beendet ({status}){}", buf.last_words()));
-                    return;
-                }
-                std::thread::sleep(Duration::from_millis(100));
-            }
-            // Dropping the buffer here ends ffmpeg.
-        })?;
-        Ok(Self {
-            settings: s,
-            ffmpeg: ffmpeg_bin.to_path_buf(),
-            audio_device,
-            mic_device,
-            ring,
-            shared,
-            tender: Some(tender),
-        })
+        let shared = Arc::new(Shared {
+            stop: AtomicBool::new(false),
+            ring: Mutex::new(buf.ring.clone()),
+            recording: Mutex::new(None),
+        });
+        let (audio_device, mic_device) = (buf.audio_device.clone(), buf.mic_device.clone());
+        let (tend_shared, tend_s, tend_bin) = (shared.clone(), s.clone(), ffmpeg_bin.to_path_buf());
+        let tender = std::thread::Builder::new()
+            .name("clipd-watch".into())
+            .spawn(move || tend(buf, tend_s, &tend_bin, &tend_shared, on_end))?;
+        Ok(Self { settings: s, ffmpeg: ffmpeg_bin.to_path_buf(), audio_device, mic_device, shared, tender: Some(tender) })
     }
 
     /// Saves the last `clip_secs` under the game that is in front.
@@ -80,7 +68,7 @@ impl Recorder {
         // and the AAC encoder when the key is pressed; a short wait lets it
         // arrive, at the price of a little picture after the press.
         std::thread::sleep(Duration::from_millis(300));
-        let ts = self.ring.last(self.settings.clip_len(secs));
+        let ts = self.ring().last(self.settings.clip_len(secs));
         let done = clip::save(&self.ffmpeg, &ts, &out_dir)?;
         self.saved("Clip gespeichert", &done);
         Ok(done)
@@ -95,7 +83,7 @@ impl Recorder {
             bail!("Es läuft schon eine Aufnahme");
         }
         let file = crate::config::buffer_dir().join(format!("aufnahme-{}.ts", std::process::id()));
-        self.ring.start_recording(&file)?;
+        self.ring().start_recording(&file)?;
         *rec = Some((clip_dir(&self.settings), Instant::now()));
         if self.settings.overlay {
             let how = crate::hotkey::display(&self.settings.record_hotkey);
@@ -110,7 +98,7 @@ impl Recorder {
     /// Ends the recording started by hand and saves it.
     pub fn stop_recording(&self) -> Result<Saved> {
         let Some((out_dir, _)) = lock(&self.shared.recording).take() else { bail!("Es läuft keine Aufnahme") };
-        let file = self.ring.stop_recording()?;
+        let file = self.ring().stop_recording()?;
         let done = clip::save_file(&self.ffmpeg, &file, &out_dir)?;
         self.saved("Aufnahme gespeichert", &done);
         Ok(done)
@@ -129,7 +117,11 @@ impl Recorder {
 
     /// Memory the ring takes up right now.
     pub fn buffered_bytes(&self) -> usize {
-        self.ring.bytes()
+        self.ring().bytes()
+    }
+
+    fn ring(&self) -> Arc<Ring> {
+        lock(&self.shared.ring).clone()
     }
 
     /// Whether ffmpeg is still capturing.
@@ -161,6 +153,57 @@ impl Drop for Recorder {
             let _ = t.join();
         }
     }
+}
+
+/// Watches ffmpeg until told to stop, and in game mode follows the game in
+/// front: a fullscreen game gets a capture of its own window, everything
+/// else the screen. Owns the buffer, so returning from here ends the capture.
+fn tend(mut buf: Buffer, mut s: Settings, ffmpeg_bin: &Path, shared: &Shared, on_end: impl FnOnce(String)) {
+    let mut last_look = Instant::now();
+    let mut refused = None;
+    while !shared.stop.load(Ordering::Relaxed) {
+        if let Some(status) = buf.exited() {
+            // A game window that closes ends its capture; that is the cue to
+            // go back to the screen, not a failure.
+            if s.window.is_none() {
+                std::thread::sleep(Duration::from_millis(100));
+                on_end(format!("Die Aufnahme ist beendet ({status}){}", buf.last_words()));
+                return;
+            }
+            s.window = None;
+            match restart(ffmpeg_bin, &s, shared) {
+                Some(b) => buf = b,
+                None => return on_end("Die Aufnahme ließ sich nicht wieder starten".into()),
+            }
+        }
+        let recording = lock(&shared.recording).is_some();
+        if s.capture == crate::config::Capture::Game && !recording && last_look.elapsed() >= Duration::from_secs(1) {
+            last_look = Instant::now();
+            let wanted = game::game_window(&game::foreground());
+            if wanted != s.window && wanted != refused {
+                let next = Settings { window: wanted, ..s.clone() };
+                match restart(ffmpeg_bin, &next, shared) {
+                    Some(b) => {
+                        buf = b;
+                        s = next;
+                    }
+                    // This window will not be captured on its own; what runs
+                    // now carries on, and it is not asked again every second.
+                    None => refused = wanted,
+                }
+            }
+        }
+        std::thread::sleep(Duration::from_millis(100));
+    }
+    // Dropping the buffer here ends ffmpeg.
+}
+
+/// A fresh capture with `s`, its ring put in place of the old one.
+fn restart(ffmpeg_bin: &Path, s: &Settings, shared: &Shared) -> Option<Buffer> {
+    let mut buf = Buffer::start(ffmpeg_bin, s).ok()?;
+    buf.wait_until_recording(Duration::from_secs(10)).ok()?;
+    *lock(&shared.ring) = buf.ring.clone();
+    Some(buf)
 }
 
 /// `clips/<Spiel>` for the window in front, or plain `clips`.

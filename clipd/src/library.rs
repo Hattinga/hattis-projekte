@@ -280,6 +280,22 @@ pub enum Target {
     Trim,
     /// H.264 with one mixed sound track, under [`DISCORD_BYTES`].
     Discord,
+    /// An animated GIF, 15 frames a second and 480 pixels wide, no sound.
+    Gif,
+    /// 9:16 from the middle of the picture, 1080×1920, for TikTok and Shorts.
+    Vertical,
+}
+
+impl Target {
+    /// What goes into the new file's name, and its extension.
+    fn suffix(self) -> (&'static str, &'static str) {
+        match self {
+            Target::Trim => ("geschnitten", "mp4"),
+            Target::Discord => ("Discord", "mp4"),
+            Target::Gif => ("GIF", "gif"),
+            Target::Vertical => ("Hochformat", "mp4"),
+        }
+    }
 }
 
 /// How a Discord export fits its length into the limit.
@@ -329,21 +345,49 @@ pub fn export(
     let secs = end - start;
     anyhow::ensure!(secs >= 0.2, "Das Stück ist zu kurz");
     let stem = src.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_else(|| "clip".into());
-    let suffix = if target == Target::Trim { "geschnitten" } else { "Discord" };
-    let out = free(src.with_file_name(format!("{stem} ({suffix}).mp4")));
+    let (suffix, ext) = target.suffix();
+    let out = free(src.with_file_name(format!("{stem} ({suffix}).{ext}")));
 
     let mut factor = 1.0;
     loop {
         let args = export_args(s, src, &out, start, secs, tracks, height, edit, target, factor)?;
         run(ffmpeg_bin, &args, secs, progress)?;
         let bytes = std::fs::metadata(&out).map(|m| m.len()).unwrap_or(0);
-        if target == Target::Trim || bytes <= DISCORD_BYTES || factor < 0.5 {
-            anyhow::ensure!(bytes <= DISCORD_BYTES || target == Target::Trim, "Der Clip passt nicht unter 10 MB");
+        if target != Target::Discord || bytes <= DISCORD_BYTES || factor < 0.5 {
+            anyhow::ensure!(bytes <= DISCORD_BYTES || target != Target::Discord, "Der Clip passt nicht unter 10 MB");
             return Ok(out);
         }
         // The encoder overshot; the next try aims lower by the same ratio.
         factor *= DISCORD_BYTES as f64 / bytes as f64 * 0.95;
     }
+}
+
+/// Whether `url` is a Discord webhook — the file goes nowhere else.
+pub fn webhook_ok(url: &str) -> bool {
+    let Some(rest) = url.trim().strip_prefix("https://") else { return false };
+    let host = rest.split('/').next().unwrap_or_default();
+    let discord = ["discord.com", "discordapp.com"].iter().any(|d| host == *d || host.ends_with(&format!(".{d}")));
+    discord && rest[host.len()..].starts_with("/api/webhooks/")
+}
+
+/// Posts `file` into the Discord channel behind `webhook`, with curl.exe,
+/// which every Windows since 10 brings along.
+pub fn send_to_discord(webhook: &str, file: &Path) -> Result<()> {
+    anyhow::ensure!(webhook_ok(webhook), "Das ist kein Discord-Webhook (https://discord.com/api/webhooks/…)");
+    let mut cmd = std::process::Command::new(if cfg!(windows) { "curl.exe" } else { "curl" });
+    cmd.args(["-sS", "--fail-with-body", "-F"]).arg(format!("files[0]=@{}", file.display())).arg(webhook.trim());
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x0800_0000);
+    }
+    let out = cmd.output().context("curl lässt sich nicht starten")?;
+    if !out.status.success() {
+        let why = String::from_utf8_lossy(&out.stdout);
+        let why = if why.trim().is_empty() { String::from_utf8_lossy(&out.stderr) } else { why };
+        bail!("Discord hat den Clip nicht angenommen: {}", why.trim());
+    }
+    Ok(())
 }
 
 /// `path`, or the first `path (2)`, `path (3)`, … that is still free.
@@ -352,7 +396,8 @@ fn free(path: PathBuf) -> PathBuf {
         return path;
     }
     let stem = path.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
-    (2..).map(|n| path.with_file_name(format!("{stem} ({n}).mp4"))).find(|p| !p.exists()).unwrap_or(path)
+    let ext = path.extension().map(|e| e.to_string_lossy().into_owned()).unwrap_or_default();
+    (2..).map(|n| path.with_file_name(format!("{stem} ({n}).{ext}"))).find(|p| !p.exists()).unwrap_or(path)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -378,8 +423,8 @@ fn export_args(
     let mut graph = Vec::new();
     let mut maps = vec!["0:v:0".to_string()];
     match (target, tracks) {
-        (_, 0) => {}
-        (Target::Trim, 1) | (Target::Discord, 1) => {
+        (_, 0) | (Target::Gif, _) => {}
+        (_, 1) => {
             graph.push(format!("[0:a:0]volume={gv}[a0]"));
             maps.push("[a0]".into());
         }
@@ -392,13 +437,26 @@ fn export_args(
                 maps.push("[a1]".into());
             }
         }
-        (Target::Discord, _) => {
+        (Target::Discord | Target::Vertical, _) => {
             graph.push(format!("[0:a:0]volume={gv}[g];[0:a:1]volume={mv}[m];[g][m]amix=inputs=2:normalize=0[a0]"));
             maps.push("[a0]".into());
         }
     }
 
     let budget = budget(secs, DISCORD_BYTES, src_height);
+    if target == Target::Gif {
+        // Its own palette per clip, or GIF's 256 colours turn to blotches.
+        graph.push(
+            "[0:v:0]fps=15,scale=480:-2:flags=lanczos,split[s0][s1];[s0]palettegen=stats_mode=diff[p];\
+             [s1][p]paletteuse=dither=bayer:bayer_scale=4[v]"
+                .into(),
+        );
+        maps[0] = "[v]".into();
+    }
+    if target == Target::Vertical {
+        graph.push("[0:v:0]crop=ih*9/16:ih,scale=1080:1920:flags=lanczos[v]".into());
+        maps[0] = "[v]".into();
+    }
     if target == Target::Discord {
         let mut v = Vec::new();
         if let Some(h) = budget.height {
@@ -423,6 +481,16 @@ fn export_args(
         Target::Trim => {
             a.extend(ffmpeg::encoder_args(s)?);
             a.extend(["-c:a".into(), "aac".into(), "-b:a".into(), format!("{}k", s.audio_kbit)]);
+        }
+        Target::Gif => {
+            a.extend(["-an", "-loop", "0"].map(String::from));
+            a.push(out.to_string_lossy().into_owned());
+            return Ok(a);
+        }
+        Target::Vertical => {
+            let h264 = Settings { codec: Codec::H264, ..s.clone() };
+            a.extend(ffmpeg::encoder_args(&h264)?);
+            a.extend(["-c:a".into(), "aac".into(), "-b:a".into(), format!("{}k", s.audio_kbit), "-ac".into(), "2".into()]);
         }
         Target::Discord => {
             let h264 = Settings { codec: Codec::H264, ..s.clone() };
@@ -550,6 +618,38 @@ mod tests {
         assert_eq!(at("-c:v").as_deref(), Some("h264_amf"));
         assert_eq!(at("-ac").as_deref(), Some("2"));
         assert!(at("-b:v").is_some());
+    }
+
+    /// Ein GIF hat keinen Ton und eine eigene Palette.
+    #[test]
+    fn a_gif_has_a_palette_and_no_sound() {
+        let a = args(Target::Gif, 2, &edit());
+        let at = |flag: &str| a.iter().position(|x| x == flag).map(|i| a[i + 1].clone());
+        let graph = at("-filter_complex").unwrap();
+        assert!(graph.contains("palettegen") && graph.contains("paletteuse"), "{graph}");
+        assert!(!graph.contains("[0:a"), "kein Ton im GIF");
+        assert!(a.contains(&"-an".to_string()));
+        assert!(!a.contains(&"-c:v".to_string()), "GIF braucht keinen Hardware-Kodierer");
+    }
+
+    /// Hochformat: Mitte ausschneiden, H.264, eine gemischte Spur.
+    #[test]
+    fn vertical_crops_the_middle() {
+        let a = args(Target::Vertical, 2, &edit());
+        let at = |flag: &str| a.iter().position(|x| x == flag).map(|i| a[i + 1].clone());
+        let graph = at("-filter_complex").unwrap();
+        assert!(graph.contains("crop=ih*9/16:ih,scale=1080:1920"), "{graph}");
+        assert!(graph.contains("amix=inputs=2"));
+        assert_eq!(at("-c:v").as_deref(), Some("h264_amf"));
+    }
+
+    #[test]
+    fn discord_webhooks_are_checked() {
+        assert!(webhook_ok("https://discord.com/api/webhooks/123/abc"));
+        assert!(webhook_ok("https://discordapp.com/api/webhooks/1/x"));
+        assert!(webhook_ok("https://canary.discord.com/api/webhooks/1/x"));
+        assert!(!webhook_ok("https://example.com/api/webhooks/1/x"));
+        assert!(!webhook_ok("http://discord.com/api/webhooks/1/x"), "nur https");
     }
 
     #[test]

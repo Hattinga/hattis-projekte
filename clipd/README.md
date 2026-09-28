@@ -51,7 +51,10 @@ wenn das Fenster zu ist — dann sitzt es im Infobereich neben der Uhr.
   kodiert und ist aufs Bild genau.
 - **Für Discord:** macht aus der Auswahl eine H.264-Datei unter 10 MB mit
   einer Tonspur und legt sie in die Zwischenablage — in Discord mit Strg+V
-  einfügen.
+  einfügen. Mit einem Webhook in den Einstellungen schickt *An Discord
+  senden* sie gleich selbst in den Kanal.
+- **Mehr:** als GIF (15 fps, 480 px breit) oder im Hochformat 9:16 für
+  TikTok und Shorts.
 - **Favoriten:** Ein Stern schützt einen Clip vor dem Aufräumen, das auf
   Wunsch alte Clips oder alles über einem Speicherlimit löscht.
 - **Ton:** Spiel und Mikrofon lassen sich getrennt leiser, lauter oder stumm
@@ -104,6 +107,7 @@ standardmäßig in `clips/`.
 | `buffer_secs` | `120` | wie weit ein Clip zurückreichen kann |
 | `segment_secs` | `1` | Abstand der Keyframes; so genau hält ein Clip seine Länge |
 | `clip_secs` | `30` | was ein Tastendruck speichert |
+| `capture` | `screen` | `game` nimmt, solange ein Spiel im Vollbild vorne ist, nur dessen Fenster auf — was darüber aufpoppt, landet in keinem Clip |
 | `gpu` | `auto` | `auto`, `nvidia` oder `amd`; `auto` probiert NVIDIA, dann AMD |
 | `codec` | `h264` | `h264` oder `hevc`; nur H.264 spielt das Fenster selbst ab |
 | `quality` | `22` | 0 (riesig) bis 51 (schlecht); bei AMD ein fester QP |
@@ -119,6 +123,7 @@ standardmäßig in `clips/`.
 | `long_clip_secs` | `120` | was die zweite Taste speichert |
 | `keep_days` | `0` | Clips nach so vielen Tagen löschen; 0 heißt nie |
 | `max_gb` | `0` | darüber gehen die ältesten Clips; 0 heißt kein Limit |
+| `discord_webhook` | leer | Webhook eines Discord-Kanals für *An Discord senden* |
 | `game_folders` | `true` | ein Ordner pro Spiel |
 | `save_sound` | `true` | kurzer Ton, wenn ein Clip gespeichert ist |
 | `overlay` | `true` | kurzer Hinweis oben rechts, der in keinem Clip auftaucht |
@@ -150,6 +155,10 @@ voreingestellten 120 Sekunden.
   aber für HD-Material ungewöhnlich. Wer eine Datei weiterverarbeitet, sollte
   die Auszeichnung nicht einfach auf BT.709 umschreiben. Bei AMD rechnet
   `vpp_amf` ausdrücklich nach BT.709 um, und so steht es auch in der Datei.
+- **Im Spielfenster-Modus fängt der Puffer beim Wechsel neu an.** Kommt ein
+  Spiel nach vorne oder geht es, startet clipd die Aufnahme mit dem neuen
+  Ziel neu; was davor im Puffer lag, gehört nicht zum Spiel. Während einer
+  laufenden Aufnahme wird nicht gewechselt.
 - **Nicht jede Karte kann jeden Codec.** clipd probiert beim Start ein einzelnes Bild durch und nennt, woran es
   scheitert, statt mit leerem Buffer weiterzulaufen.
 - **Der Ton ist, was man hört.** Der Loopback greift hinter dem
