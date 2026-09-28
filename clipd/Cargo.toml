@@ -6,6 +6,11 @@ description = "Schlanker Clipper fürs Zocken: Replay-Buffer, Hotkey, schneiden,
 license = "MIT"
 repository = "https://github.com/Hattinga/hattis-projekte"
 
+[workspace]
+# The window lives in app/ and builds into the same target folder, so it
+# finds the same config.toml, buffer and ffmpeg during development.
+members = [".", "app"]
+
 [lib]
 name = "clipd"
 path = "src/lib.rs"

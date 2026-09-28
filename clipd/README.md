@@ -37,22 +37,49 @@ Drei Dinge daran sind wichtiger, als sie aussehen:
   was die Boxen spielen — DirectShow kennt nur Mikrofone. clipd zapft deshalb
   WASAPI im Loopback-Modus an und schiebt die Samples in ffmpegs Eingabe.
 
-## Benutzen
+## Das Fenster
+
+`clipd-app.exe` ist clipd mit Oberfläche. Es nimmt im Hintergrund auf, auch
+wenn das Fenster zu ist — dann sitzt es im Infobereich neben der Uhr.
+
+- **Bibliothek:** alle Clips mit Vorschaubild, links nach Spiel sortiert.
+- **Schneiden:** Anfang und Ende am gelben Rahmen ziehen (oder `I` und `O`
+  drücken), dann *Zuschneiden*. Das Stück wird auf der Grafikkarte neu
+  kodiert und ist aufs Bild genau.
+- **Für Discord:** macht aus der Auswahl eine H.264-Datei unter 10 MB mit
+  einer Tonspur und legt sie in die Zwischenablage — in Discord mit Strg+V
+  einfügen.
+- **Ton:** Spiel und Mikrofon lassen sich getrennt leiser, lauter oder stumm
+  stellen, bevor man speichert.
+- **Einstellungen** (Strg+,): Bildschirm, Qualität, Format, Clip-Länge,
+  Geräte, Tastenkürzel, Start mit Windows.
+
+Beide Programme teilen sich `config.toml`, `clips/` und `bin/`. Es sollte nur
+eines von beiden aufnehmen.
+
+## Benutzen im Terminal
 
 ```
 clipd run                     # nimmt auf und wartet auf den Hotkey
 clipd run --monitor 1         # anderer Bildschirm
 clipd run --gpu amd           # Karte festlegen statt ausprobieren
 clipd run --no-audio          # nur Bild
+clipd run --mic               # Mikrofon als eigene Tonspur
 clipd monitors                # zeigt, was aufgenommen werden kann
 clipd audio                   # probiert jedes Wiedergabegerät auf Ton durch
 clipd clip                    # speichert jetzt, aus einem anderen Fenster
 clipd clip --secs 10          # kürzer als eingestellt
+clipd export clip.mp4 --start 3 --end 12   # zuschneiden
+clipd export clip.mp4 --discord --mic 0     # unter 10 MB, ohne Mikrofon
 clipd config --init           # legt die config.toml an
 ```
 
-`clipd run` läuft, bis man es mit Strg+C beendet. Der Hotkey (voreingestellt
-`Strg+Alt+C`) gilt systemweit, das Spiel darf also im Vordergrund sein.
+`clipd run` läuft, bis man es mit Strg+C beendet. Die Hotkeys gelten
+systemweit, das Spiel darf also im Vordergrund sein: `Strg+Alt+C` speichert
+die letzten 30 Sekunden, `Strg+Alt+R` startet eine Aufnahme beliebiger Länge
+und beendet sie wieder. Jeder Clip landet im Ordner des Spiels, das gerade
+vorne war (`clips/Valorant/…`); ein Fenster, das nicht den ganzen Bildschirm
+füllt, zählt als `Desktop`.
 
 `clipd clip` speichert aus dem Puffer der laufenden Aufnahme und eignet sich
 für ein Stream Deck oder eine zweite Tastenbelegung. Es benutzt die
@@ -71,22 +98,29 @@ standardmäßig in `clips/`.
 | `segment_secs` | `1` | Länge einer Pufferdatei |
 | `clip_secs` | `30` | was ein Tastendruck speichert |
 | `gpu` | `auto` | `auto`, `nvidia` oder `amd`; `auto` probiert NVIDIA, dann AMD |
-| `codec` | `hevc` | `h264`, `hevc` oder `av1` |
+| `codec` | `h264` | `h264`, `hevc` oder `av1`; nur H.264 spielt das Fenster selbst ab |
 | `quality` | `22` | 0 (riesig) bis 51 (schlecht); bei AMD ein fester QP |
 | `preset` | `p5` | `p1` (schnell) bis `p7` (beste Qualität); AMD kennt nur drei Stufen: p1–p2, p3–p5, p6–p7 |
 | `audio` | `true` | nimmt mit auf, was die Boxen spielen |
 | `audio_kbit` | `160` | AAC-Bitrate des Tons |
 | `audio_device` | leer | Teil des Gerätenamens; leer heißt Standardgerät |
+| `mic` | `false` | nimmt das Mikrofon als zweite Tonspur auf |
+| `mic_device` | leer | Teil des Mikrofonnamens; leer heißt Standardmikrofon |
 | `hotkey` | `Ctrl+Alt+C` | auch deutsch: `Strg+Umschalt+F9` |
+| `record_hotkey` | `Ctrl+Alt+R` | Aufnahme beliebiger Länge; leer schaltet sie ab |
+| `game_folders` | `true` | ein Ordner pro Spiel |
+| `save_sound` | `true` | kurzer Ton, wenn ein Clip gespeichert ist |
 | `out_dir` | leer | leer heißt `clips/` |
 
-Der Puffer kostet Platz: 1080p60 mit HEVC und `quality = 22` sind rund
-270 KB pro Sekunde, also etwa 32 MB für die voreingestellten 120 Sekunden.
+Der Puffer kostet Platz: 1080p60 mit `quality = 22` sind je nach Bild und
+Format rund 200 bis 400 KB pro Sekunde, also 25 bis 50 MB für die
+voreingestellten 120 Sekunden.
 
 ## Was noch fehlt
 
-- **Schneiden und Teilen.** Bisher speichert clipd nur ganze Clips.
-- **Fenster.** clipd ist heute ein Programm fürs Terminal.
+- **Ein Installer.** Tauri kann einen bauen (`cargo tauri build` in `app/`),
+  eingerichtet ist das noch nicht.
+- **Linux und macOS.** Aufnahme, Ton und Hotkeys sind heute Windows-APIs.
 
 ## Bekannte Eigenheiten
 
@@ -129,6 +163,10 @@ Der Puffer kostet Platz: 1080p60 mit HEVC und `quality = 22` sind rund
   Rechners.
 
 ## Entwicklung
+
+`cargo run -p clipd-app` startet das Fenster, `cargo run -- run` die
+Terminal-Fassung. Die Oberfläche ist schlichtes HTML, CSS und JavaScript in
+`app/ui/` — ohne npm und ohne Build-Schritt.
 
 `cargo run --example loopback_probe` prüft, ob WASAPI auf diesem Rechner
 überhaupt einen Mitschnitt zulässt — Mikrofon und Loopback, in beiden

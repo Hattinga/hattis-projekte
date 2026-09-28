@@ -348,7 +348,15 @@ mod tests {
     use crate::config::Codec;
 
     fn settings() -> Settings {
-        Settings { fps: 60, segment_secs: 2, quality: 20, monitor: 1, gpu: Gpu::Nvidia, ..Default::default() }
+        Settings {
+            fps: 60,
+            segment_secs: 2,
+            quality: 20,
+            monitor: 1,
+            gpu: Gpu::Nvidia,
+            codec: Codec::Hevc,
+            ..Default::default()
+        }
     }
 
     fn stereo() -> crate::audio::Format {

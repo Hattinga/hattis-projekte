@@ -142,7 +142,9 @@ impl Default for Settings {
             segment_secs: 1,
             clip_secs: 30,
             gpu: Gpu::Auto,
-            codec: Codec::Hevc,
+            // H.264, because it plays everywhere a clip ends up: the window's
+            // own player (WebView2 cannot decode HEVC), Discord, browsers.
+            codec: Codec::H264,
             quality: 22,
             preset: "p5".into(),
             draw_mouse: false,

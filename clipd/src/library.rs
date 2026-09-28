@@ -92,6 +92,39 @@ pub fn meta(ffmpeg_bin: &Path, clip: &Path) -> Result<Meta> {
     Ok(m)
 }
 
+/// `count` small frames spread over the clip, for the trim bar; kept in the
+/// cache like the thumbnail.
+pub fn strip(ffmpeg_bin: &Path, clip: &Path, count: u32) -> Result<Vec<PathBuf>> {
+    let dir = crate::config::base_dir().join("cache").join(format!("{}-strip", cache_key(clip)?));
+    let frames = |d: &Path| -> Vec<PathBuf> {
+        let mut v: Vec<PathBuf> = std::fs::read_dir(d)
+            .map(|r| {
+                r.filter_map(|e| e.ok()).map(|e| e.path()).filter(|p| p.extension().is_some_and(|x| x == "jpg")).collect()
+            })
+            .unwrap_or_default();
+        v.sort();
+        v
+    };
+    let have = frames(&dir);
+    if have.len() as u32 >= count {
+        return Ok(have);
+    }
+    std::fs::create_dir_all(&dir).with_context(|| format!("{} lässt sich nicht anlegen", dir.display()))?;
+    let (duration, ..) = probe(&ffmpeg::probe_tool(ffmpeg_bin), clip)?;
+    // One seek per frame is far quicker than decoding the whole clip.
+    for i in 0..count {
+        let at = format!("{:.3}", duration * (i as f64 + 0.5) / count as f64);
+        let out = dir.join(format!("{i:02}.jpg"));
+        let _ = ffmpeg::command(ffmpeg_bin)
+            .args(["-loglevel", "error", "-y", "-ss", &at, "-i"])
+            .arg(clip)
+            .args(["-frames:v", "1", "-vf", "scale=-2:72", "-q:v", "6"])
+            .arg(&out)
+            .output();
+    }
+    Ok(frames(&dir))
+}
+
 /// Path, size and time of change: a clip that is replaced gets a new entry.
 fn cache_key(clip: &Path) -> Result<String> {
     use std::hash::{Hash, Hasher};
@@ -382,7 +415,7 @@ mod tests {
     }
 
     fn args(target: Target, tracks: u32, e: &Edit) -> Vec<String> {
-        let s = Settings { gpu: crate::config::Gpu::Amd, ..Default::default() };
+        let s = Settings { gpu: crate::config::Gpu::Amd, codec: Codec::Hevc, ..Default::default() };
         export_args(&s, Path::new(r"C:\c\a.mp4"), Path::new(r"C:\c\b.mp4"), 2.0, 5.5, tracks, 1200, e, target, 1.0).unwrap()
     }
 
