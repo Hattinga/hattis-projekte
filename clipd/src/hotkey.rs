@@ -44,8 +44,20 @@ pub fn parse(spec: &str) -> Result<Hotkey> {
     if mods == MOD_NOREPEAT {
         bail!("{spec:?} braucht mindestens Strg, Alt, Umschalt oder Win");
     }
+    // On a German keyboard AltGr is Ctrl+Alt to Windows, so a hotkey on one
+    // of these would swallow the character everywhere: no more @ in a chat.
+    if mods == MOD_NOREPEAT | MOD_CONTROL | MOD_ALT
+        && let Some(&(key, typed)) = ALTGR.iter().find(|(key, _)| u32::from(*key) == vk)
+    {
+        let key = char::from(key);
+        bail!("{spec:?} ist dasselbe wie AltGr+{key}, das {typed} schreibt — {typed} ließe sich dann nirgends mehr tippen");
+    }
     Ok(Hotkey { mods, vk })
 }
+
+/// Keys that type something with AltGr on a German keyboard, and what.
+const ALTGR: &[(u8, &str)] =
+    &[(b'Q', "@"), (b'E', "€"), (b'M', "µ"), (b'2', "²"), (b'3', "³"), (b'7', "{"), (b'8', "["), (b'9', "]"), (b'0', "}")];
 
 /// A combination the way a German keyboard names it: `Strg+Alt+C`.
 pub fn display(spec: &str) -> String {
@@ -181,6 +193,20 @@ impl Drop for Listener {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Strg+Alt ist AltGr: Tasten, die damit ein Zeichen schreiben, dürfen
+    /// kein Hotkey werden. Mit Umschalt dazu oder ohne Zeichen geht es.
+    #[test]
+    fn altgr_characters_stay_typeable() {
+        for spec in ["Ctrl+Alt+Q", "Strg+Alt+E", "ctrl+alt+7", "Alt+Strg+0"] {
+            assert!(parse(spec).is_err(), "{spec} hätte abgelehnt werden müssen");
+        }
+        let why = parse("Strg+Alt+Q").unwrap_err().to_string();
+        assert!(why.contains('@'), "{why}");
+        for spec in ["Ctrl+Alt+C", "Ctrl+Alt+R", "Ctrl+Shift+Alt+Q", "Alt+Q", "Ctrl+Alt+F9"] {
+            assert!(parse(spec).is_ok(), "{spec} sollte gehen");
+        }
+    }
 
     #[test]
     fn parses_english_and_german_names() {
