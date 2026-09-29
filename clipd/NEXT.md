@@ -1,6 +1,24 @@
 # Stand und nächste Schritte (clipd)
 
-Stand 2026-09-28, Branch `feat/clipd`.
+Stand 2026-09-29, Branch `feat/clipd`.
+
+## Code-Review 2026-09-29
+13 Befunde, 12 behoben (Commits 865dd6c, df9fe97): Kopieren in die Zwischenablage
+ging nie und führte den Pfad als PowerShell aus; eine Aufnahme ging beim Neustart der
+Aufnahme verloren (Spiel beendet, ffmpeg-Absturz, Einstellungen, Beenden) — wird jetzt
+vorher gespeichert; Einfrieren beim Speichern der Einstellungen während eine Aufnahme
+endet (Abbau jetzt nicht mehr im Hauptthread); ffprobe-Konsolenfenster nach jedem Clip;
+Aufräumen löschte den gerade gespeicherten Clip und fremde Videos; favorites.json ohne
+Sperre; Export konnte an vollem stderr hängen; Fensterbefehle nahmen beliebige Pfade;
+Einstellungen während des Starts gingen verloren; Tastenfeld hielt die Tastatur fest;
+halb entpacktes ffmpeg; COM5–9/LPT4–9, `;` in Discord-Dateinamen, Webhook-Host.
+- **Offen:** „Beenden“ schließt auch einen über „Öffnen“ gestarteten Player (Job-Objekt
+  erbt auf Kinder). Nach einem Absturz von clipd selbst wird eine halbe `aufnahme-*.ts`
+  beim nächsten Start noch gelöscht statt gerettet.
+- **Nicht zur Laufzeit geprüft:** die Rettung einer Aufnahme beim Neustart (braucht
+  Spielfenster-Modus oder das Tray-Menü) — zuhause mit Spiel testen: Aufnahme starten,
+  Spiel beenden, Clip muss im Ordner liegen. Rauchtest ohne Ton ok: Start 0,7 s,
+  `clipd clip` und `clipd record` an/aus liefern korrekte MP4s.
 
 ## Offen / ungetestet
 - **Fenster schließen gibt WebView frei**: am 2026-09-29 auf dem Laptop getestet
@@ -14,7 +32,8 @@ Stand 2026-09-28, Branch `feat/clipd`.
   (weißer Blitz + Testton, misst Versatz). Vor der Korrektur: Ton 0,4 s zu spät.
 - **NVIDIA** und **Spielfenster-Modus** (`capture = "game"`) mit echtem Spiel testen.
 - Release: Tag `clipd-v0.1.0` pushen → `clipd-release.yml` baut den Installer
-  (`--latest=false`, omnidl bleibt „latest“).
+  (`--latest=false`, omnidl bleibt „latest“, Text aus CHANGELOG.md). Lokal gebaut am
+  2026-09-29: `cargo tauri build --config tauri.release.conf.json` → 2 MB Setup.
 
 ## Performance-Review (Laptop, Ryzen 7730U, AMD, 1920×1200@60, Desktop-Inhalt)
 - Aufnahme: ffmpeg 14–17 % eines Kerns, clipd 1 %, GPU 3D ~16 %.
