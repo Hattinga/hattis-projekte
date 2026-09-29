@@ -94,9 +94,13 @@ const fail = (e) => toast(String(e), { error: true });
 
 // ---------- status ----------
 
-let status = null;
+let status = null, statusShown = '';
 async function refreshStatus(s) {
   status = s || (await invoke('status'));
+  // Asked every second, but mostly nothing has changed; then the page stays as it is.
+  const key = JSON.stringify(status);
+  if (key === statusShown) return;
+  statusShown = key;
   const dot = document.querySelector('#status .dot');
   const text = $('status-text'), sub = $('status-sub');
   const rec = status.recordingSecs;
@@ -169,8 +173,15 @@ function pumpMeta() {
   }
 }
 
+let clipsShown = '';
 async function loadClips() {
-  clips = await invoke('clips');
+  const list = await invoke('clips');
+  // Every focus asks again; the grid is only rebuilt when something changed,
+  // or the day did ("Heute" becomes "Gestern").
+  const key = new Date().toDateString() + JSON.stringify(list);
+  if (key === clipsShown) return;
+  clipsShown = key;
+  clips = list;
   renderNav();
   if (!$('detail').classList.contains('hidden')) return;
   renderGrid();
@@ -352,7 +363,18 @@ function togglePlay() {
 }
 $('play').onclick = togglePlay;
 video.onclick = togglePlay;
-video.onplay = video.onpause = playIcon;
+// Keeps the playhead smooth between timeupdate events. Only while playing:
+// a loop that asks for every frame keeps the window drawing 60 times a
+// second even when nothing moves.
+let ticking = false;
+function tick() {
+  if (current && !video.paused) { drawTimeline(); requestAnimationFrame(tick); } else ticking = false;
+}
+video.onplay = () => {
+  playIcon();
+  if (!ticking) { ticking = true; requestAnimationFrame(tick); }
+};
+video.onpause = playIcon;
 video.ontimeupdate = () => {
   if (!video.paused && video.currentTime >= trimOut) { video.pause(); video.currentTime = trimOut; }
   drawTimeline();
@@ -368,8 +390,6 @@ video.onloadeddata = () => {
 video.onerror = () => $('novideo').classList.remove('hidden');
 playIcon();
 window.addEventListener('resize', drawTimeline);
-// Keeps the playhead smooth between timeupdate events.
-(function frame() { if (current && !video.paused) drawTimeline(); requestAnimationFrame(frame); })();
 
 function updateVolumes() {
   for (const id of ['vol-game', 'vol-mic']) {
@@ -587,9 +607,13 @@ function keycap(value, onChange, allowEmpty) {
 }
 
 async function openSettings() {
-  draft = await invoke('settings');
-  const devices = await invoke('devices').catch(() => ({ speakers: [], microphones: [], monitors: [] }));
-  const autostart = await invoke('plugin:autostart|is_enabled').catch(() => false);
+  // All three at once; the devices take longest (one ffmpeg per monitor).
+  const [settings, devices, autostart] = await Promise.all([
+    invoke('settings'),
+    invoke('devices').catch(() => ({ speakers: [], microphones: [], monitors: [] })),
+    invoke('plugin:autostart|is_enabled').catch(() => false),
+  ]);
+  draft = settings;
   let autostartWanted = autostart;
   const body = $('settings-body');
   body.innerHTML = '';
@@ -708,5 +732,7 @@ window.addEventListener('contextmenu', (e) => { if (e.target.tagName !== 'INPUT'
 refreshStatus();
 loadClips();
 // The recording timer and the volume warning change without an event.
-setInterval(() => refreshStatus().catch(() => {}), 1000);
+// Nobody sees them while the window is minimised, so it asks only when shown.
+setInterval(() => { if (!document.hidden) refreshStatus().catch(() => {}); }, 1000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshStatus().catch(() => {}); });
 window.addEventListener('focus', () => loadClips());
