@@ -306,7 +306,10 @@ pub fn rename(clip: &Path, name: &str) -> Result<PathBuf> {
     if to == clip {
         return Ok(to);
     }
-    if to.exists() {
+    // Windows does not tell "clip" from "Clip", so only changing the case
+    // finds the clip itself there — that is a rename, not a clash.
+    let same_file = to.to_string_lossy().to_lowercase() == clip.to_string_lossy().to_lowercase();
+    if to.exists() && !same_file {
         bail!("Es gibt schon einen Clip namens {name}");
     }
     std::fs::rename(clip, &to).with_context(|| format!("{} lässt sich nicht umbenennen", clip.display()))?;
@@ -619,6 +622,24 @@ fn run(ffmpeg_bin: &Path, args: &[String], secs: f64, progress: &mut dyn FnMut(f
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Nur die Groß-/Kleinschreibung zu ändern ist unter Windows kein
+    /// Namenskonflikt mit sich selbst; ein anderer Clip gleichen Namens schon.
+    #[test]
+    fn rename_may_change_only_the_case() {
+        let dir = std::env::temp_dir().join(format!("clipd-rename-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let clip = dir.join("boss kill.mp4");
+        std::fs::write(&clip, b"x").unwrap();
+        let to = rename(&clip, "Boss Kill").unwrap();
+        assert_eq!(to.file_name().unwrap(), "Boss Kill.mp4");
+        let names: Vec<_> = std::fs::read_dir(&dir).unwrap().map(|e| e.unwrap().file_name()).collect();
+        assert_eq!(names, ["Boss Kill.mp4"], "umbenannt, nicht kopiert");
+        let other = dir.join("anderer.mp4");
+        std::fs::write(&other, b"y").unwrap();
+        assert!(rename(&other, "boss kill").is_err(), "fremder Clip gleichen Namens");
+        std::fs::remove_dir_all(&dir).ok();
+    }
 
     /// Kurze Clips behalten ihre Auflösung, lange werden kleiner und
     /// langsamer, damit sie unter 10 MB passen.
