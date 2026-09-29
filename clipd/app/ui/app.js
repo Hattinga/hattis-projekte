@@ -574,6 +574,8 @@ function keycap(value, onChange, allowEmpty) {
       b.textContent = value ? keyLabel(value) : 'Aus';
     };
     const onKey = (e) => {
+      // The sheet was closed while listening: let go instead of eating keys.
+      if (!b.isConnected || !b.offsetParent) return done();
       e.preventDefault();
       e.stopPropagation();
       if (e.key === 'Escape') return done();

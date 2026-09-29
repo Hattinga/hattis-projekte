@@ -87,8 +87,11 @@ pub fn folder_name(name: &str) -> String {
     if s.is_empty() {
         return "Unbekannt".into();
     }
-    const RESERVED: &[&str] = &["con", "prn", "aux", "nul", "com1", "com2", "com3", "com4", "lpt1", "lpt2", "lpt3"];
-    if RESERVED.contains(&s.to_lowercase().as_str()) {
+    // CON, PRN, AUX, NUL, COM1–9 and LPT1–9 name devices, not folders.
+    let lower = s.to_lowercase();
+    let port =
+        |p: &str| lower.strip_prefix(p).is_some_and(|n| n.len() == 1 && n != "0" && n.chars().all(|c| c.is_ascii_digit()));
+    if ["con", "prn", "aux", "nul"].contains(&lower.as_str()) || port("com") || port("lpt") {
         s.push('_');
     }
     s
@@ -274,6 +277,10 @@ mod tests {
         assert_eq!(folder_name("  ...  "), "Unbekannt");
         assert_eq!(folder_name("Game?.*"), "Game");
         assert_eq!(folder_name("con"), "con_");
+        assert_eq!(folder_name("COM7"), "COM7_");
+        assert_eq!(folder_name("lpt9"), "lpt9_");
+        assert_eq!(folder_name("COM10"), "COM10", "nur einstellige Anschlüsse");
+        assert_eq!(folder_name("Company"), "Company");
         assert_eq!(folder_name(&"x".repeat(100)).len(), 60);
     }
 }

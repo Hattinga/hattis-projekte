@@ -46,22 +46,45 @@ pub fn list(clips: &Path) -> Vec<Entry> {
 
 /// The starred clips, kept as a list of paths beside the settings.
 pub fn favorites() -> std::collections::BTreeSet<PathBuf> {
-    std::fs::read_to_string(favorites_path()).ok().and_then(|t| serde_json::from_str(&t).ok()).unwrap_or_default()
+    read_favorites().unwrap_or_default()
+}
+
+/// The stars, or `None` if the file is there but unreadable — then nothing
+/// may be tidied away, since every star would look missing.
+fn read_favorites() -> Option<std::collections::BTreeSet<PathBuf>> {
+    match std::fs::read_to_string(favorites_path()) {
+        Ok(text) => serde_json::from_str(&text).ok(),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Some(Default::default()),
+        Err(_) => None,
+    }
+}
+
+/// Starring from the window and tidying after a save run on different
+/// threads; each change of favorites.json reads and writes it under this.
+static FAVORITES: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+fn favorites_lock() -> std::sync::MutexGuard<'static, ()> {
+    FAVORITES.lock().unwrap_or_else(|e| e.into_inner())
 }
 
 fn favorites_path() -> PathBuf {
     crate::config::base_dir().join("favorites.json")
 }
 
+/// Written beside and then moved over, so a crash midway leaves the old
+/// file rather than half a new one.
 fn write_favorites(set: &std::collections::BTreeSet<PathBuf>) -> Result<()> {
     let path = favorites_path();
-    std::fs::write(&path, serde_json::to_string_pretty(set)?)
-        .with_context(|| format!("{} lässt sich nicht schreiben", path.display()))
+    let part = path.with_extension("json.neu");
+    std::fs::write(&part, serde_json::to_string_pretty(set)?)
+        .with_context(|| format!("{} lässt sich nicht schreiben", part.display()))?;
+    std::fs::rename(&part, &path).with_context(|| format!("{} lässt sich nicht schreiben", path.display()))
 }
 
 /// Stars or unstars a clip.
 pub fn set_favorite(clip: &Path, on: bool) -> Result<()> {
-    let mut set = favorites();
+    let _guard = favorites_lock();
+    let mut set = read_favorites().context("favorites.json ist unlesbar")?;
     if on {
         set.insert(clip.to_path_buf());
     } else {
@@ -72,7 +95,8 @@ pub fn set_favorite(clip: &Path, on: bool) -> Result<()> {
 
 /// Keeps a star on a clip that moved, or drops it for one that went away.
 pub fn favorite_moved(from: &Path, to: Option<&Path>) {
-    let mut set = favorites();
+    let _guard = favorites_lock();
+    let Some(mut set) = read_favorites() else { return };
     if set.remove(from) {
         if let Some(to) = to {
             set.insert(to.to_path_buf());
@@ -92,11 +116,17 @@ pub fn forget(clip: &Path) -> Result<()> {
 /// What tidying up would remove, oldest first: clips older than `keep_days`,
 /// then the oldest until the rest fits into `max_gb`. Starred clips stay;
 /// 0 turns either rule off.
+///
+/// Only clipd's own files count and go — named `clip-…`, so a clips folder
+/// set to the user's Videos loses nothing else — and never the newest, the
+/// one just saved, even if it alone is over the limit.
 pub fn to_tidy(clips: &[Entry], keep_days: u32, max_gb: u32, now: u64) -> Vec<PathBuf> {
-    let mut candidates: Vec<&Entry> = clips.iter().filter(|c| !c.favorite).collect();
+    let ours: Vec<&Entry> = clips.iter().filter(|c| c.name.starts_with("clip-")).collect();
+    let newest = ours.iter().max_by_key(|c| c.modified).map(|c| &c.path);
+    let mut candidates: Vec<&Entry> = ours.iter().copied().filter(|c| !c.favorite && Some(&c.path) != newest).collect();
     candidates.sort_by_key(|c| c.modified);
     let mut gone = Vec::new();
-    let mut total: u64 = clips.iter().map(|c| c.bytes).sum();
+    let mut total: u64 = ours.iter().map(|c| c.bytes).sum();
     let limit = u64::from(max_gb) * 1_000_000_000;
     for c in candidates {
         let too_old = keep_days > 0 && now.saturating_sub(c.modified) > u64::from(keep_days) * 86_400;
@@ -112,6 +142,9 @@ pub fn to_tidy(clips: &[Entry], keep_days: u32, max_gb: u32, now: u64) -> Vec<Pa
 /// Applies [`to_tidy`] to the clips folder and says how many clips went.
 pub fn tidy(clips_dir: &Path, keep_days: u32, max_gb: u32) -> usize {
     if keep_days == 0 && max_gb == 0 {
+        return 0;
+    }
+    if read_favorites().is_none() {
         return 0;
     }
     let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs());
@@ -351,10 +384,17 @@ pub fn export(
     let mut factor = 1.0;
     loop {
         let args = export_args(s, src, &out, start, secs, tracks, height, edit, target, factor)?;
-        run(ffmpeg_bin, &args, secs, progress)?;
+        // A failed try leaves no broken file in the library.
+        if let Err(e) = run(ffmpeg_bin, &args, secs, progress) {
+            let _ = std::fs::remove_file(&out);
+            return Err(e);
+        }
         let bytes = std::fs::metadata(&out).map(|m| m.len()).unwrap_or(0);
         if target != Target::Discord || bytes <= DISCORD_BYTES || factor < 0.5 {
-            anyhow::ensure!(bytes <= DISCORD_BYTES || target != Target::Discord, "Der Clip passt nicht unter 10 MB");
+            if target == Target::Discord && bytes > DISCORD_BYTES {
+                let _ = std::fs::remove_file(&out);
+                bail!("Der Clip passt nicht unter 10 MB");
+            }
             return Ok(out);
         }
         // The encoder overshot; the next try aims lower by the same ratio.
@@ -366,6 +406,11 @@ pub fn export(
 pub fn webhook_ok(url: &str) -> bool {
     let Some(rest) = url.trim().strip_prefix("https://") else { return false };
     let host = rest.split('/').next().unwrap_or_default();
+    // Nothing but a plain host name: `?`, `#` or `@` in it would send curl
+    // somewhere else than the part after them suggests.
+    if !host.chars().all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-') {
+        return false;
+    }
     let discord = ["discord.com", "discordapp.com"].iter().any(|d| host == *d || host.ends_with(&format!(".{d}")));
     discord && rest[host.len()..].starts_with("/api/webhooks/")
 }
@@ -375,7 +420,7 @@ pub fn webhook_ok(url: &str) -> bool {
 pub fn send_to_discord(webhook: &str, file: &Path) -> Result<()> {
     anyhow::ensure!(webhook_ok(webhook), "Das ist kein Discord-Webhook (https://discord.com/api/webhooks/…)");
     let mut cmd = std::process::Command::new(if cfg!(windows) { "curl.exe" } else { "curl" });
-    cmd.args(["-sS", "--fail-with-body", "-F"]).arg(format!("files[0]=@{}", file.display())).arg(webhook.trim());
+    cmd.args(["-sS", "--fail-with-body", "-F"]).arg(form_file(file)).arg(webhook.trim());
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
@@ -388,6 +433,13 @@ pub fn send_to_discord(webhook: &str, file: &Path) -> Result<()> {
         bail!("Discord hat den Clip nicht angenommen: {}", why.trim());
     }
     Ok(())
+}
+
+/// curl's `-F name=@file`, quoted: unquoted, a `;` or `,` in the file name
+/// would be read as the start of more options.
+fn form_file(file: &Path) -> String {
+    let quoted = file.display().to_string().replace('\\', "\\\\").replace('"', "\\\"");
+    format!("files[0]=@\"{quoted}\"")
 }
 
 /// `path`, or the first `path (2)`, `path (3)`, … that is still free.
@@ -519,14 +571,28 @@ fn run(ffmpeg_bin: &Path, args: &[String], secs: f64, progress: &mut dyn FnMut(f
         .spawn()
         .context("ffmpeg lässt sich nicht starten")?;
     let stdout = child.stdout.take().context("ffmpeg gibt keinen Fortschritt her")?;
+    // Read alongside, or ffmpeg blocks once it has filled the pipe with
+    // complaints — while this waits for progress that never comes.
+    let stderr = child.stderr.take().context("ffmpeg gibt keine Meldungen her")?;
+    let complaints = std::thread::spawn(move || {
+        let mut last = std::collections::VecDeque::new();
+        for line in std::io::BufReader::new(stderr).lines().map_while(Result::ok) {
+            last.push_back(line);
+            if last.len() > 8 {
+                last.pop_front();
+            }
+        }
+        Vec::from(last).join("\n")
+    });
     for line in std::io::BufReader::new(stdout).lines().map_while(Result::ok) {
         if let Some(us) = line.strip_prefix("out_time_us=").and_then(|v| v.parse::<f64>().ok()) {
             progress((us / 1e6 / secs).clamp(0.0, 1.0) as f32);
         }
     }
-    let out = child.wait_with_output().context("ffmpeg lässt sich nicht abfragen")?;
-    if !out.status.success() {
-        bail!("Der Export ist gescheitert: {}", String::from_utf8_lossy(&out.stderr).trim());
+    let status = child.wait().context("ffmpeg lässt sich nicht abfragen")?;
+    let complaints = complaints.join().unwrap_or_default();
+    if !status.success() {
+        bail!("Der Export ist gescheitert: {}", complaints.trim());
     }
     progress(1.0);
     Ok(())
@@ -569,11 +635,26 @@ mod tests {
     #[test]
     fn tidying_spares_favorites() {
         let now = 100 * 86_400;
-        let clips = [entry("alt", 40, 1.0, false), entry("alt-fav", 50, 1.0, true), entry("neu", 1, 1.0, false)];
-        assert_eq!(to_tidy(&clips, 30, 0, now), [PathBuf::from("alt")]);
-        assert_eq!(to_tidy(&clips, 0, 2, now), [PathBuf::from("alt")], "3 GB, 2 erlaubt: das älteste Nicht-Favorit");
-        assert_eq!(to_tidy(&clips, 0, 1, now), [PathBuf::from("alt"), PathBuf::from("neu")], "der Favorit bleibt");
+        let clips = [
+            entry("clip-alt", 40, 1.0, false),
+            entry("clip-alt-fav", 50, 1.0, true),
+            entry("clip-mitte", 5, 1.0, false),
+            entry("clip-neu", 1, 1.0, false),
+        ];
+        let paths = |v: &[&str]| v.iter().map(PathBuf::from).collect::<Vec<_>>();
+        assert_eq!(to_tidy(&clips, 30, 0, now), paths(&["clip-alt"]));
+        assert_eq!(to_tidy(&clips, 0, 3, now), paths(&["clip-alt"]), "4 GB, 3 erlaubt: das älteste Nicht-Favorit");
+        assert_eq!(to_tidy(&clips, 0, 1, now), paths(&["clip-alt", "clip-mitte"]), "Favorit und neuester bleiben");
         assert!(to_tidy(&clips, 0, 0, now).is_empty(), "0 schaltet beides ab");
+    }
+
+    /// Fremde Videos im Clip-Ordner zählen nicht mit und bleiben liegen.
+    #[test]
+    fn tidying_leaves_other_videos_alone() {
+        let now = 100 * 86_400;
+        let clips = [entry("Urlaub", 90, 50.0, false), entry("clip-alt", 40, 1.0, false), entry("clip-neu", 1, 1.0, false)];
+        assert!(to_tidy(&clips, 0, 10, now).is_empty(), "2 GB eigene Clips, 10 erlaubt");
+        assert_eq!(to_tidy(&clips, 30, 0, now), [PathBuf::from("clip-alt")]);
     }
 
     /// Nie größer als die Quelle.

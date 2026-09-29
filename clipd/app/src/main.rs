@@ -8,7 +8,7 @@ use clipd::library::{self, Edit, Entry, Meta, Target};
 use clipd::recorder::Recorder;
 use clipd::{ffmpeg, hotkey};
 use serde::Serialize;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{Duration, Instant};
@@ -297,6 +297,21 @@ fn settled_settings(app: &AppHandle) -> Result<(PathBuf, Settings), String> {
     Ok((bin, s))
 }
 
+/// `path`, if it is a clip: a file in the clips folder or one of its game
+/// folders. The window only ever sends those, and nothing it sends should
+/// reach — or delete or start — any other file.
+fn clip(path: &Path) -> Result<PathBuf, String> {
+    // Checked on the resolved path, so `..` or a link cannot lead out; the
+    // path itself goes on unchanged, since favorites and the window know the
+    // clips by the plain form, not by Windows' `\\?\` one.
+    let bad = || format!("{} ist kein Clip", path.display());
+    let real = path.canonicalize().map_err(|_| bad())?;
+    let clips = Settings::load().clips_dir().canonicalize().map_err(|_| bad())?;
+    let ext = real.extension().and_then(|e| e.to_str()).map(str::to_ascii_lowercase);
+    let inside = real.parent().is_some_and(|p| p == clips || p.parent() == Some(clips.as_path()));
+    if inside && matches!(ext.as_deref(), Some("mp4" | "gif")) { Ok(path.to_path_buf()) } else { Err(bad()) }
+}
+
 #[tauri::command]
 fn status(app: AppHandle) -> Status {
     status_of(&app)
@@ -327,6 +342,7 @@ fn clips() -> Vec<Entry> {
 
 #[tauri::command]
 async fn meta(path: PathBuf) -> Result<Meta, String> {
+    let path = clip(&path)?;
     blocking(move || {
         let bin = ffmpeg::find().map_err(err)?;
         library::meta(&bin, &path).map_err(|e| format!("{e:#}"))
@@ -336,6 +352,7 @@ async fn meta(path: PathBuf) -> Result<Meta, String> {
 
 #[tauri::command]
 async fn export(app: AppHandle, path: PathBuf, edit: Edit, target: Target) -> Result<PathBuf, String> {
+    let path = clip(&path)?;
     blocking(move || {
         let (bin, s) = settled_settings(&app)?;
         let progress_app = app.clone();
@@ -349,6 +366,7 @@ async fn export(app: AppHandle, path: PathBuf, edit: Edit, target: Target) -> Re
 
 #[tauri::command]
 async fn strip(path: PathBuf) -> Result<Vec<PathBuf>, String> {
+    let path = clip(&path)?;
     blocking(move || {
         let bin = ffmpeg::find().map_err(err)?;
         library::strip(&bin, &path, 10).map_err(|e| format!("{e:#}"))
@@ -360,6 +378,7 @@ async fn strip(path: PathBuf) -> Result<Vec<PathBuf>, String> {
 /// can be pasted into Discord with Ctrl+V.
 #[tauri::command]
 async fn copy_file(path: PathBuf) -> Result<(), String> {
+    let path = clip(&path)?;
     blocking(move || {
         use std::os::windows::process::CommandExt;
         // The path goes in through the environment: with -Command, Windows
@@ -382,6 +401,7 @@ async fn copy_file(path: PathBuf) -> Result<(), String> {
 
 #[tauri::command]
 fn open_external(path: PathBuf) -> Result<(), String> {
+    let path = clip(&path)?;
     tauri_plugin_opener::open_path(path, None::<&str>).map_err(err)
 }
 
@@ -389,6 +409,7 @@ fn open_external(path: PathBuf) -> Result<(), String> {
 /// set in the settings.
 #[tauri::command]
 async fn send_discord(app: AppHandle, path: PathBuf, edit: Edit) -> Result<PathBuf, String> {
+    let path = clip(&path)?;
     blocking(move || {
         let webhook = Settings::load().discord_webhook;
         if !library::webhook_ok(&webhook) {
@@ -409,11 +430,13 @@ async fn send_discord(app: AppHandle, path: PathBuf, edit: Edit) -> Result<PathB
 
 #[tauri::command]
 fn rename(path: PathBuf, name: String) -> Result<PathBuf, String> {
+    let path = clip(&path)?;
     library::rename(&path, &name).map_err(|e| format!("{e:#}"))
 }
 
 #[tauri::command]
 fn delete(path: PathBuf) -> Result<(), String> {
+    let path = clip(&path)?;
     trash::delete(&path).map_err(|e| format!("Der Clip lässt sich nicht löschen: {e}"))?;
     library::favorite_moved(&path, None);
     Ok(())
@@ -421,11 +444,13 @@ fn delete(path: PathBuf) -> Result<(), String> {
 
 #[tauri::command]
 fn set_favorite(path: PathBuf, on: bool) -> Result<(), String> {
+    let path = clip(&path)?;
     library::set_favorite(&path, on).map_err(|e| format!("{e:#}"))
 }
 
 #[tauri::command]
 fn reveal(path: PathBuf) -> Result<(), String> {
+    let path = clip(&path)?;
     tauri_plugin_opener::reveal_item_in_dir(path).map_err(err)
 }
 
