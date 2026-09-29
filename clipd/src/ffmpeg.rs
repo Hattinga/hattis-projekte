@@ -272,13 +272,13 @@ pub fn capture_args(s: &Settings, audio: Option<&crate::audio::Format>) -> Resul
         push(a, &["-map", "0:v:0"]);
         if format.mic_channels == 0 {
             push(a, &["-map", "1:a:0"]);
+            if let Some(mix) = game_mix(format) {
+                push(a, &["-af", &mix]);
+            }
         } else {
             // The pipe carries the game's channels and then the microphone's;
             // two tracks of their own let the editor mute one of them.
-            push(
-                a,
-                &["-filter_complex", &split_mic(format.channels, format.mic_channels), "-map", "[game]", "-map", "[mic]"],
-            );
+            push(a, &["-filter_complex", &split_mic(format), "-map", "[game]", "-map", "[mic]"]);
             push(a, &["-metadata:s:a:0", "title=Spiel", "-metadata:s:a:1", "title=Mikrofon"]);
         }
         push(a, &["-c:a", "aac", "-b:a", &format!("{}k", s.audio_kbit)]);
@@ -294,9 +294,26 @@ pub fn capture_args(s: &Settings, audio: Option<&crate::audio::Format>) -> Resul
 
 /// Splits the shared sound input into the game's channels and the
 /// microphone's, which follow them.
-pub fn split_mic(game: u16, mic: u16) -> String {
-    let pan = |from: u16, n: u16| (0..n).map(|c| format!("|c{c}=c{}", from + c)).collect::<String>();
-    format!("[1:a]asplit[a0][a1];[a0]pan={game}c{}[game];[a1]pan={mic}c{}[mic]", pan(0, game), pan(game, mic))
+pub fn split_mic(f: &crate::audio::Format) -> String {
+    let (game, mic) = (f.channels, f.mic_channels);
+    let game_filter = game_mix(f).unwrap_or_else(|| format!("pan={game}c{}", pan_from(0, game)));
+    format!("[1:a]asplit[a0][a1];[a0]{game_filter}[game];[a1]pan={mic}c{}[mic]", pan_from(game, mic))
+}
+
+fn pan_from(from: u16, n: u16) -> String {
+    (0..n).map(|c| format!("|c{c}=c{}", from + c)).collect()
+}
+
+/// Surround sound mixed down to stereo, the game's channels coming first;
+/// `None` for stereo and mono, which stay as they are.
+///
+/// Not only for size: AAC in MPEG-TS goes through ADTS, which refuses 7.1
+/// outright, and a device like SteelSeries Sonar delivers 8 channels — the
+/// capture ended before its first frame. Clips go to Discord and browsers,
+/// which play stereo anyway, and 160 kbit/s spread over eight channels
+/// would sound poor.
+fn game_mix(f: &crate::audio::Format) -> Option<String> {
+    (f.channels > 2).then(|| format!("pan={}{},aformat=channel_layouts=stereo", f.game_layout(), pan_from(0, f.channels)))
 }
 
 /// Puts a piece of the MPEG-TS stream into an MP4. Copies the streams, so no
@@ -505,6 +522,7 @@ mod tests {
         crate::audio::Format {
             rate: 48_000,
             channels: 2,
+            mask: 0x3,
             bits: 32,
             float: true,
             device: "Test".into(),
@@ -592,11 +610,27 @@ mod tests {
     }
 
     #[test]
-    fn surround_game_keeps_its_channels() {
+    fn surround_game_is_mixed_to_stereo() {
+        let f = crate::audio::Format { channels: 6, mask: 0x60f, mic_channels: 2, ..stereo() };
         assert_eq!(
-            split_mic(6, 2),
-            "[1:a]asplit[a0][a1];[a0]pan=6c|c0=c0|c1=c1|c2=c2|c3=c3|c4=c4|c5=c5[game];[a1]pan=2c|c0=c6|c1=c7[mic]"
+            split_mic(&f),
+            "[1:a]asplit[a0][a1];[a0]pan=0x60f|c0=c0|c1=c1|c2=c2|c3=c3|c4=c4|c5=c5,aformat=channel_layouts=stereo[game];\
+             [a1]pan=2c|c0=c6|c1=c7[mic]"
         );
+    }
+
+    /// Acht Kanäle wie bei SteelSeries Sonar: ADTS nimmt kein 7.1, also wird
+    /// das Spiel auf Stereo gemischt; Stereo selbst bleibt unberührt.
+    #[test]
+    fn eight_channels_become_stereo_without_microphone() {
+        let sonar = crate::audio::Format { rate: 96_000, channels: 8, mask: 0x63f, ..stereo() };
+        let a = args(&settings(), Some(&sonar));
+        let at = |flag: &str| a.iter().position(|x| x == flag).map(|i| a[i + 1].clone());
+        assert_eq!(
+            at("-af").as_deref(),
+            Some("pan=0x63f|c0=c0|c1=c1|c2=c2|c3=c3|c4=c4|c5=c5|c6=c6|c7=c7,aformat=channel_layouts=stereo")
+        );
+        assert!(!args(&settings(), Some(&stereo())).contains(&"-af".to_string()));
     }
 
     /// Ohne Ton darf keine Spur gemappt und kein Tonkodierer genannt werden.

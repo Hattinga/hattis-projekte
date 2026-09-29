@@ -166,6 +166,11 @@ voreingestellten 60 Sekunden.
   laufenden Aufnahme wird nicht gewechselt.
 - **Nicht jede Karte kann jeden Codec.** clipd probiert beim Start ein einzelnes Bild durch und nennt, woran es
   scheitert, statt mit leerem Buffer weiterzulaufen.
+- **Surround-Ton wird zu Stereo.** AAC im MPEG-TS-Ring läuft über ADTS, und
+  ADTS nimmt kein 7.1 — ein Gerät wie SteelSeries Sonar (8 Kanäle) ließ die
+  Aufnahme sofort scheitern. Mehr als zwei Kanäle mischt clipd deshalb nach der
+  Lautsprecherbelegung des Geräts auf Stereo herunter. Scheitert ffmpeg trotzdem
+  am Ton, nimmt clipd ohne Ton auf statt gar nicht.
 - **Der Ton ist, was man hört.** Der Loopback greift hinter dem
   Lautstärkeregler ab: Steht Windows auf 0 % oder ist stumm geschaltet, wird
   auch der Clip stumm.

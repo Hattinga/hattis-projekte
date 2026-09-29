@@ -45,6 +45,9 @@ pub struct Format {
     pub rate: u32,
     /// The game's channels, as the playback device mixes them.
     pub channels: u16,
+    /// Which speaker each of the game's channels feeds, as WASAPI's
+    /// dwChannelMask — the same bits ffmpeg uses; 0 if the device says nothing.
+    pub mask: u32,
     pub bits: u16,
     pub float: bool,
     pub device: String,
@@ -64,6 +67,23 @@ impl Format {
             (false, 32) => "s32le",
             _ => bail!("Unbekanntes Tonformat: {} bit {}", self.bits, if self.float { "Gleitkomma" } else { "ganzzahlig" }),
         })
+    }
+
+    /// ffmpeg's name for the game's speaker layout. Without one it guesses
+    /// from the count alone, and for 8 channels guesses "octagonal" instead
+    /// of 7.1 — the subwoofer would end up behind the listener.
+    pub fn game_layout(&self) -> String {
+        if self.mask != 0 && self.mask.count_ones() == u32::from(self.channels) {
+            return format!("0x{:x}", self.mask);
+        }
+        match self.channels {
+            1 => "mono".into(),
+            2 => "stereo".into(),
+            4 => "quad".into(),
+            6 => "5.1".into(),
+            8 => "7.1".into(),
+            n => format!("{n}c"),
+        }
     }
 
     pub fn game_frame(&self) -> usize {
@@ -325,6 +345,7 @@ fn capture(
     let mut format = Format {
         rate: mix.get_samplespersec(),
         channels: mix.get_nchannels(),
+        mask: mix.get_dwchannelmask(),
         bits: mix.get_bitspersample(),
         float: matches!(sample_type, SampleType::Float),
         device: name,
@@ -481,7 +502,16 @@ mod tests {
     use super::*;
 
     fn stereo_float() -> Format {
-        Format { rate: 48_000, channels: 2, bits: 32, float: true, device: "Test".into(), mic_channels: 0, mic_device: None }
+        Format {
+            rate: 48_000,
+            channels: 2,
+            mask: 0x3,
+            bits: 32,
+            float: true,
+            device: "Test".into(),
+            mic_channels: 0,
+            mic_device: None,
+        }
     }
 
     /// Der Ton muss echtzeitgenau nachgefüllt werden, sonst laufen Bild und
@@ -535,6 +565,17 @@ mod tests {
         let odd = Format { bits: 24, float: false, ..stereo_float() };
         assert!(odd.sample_fmt().is_err());
         assert!(odd.input_args().is_err());
+    }
+
+    /// Die Kanalmaske des Geräts zählt; ohne sie gilt die übliche Belegung
+    /// für die Kanalzahl, nie ffmpegs eigene Vermutung.
+    #[test]
+    fn speaker_layout_comes_from_the_device() {
+        let sonar = Format { rate: 96_000, channels: 8, mask: 0x63f, ..stereo_float() };
+        assert_eq!(sonar.game_layout(), "0x63f");
+        assert_eq!(Format { mask: 0, ..sonar.clone() }.game_layout(), "7.1");
+        assert_eq!(Format { mask: 0x3, ..sonar }.game_layout(), "7.1", "Maske passt nicht zur Kanalzahl");
+        assert_eq!(Format { channels: 5, mask: 0, ..stereo_float() }.game_layout(), "5c");
     }
 
     #[test]

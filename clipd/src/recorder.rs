@@ -41,8 +41,7 @@ impl Recorder {
     pub fn start(ffmpeg_bin: &Path, mut s: Settings, on_end: impl FnOnce(String) + Send + 'static) -> Result<Self> {
         s.check()?;
         s.gpu = ffmpeg::pick_gpu(ffmpeg_bin, &s)?;
-        let mut buf = Buffer::start(ffmpeg_bin, &s)?;
-        buf.wait_until_recording(Duration::from_secs(10))?;
+        let buf = start_buffer(ffmpeg_bin, &s)?;
         let shared = Arc::new(Shared {
             stop: AtomicBool::new(false),
             ring: Mutex::new(buf.ring.clone()),
@@ -230,14 +229,31 @@ fn tend_capture(mut buf: Buffer, mut s: Settings, ffmpeg_bin: &Path, shared: &Sh
 /// recording on the old ring is saved rather than lost; the recording lock
 /// is held over the swap, so none can start on the old ring meanwhile.
 fn restart(ffmpeg_bin: &Path, s: &Settings, shared: &Shared) -> Option<Buffer> {
-    let mut buf = Buffer::start(ffmpeg_bin, s).ok()?;
-    buf.wait_until_recording(Duration::from_secs(10)).ok()?;
+    let buf = start_buffer(ffmpeg_bin, s).ok()?;
     let (old, recording) = {
         let mut recording = lock(&shared.recording);
         (std::mem::replace(&mut *lock(&shared.ring), buf.ring.clone()), recording.take())
     };
     rescue(ffmpeg_bin, s, &old, recording);
     Some(buf)
+}
+
+/// Starts a capture and waits for its first keyframe. If ffmpeg gives up
+/// with sound — the device opened fine, but its format cannot be encoded —
+/// it tries once more without: a clip without sound still beats none.
+fn start_buffer(ffmpeg_bin: &Path, s: &Settings) -> Result<Buffer> {
+    let mut buf = Buffer::start(ffmpeg_bin, s)?;
+    match buf.wait_until_recording(Duration::from_secs(10)) {
+        Ok(()) => Ok(buf),
+        Err(e) if buf.audio_device.is_some() => {
+            eprintln!("clipd: Aufnahme ohne Ton — mit Ton scheitert sie: {e:#}");
+            drop(buf);
+            let mut quiet = Buffer::start(ffmpeg_bin, &Settings { audio: false, ..s.clone() })?;
+            quiet.wait_until_recording(Duration::from_secs(10))?;
+            Ok(quiet)
+        }
+        Err(e) => Err(e),
+    }
 }
 
 /// `clips/<Spiel>` for the window in front, or plain `clips`.
