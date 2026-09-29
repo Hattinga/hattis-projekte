@@ -5,6 +5,7 @@ use anyhow::{Context, Result, bail};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
+use std::sync::Arc;
 
 pub struct Saved {
     pub path: PathBuf,
@@ -12,10 +13,10 @@ pub struct Saved {
     pub secs: Option<f64>,
 }
 
-/// Writes `ts`, a piece of the stream that starts at a keyframe, into a new
-/// MP4 in `out_dir`. The streams are copied, so this costs no encoding time
-/// and finishes in a fraction of a second.
-pub fn save(ffmpeg_bin: &Path, ts: Vec<u8>, out_dir: &Path) -> Result<Saved> {
+/// Writes `ts`, the ring's segments of a piece of the stream that starts at a
+/// keyframe, into a new MP4 in `out_dir`. The streams are copied, so this
+/// costs no encoding time and finishes in a fraction of a second.
+pub fn save(ffmpeg_bin: &Path, ts: Vec<Arc<Vec<u8>>>, out_dir: &Path) -> Result<Saved> {
     if ts.is_empty() {
         bail!("Der Buffer ist noch leer — läuft die Aufnahme erst gerade an?");
     }
@@ -30,7 +31,7 @@ pub fn save(ffmpeg_bin: &Path, ts: Vec<u8>, out_dir: &Path) -> Result<Saved> {
     let mut stdin = child.stdin.take().context("ffmpeg nimmt keine Eingabe an")?;
     // Written from a thread, so ffmpeg can talk on stderr meanwhile without
     // the two blocking each other.
-    let writer = std::thread::spawn(move || stdin.write_all(&ts));
+    let writer = std::thread::spawn(move || ts.iter().try_for_each(|segment| stdin.write_all(segment)));
     let done = child.wait_with_output().context("ffmpeg lässt sich nicht abfragen")?;
     let _ = writer.join();
     finish(ffmpeg_bin, out, &done)

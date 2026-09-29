@@ -28,6 +28,27 @@ Stand 2026-09-28, Branch `feat/clipd`.
 - Default `buffer_secs` ist jetzt 60 (halber RAM); bestehende config.toml behalten ihren Wert.
 - ffprobe nach dem Speichern kostet nur ~95 ms und liefert die Länge für Overlay und
   Toast; bewusst behalten.
+- Zweite Runde (2026-09-29, Branch `perf/clipd`, gemessen mit Testbild-Clips, ohne
+  Aufnahme): ein ffmpeg-Start kostet hier ~165 ms, mehr als ein Bild zu dekodieren.
+  - Schnittleiste: ein ffmpeg mit zehn Eingängen statt zehn ffmpegs, Länge aus dem
+    Cache statt ffprobe: ~2,2 s → ~0,65 s (30 s, 1080p60).
+  - Vorschaubild entsteht parallel zu ffprobe: ~0,3 s → ~0,2 s je neuem Clip
+    (Clips unter 3 s brauchen einen zweiten Versuch, ~0,43 s).
+  - `-encoders`/`-filters` je ffmpeg-Build in `cache/ffmpeg-lists.json`: spart bei
+    jedem Aufnahmestart zwei ffmpeg-Starts (~120 ms kalt, danach < 1 ms).
+  - Bildschirmliste: ein ffmpeg je Monitor statt zwei (Einstellungen öffnen schneller).
+  - Ton-Interleave mit Slices statt Byte für Byte: 1,8 → 0,03 ms je Sekunde Ton
+    (mit Mikro 3,4 → 0,7 ms), bei 200 Aufrufen/s.
+  - Speichern schreibt die Ring-Segmente einzeln an ffmpeg: kein 64-MB-Zwischenpuffer
+    (30 s bei 16 Mbit/s), ~18 ms weniger.
+  - Fenster: Playhead-Schleife nur beim Abspielen (vorher 60 Hz dauerhaft), Status-Poll
+    pausiert minimiert und fasst das DOM nur bei Änderung an, Fokus baut das Raster
+    nur bei geänderter Liste neu.
+  - Verworfen: `Ring::push` ohne Zwischen-Vec (gemessen ~0,7 ms je Stream-Sekunde,
+    vorher wie nachher), `opt-level = "s"` (CLI 1,28 → 1,00 MB, neben ~90 MB ffmpeg
+    unerheblich), Probe-Encode in `pick_gpu` cachen (bei „auto“ bliebe clipd nach
+    einem NVIDIA-Aussetzer bei AMD hängen), Takt 5 ms des Ton-Schreibers und 100 ms
+    der Überwachung (ohne Ton-Test nicht prüfbar bzw. vernachlässigbar).
 
 ## Regeln
 - Nutzer ist oft in der Schule: keine Töne, keine Lautstärkeänderung, keine

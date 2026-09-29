@@ -131,21 +131,17 @@ impl Ring {
         st.segments.iter().map(|s| s.len()).sum::<usize>() + st.current.as_ref().map_or(0, Vec::len)
     }
 
-    /// The newest `n` segments end to end — the last one reaching up to what
-    /// ffmpeg wrote a moment ago. Only the growing segment is copied while
-    /// the lock is held; the finished ones are shared and joined after.
-    pub fn last(&self, n: usize) -> Vec<u8> {
-        let (finished, current) = {
-            let st = lock(&self.state);
-            let Some(current) = st.current.clone() else { return Vec::new() };
-            let from = st.segments.len().saturating_sub(n.saturating_sub(1));
-            (st.segments.range(from..).cloned().collect::<Vec<_>>(), current)
-        };
-        let mut out = Vec::with_capacity(finished.iter().map(|s| s.len()).sum::<usize>() + current.len());
-        for s in &finished {
-            out.extend_from_slice(s);
-        }
-        out.extend_from_slice(&current);
+    /// The newest `n` segments, oldest first — the last one reaching up to
+    /// what ffmpeg wrote a moment ago. Only the growing segment is copied;
+    /// the finished ones are shared, and go to ffmpeg one after the other
+    /// instead of being joined first (for a 30 s clip at 16 Mbit/s that was
+    /// 64 MB more memory for a moment and ~18 ms).
+    pub fn last(&self, n: usize) -> Vec<Arc<Vec<u8>>> {
+        let st = lock(&self.state);
+        let Some(current) = st.current.as_ref() else { return Vec::new() };
+        let from = st.segments.len().saturating_sub(n.saturating_sub(1));
+        let mut out: Vec<_> = st.segments.range(from..).cloned().collect();
+        out.push(Arc::new(current.clone()));
         out
     }
 
@@ -372,6 +368,11 @@ mod tests {
         pkts.concat()
     }
 
+    /// Die neuesten `n` Segmente am Stück, wie ffmpeg sie beim Speichern liest.
+    fn joined(ring: &Ring, n: usize) -> Vec<u8> {
+        ring.last(n).iter().flat_map(|s| s.iter().copied()).collect()
+    }
+
     /// Vor dem ersten Keyframe lässt sich nichts dekodieren, also bleibt
     /// davon nichts im Ring; danach beginnt jedes Segment mit einem Keyframe.
     #[test]
@@ -379,10 +380,10 @@ mod tests {
         let ring = Ring::new(10);
         ring.push(&stream(&[packet(0x101, false, 1), packet(VIDEO_PID, true, 2), packet(0x101, false, 3)]));
         ring.push(&stream(&[packet(VIDEO_PID, true, 4), packet(VIDEO_PID, false, 5)]));
-        let all = ring.last(99);
+        let all = joined(&ring, 99);
         assert_eq!(all.len(), 4 * TS_PACKET, "das Tonpaket vor dem ersten Keyframe fällt weg");
         assert!(is_keyframe(&all[..TS_PACKET]));
-        assert_eq!(ring.last(1), stream(&[packet(VIDEO_PID, true, 4), packet(VIDEO_PID, false, 5)]));
+        assert_eq!(joined(&ring, 1), stream(&[packet(VIDEO_PID, true, 4), packet(VIDEO_PID, false, 5)]));
     }
 
     /// Pakete, die über zwei Lesevorgänge verteilt ankommen, werden
@@ -394,7 +395,7 @@ mod tests {
         for piece in data.chunks(50) {
             ring.push(piece);
         }
-        assert_eq!(ring.last(1), data);
+        assert_eq!(joined(&ring, 1), data);
     }
 
     /// Der Ring hält so viele fertige Segmente wie verlangt, plus das
@@ -406,7 +407,7 @@ mod tests {
             ring.push(&packet(VIDEO_PID, true, k));
         }
         assert_eq!(
-            ring.last(99),
+            joined(&ring, 99),
             stream(&[packet(VIDEO_PID, true, 3), packet(VIDEO_PID, true, 4), packet(VIDEO_PID, true, 5)])
         );
     }
