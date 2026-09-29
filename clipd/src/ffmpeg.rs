@@ -303,6 +303,9 @@ pub fn split_mic(game: u16, mic: u16) -> String {
 /// second encode happens and a clip is ready in well under a second.
 pub fn remux_args(input: &str, out: &Path) -> Vec<String> {
     let mut a: Vec<String> = ["-loglevel", "error", "-f", "mpegts", "-i", input].map(String::from).to_vec();
+    // The length of the clip comes back on stdout (see `progress_secs`), which
+    // saves starting ffprobe after every clip.
+    a.extend(["-progress", "pipe:1", "-nostats"].map(String::from));
     // Every stream: without this ffmpeg keeps one sound track and drops the
     // microphone's.
     a.extend(["-map", "0", "-c", "copy"].map(String::from));
@@ -341,6 +344,13 @@ fn size_in(text: &str) -> Option<String> {
     let word = rest.split_whitespace().next()?;
     let (w, h) = word.split_once('x')?;
     (w.parse::<u32>().is_ok() && h.parse::<u32>().is_ok()).then(|| format!("{w}x{h}"))
+}
+
+/// The length ffmpeg reports on `-progress` once it is done, if it does.
+pub fn progress_secs(stdout: &[u8]) -> Option<f64> {
+    let text = String::from_utf8_lossy(stdout);
+    let us: u64 = text.lines().rev().find_map(|l| l.strip_prefix("out_time_us="))?.trim().parse().ok()?;
+    Some(us as f64 / 1e6).filter(|&s| s > 0.0)
 }
 
 /// Length of a finished file in seconds, for reporting a saved clip.
@@ -601,13 +611,24 @@ mod tests {
     /// Ein Clip wird nicht neu kodiert, behält jede Spur und beginnt bei 0.
     #[test]
     fn remux_copies_every_stream() {
-        let a = remux_args("pipe:0", Path::new(r"C:\clips.mp4"));
+        let a = remux_args("pipe:0", Path::new(r"C:\clips.mp4"));
         let at = |flag: &str| a.iter().position(|x| x == flag).map(|i| a[i + 1].clone());
         assert_eq!(at("-c").as_deref(), Some("copy"));
         assert_eq!(at("-map").as_deref(), Some("0"), "sonst fehlt die Mikrofonspur");
         assert_eq!(at("-i").as_deref(), Some("pipe:0"));
         assert_eq!(at("-avoid_negative_ts").as_deref(), Some("make_zero"));
-        assert_eq!(a.last().unwrap(), r"C:\clips.mp4");
+        assert_eq!(a.last().unwrap(), r"C:\clips.mp4");
+        assert_eq!(at("-progress").as_deref(), Some("pipe:1"), "daher kommt die Länge");
+    }
+
+    /// Die Länge steht in der letzten `out_time_us`-Zeile, in Mikrosekunden.
+    #[test]
+    fn reads_the_length_from_progress() {
+        let out = b"frame=150\nout_time_us=2500000\nprogress=continue\nframe=300\nout_time_us=5038722\nout_time=00:00:05.038722\nprogress=end\n";
+        assert_eq!(progress_secs(out), Some(5.038722));
+        assert_eq!(progress_secs(b"out_time_us=N/A\n"), None);
+        assert_eq!(progress_secs(b"out_time_us=0\n"), None, "0 s heißt: nichts geschrieben");
+        assert_eq!(progress_secs(b""), None);
     }
 
     /// AMD nimmt wie NVIDIA mit ddagrab auf und wandelt auf dem Chip um;

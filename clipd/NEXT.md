@@ -45,8 +45,9 @@ halb entpacktes ffmpeg; COM5–9/LPT4–9, `;` in Discord-Dateinamen, Webhook-Ho
 - Umgesetzt: kein Doppel-Kopieren beim Speichern, Ring-Lock nur kurz (Arc-Segmente),
   `shrink_to_fit` (−20 % RAM), Spielfenster-Check ohne EXE-Versionsinfo, Lautstärke-Check alle 10 s.
 - Default `buffer_secs` ist jetzt 60 (halber RAM); bestehende config.toml behalten ihren Wert.
-- ffprobe nach dem Speichern kostet nur ~95 ms und liefert die Länge für Overlay und
-  Toast; bewusst behalten.
+- ffprobe nach dem Speichern entfällt: die Länge für Overlay und Toast kommt aus
+  `ffmpeg -progress pipe:1` (`out_time_us`, auf die Mikrosekunde wie ffprobe),
+  ffprobe nur noch als Rückfall. Spart einen Prozessstart (~95 ms gemessen).
 - Zweite Runde (2026-09-29, Branch `perf/clipd`, gemessen mit Testbild-Clips, ohne
   Aufnahme): ein ffmpeg-Start kostet hier ~165 ms, mehr als ein Bild zu dekodieren.
   - Schnittleiste: ein ffmpeg mit zehn Eingängen statt zehn ffmpegs, Länge aus dem

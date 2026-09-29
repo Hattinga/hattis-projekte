@@ -9,7 +9,7 @@ use std::sync::Arc;
 
 pub struct Saved {
     pub path: PathBuf,
-    /// Length of the clip, as ffprobe reads it back.
+    /// Length of the clip, as ffmpeg reports it after writing.
     pub secs: Option<f64>,
 }
 
@@ -24,7 +24,7 @@ pub fn save(ffmpeg_bin: &Path, ts: Vec<Arc<Vec<u8>>>, out_dir: &Path) -> Result<
     let mut child = ffmpeg::command(ffmpeg_bin)
         .args(ffmpeg::remux_args("pipe:0", &out))
         .stdin(Stdio::piped())
-        .stdout(Stdio::null())
+        .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
         .context("ffmpeg lässt sich nicht starten")?;
@@ -59,7 +59,8 @@ fn finish(ffmpeg_bin: &Path, out: PathBuf, done: &std::process::Output) -> Resul
         let _ = std::fs::remove_file(&out);
         bail!("Der Clip lässt sich nicht schreiben: {}", String::from_utf8_lossy(&done.stderr).trim());
     }
-    let secs = ffmpeg::duration(&ffmpeg::probe_tool(ffmpeg_bin), &out);
+    // ffprobe only if ffmpeg said nothing usable.
+    let secs = ffmpeg::progress_secs(&done.stdout).or_else(|| ffmpeg::duration(&ffmpeg::probe_tool(ffmpeg_bin), &out));
     Ok(Saved { path: out, secs })
 }
 
