@@ -34,7 +34,7 @@ pub fn game_name(fg: &Foreground) -> String {
     if !fg.fullscreen || fg.exe.is_empty() {
         return DESKTOP.into();
     }
-    let desc = clean(&fg.description);
+    let desc = without_helper_suffix(&clean(&fg.description));
     if !desc.is_empty() && !generic(&desc) {
         return desc;
     }
@@ -51,6 +51,18 @@ pub fn game_name(fg: &Foreground) -> String {
         Some(first) => first.to_uppercase().chain(c).collect(),
         None => DESKTOP.into(),
     }
+}
+
+/// Launchers that start the game as a child process name that process after
+/// themselves: FiveM's game is "FiveM Game subprocess", RedM's likewise.
+fn without_helper_suffix(desc: &str) -> String {
+    // ASCII only, so byte positions in `lower` hold in `desc` too.
+    let lower = desc.to_ascii_lowercase();
+    [" game subprocess", " subprocess"]
+        .iter()
+        .find(|suffix| lower.ends_with(*suffix))
+        .map_or(desc, |suffix| desc[..desc.len() - suffix.len()].trim_end())
+        .to_string()
 }
 
 fn clean(s: &str) -> String {
@@ -243,6 +255,15 @@ mod tests {
     fn prefers_the_exe_description() {
         assert_eq!(game_name(&fg("cs2.exe", "Counter-Strike 2", "Counter-Strike 2")), "Counter-Strike 2");
         assert_eq!(game_name(&fg("rocketleague.exe", "Rocket League®", "")), "Rocket League");
+    }
+
+    /// FiveM startet GTA als Unterprozess, der sich „FiveM Game subprocess“ nennt.
+    #[test]
+    fn launcher_subprocesses_are_named_after_the_launcher() {
+        let fivem = fg("fivem_b3258_gtaprocess.exe", "FiveM Game subprocess", "FiveM® by Cfx.re");
+        assert_eq!(game_name(&fivem), "FiveM");
+        assert_eq!(game_name(&fg("redm_gameprocess.exe", "RedM Game Subprocess", "")), "RedM");
+        assert_eq!(game_name(&fg("x.exe", "Game subprocess", "Titel")), "Titel", "ohne Namen davor zählt der Titel");
     }
 
     /// Engines und Laufzeitumgebungen beschreiben sich selbst, nicht das Spiel.
