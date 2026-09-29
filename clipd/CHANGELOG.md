@@ -12,7 +12,8 @@ Die erste Fassung.
 - **Aufnahme auf der Grafikkarte** mit NVIDIA (NVENC) oder AMD (AMF); welche Karte,
   findet clipd selbst heraus. Wahlweise der ganze Bildschirm oder nur das Fenster
   des Spiels.
-- **Ton** von den Boxen und auf Wunsch das Mikrofon als eigene Spur.
+- **Ton** von den Boxen und auf Wunsch das Mikrofon als eigene Spur. Surround-Geräte
+  wie SteelSeries Sonar (8 Kanäle) mischt clipd auf Stereo.
 - **Ordner pro Spiel:** Clips landen unter dem Spiel, das gerade vorne war.
 - **Fenster** mit Bibliothek, Vorschaubildern, Player mit Schnittrahmen, Favoriten
   und Aufräumen nach Alter oder Speicherplatz.
