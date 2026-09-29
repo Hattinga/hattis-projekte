@@ -294,31 +294,28 @@ pub fn remux_args(input: &str, out: &Path) -> Vec<String> {
 
 /// Asks ddagrab which desktops it can see, by grabbing a single frame from each
 /// index until one fails. That is the only answer that matches what the capture
-/// will really do.
+/// will really do. The same frame tells the size, so each desktop costs one
+/// ffmpeg start, which the settings sheet waits for.
 pub fn monitors(ffmpeg: &Path) -> Vec<(u32, String)> {
     let mut found = Vec::new();
     for idx in 0..16 {
         let out = command(ffmpeg)
-            .args(["-loglevel", "error", "-f", "lavfi", "-i", &format!("ddagrab=output_idx={idx}")])
+            .args(["-loglevel", "info", "-f", "lavfi", "-i", &format!("ddagrab=output_idx={idx}")])
             .args(["-frames:v", "1", "-f", "null", "-"])
             .output();
         match out {
-            Ok(o) if o.status.success() => found.push((idx, size_of(ffmpeg, idx).unwrap_or_else(|| "?".into()))),
+            Ok(o) if o.status.success() => {
+                found.push((idx, size_in(&String::from_utf8_lossy(&o.stderr)).unwrap_or_else(|| "?".into())))
+            }
             _ => break,
         }
     }
     found
 }
 
-/// Resolution of one desktop, read back from a single captured frame.
-fn size_of(ffmpeg: &Path, idx: u32) -> Option<String> {
-    let out = command(ffmpeg)
-        .args(["-loglevel", "info", "-f", "lavfi", "-i", &format!("ddagrab=output_idx={idx}")])
-        .args(["-frames:v", "1", "-f", "null", "-"])
-        .output()
-        .ok()?;
-    // ffmpeg describes the input stream on stderr: "... d3d11, 1920x1080 ...".
-    let text = String::from_utf8_lossy(&out.stderr).into_owned();
+/// Resolution of a desktop, from how ffmpeg describes the captured stream on
+/// stderr: "... d3d11, 1920x1080 ...".
+fn size_in(text: &str) -> Option<String> {
     let at = text.find("d3d11,")?;
     let rest = &text[at + "d3d11,".len()..];
     let word = rest.split_whitespace().next()?;
@@ -633,6 +630,16 @@ content-length: 87037354
             ),
             None
         );
+    }
+
+    /// Die Größe des Bildschirms steht in ffmpegs Beschreibung des Eingangs.
+    #[test]
+    fn reads_the_desktop_size() {
+        let info = "Input #0, lavfi, from 'ddagrab=output_idx=0':\n  Duration: N/A, start: 0.0, bitrate: N/A\n  \
+                    Stream #0:0: Video: wrapped_avframe, d3d11, 1920x1200 [SAR 1:1 DAR 8:5], 60 fps\n";
+        assert_eq!(size_in(info).as_deref(), Some("1920x1200"));
+        assert_eq!(size_in("Stream #0:0: Video: wrapped_avframe, d3d11, groß"), None);
+        assert_eq!(size_in(""), None);
     }
 
     /// Aus ffmpegs Meldungen bleibt der Satz übrig, der den Grund nennt.
