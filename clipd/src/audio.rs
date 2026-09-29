@@ -107,22 +107,26 @@ pub fn target_bytes(elapsed: Duration, bytes_per_sec: u64, bytes_per_frame: usiz
 /// the microphone's from `mic`, silence wherever a device has nothing yet.
 pub fn interleave(frames: usize, game: &mut VecDeque<u8>, g: usize, mic: &mut VecDeque<u8>, m: usize) -> Vec<u8> {
     let mut out = Vec::with_capacity(frames * (g + m));
-    let have_game = game.len() / g.max(1);
-    let have_mic = mic.len().checked_div(m).unwrap_or(0);
-    for i in 0..frames {
-        if i < have_game {
-            out.extend(game.drain(..g));
-        } else {
-            out.resize(out.len() + g, 0);
-        }
-        if m > 0 {
-            if i < have_mic {
-                out.extend(mic.drain(..m));
-            } else {
-                out.resize(out.len() + m, 0);
+    let take_game = frames.min(game.len() / g.max(1)) * g;
+    let take_mic = frames.min(mic.len().checked_div(m).unwrap_or(0)) * m;
+    // In one piece, so whole frames are copied as slices rather than byte by
+    // byte; this runs 200 times a second.
+    let (gs, ms) = (&game.make_contiguous()[..take_game], &mic.make_contiguous()[..take_mic]);
+    if m == 0 {
+        out.extend_from_slice(gs);
+        out.resize(frames * g, 0);
+    } else {
+        for i in 0..frames {
+            for (from, n) in [(gs, g), (ms, m)] {
+                match from.get(i * n..(i + 1) * n) {
+                    Some(frame) => out.extend_from_slice(frame),
+                    None => out.resize(out.len() + n, 0),
+                }
             }
         }
     }
+    game.drain(..take_game);
+    mic.drain(..take_mic);
     out
 }
 
@@ -569,6 +573,21 @@ mod tests {
         let seen = sound + Duration::from_millis(400);
         assert_eq!(aligned_start(sound, seen, Duration::from_millis(33)), seen - Duration::from_millis(33));
         assert_eq!(aligned_start(sound, sound + Duration::from_millis(10), Duration::from_millis(33)), sound);
+    }
+
+    /// Auch wenn die Warteschlange im Kreis herumläuft, kommen die Frames in
+    /// der richtigen Reihenfolge heraus.
+    #[test]
+    fn interleaves_a_wrapped_queue() {
+        let mut game: VecDeque<u8> = VecDeque::with_capacity(8);
+        game.extend([0, 0, 0, 0, 0, 0]);
+        game.drain(..6);
+        game.extend([1, 1, 2, 2, 3]);
+        let mut mic: VecDeque<u8> = [7, 8].into_iter().collect();
+        let out = interleave(3, &mut game, 2, &mut mic, 1);
+        assert_eq!(out, [1, 1, 7, 2, 2, 8, 0, 0, 0]);
+        assert_eq!(game, [3], "ein halber Frame bleibt liegen");
+        assert!(mic.is_empty());
     }
 
     /// Ein Rückstau wird gekappt, und zwar nur in ganzen Frames.
