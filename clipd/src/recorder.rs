@@ -129,20 +129,37 @@ impl Recorder {
         self.tender.as_ref().is_some_and(|t| !t.is_finished())
     }
 
-    /// The signs that a save worked, since a game in front hides every other.
-    /// Also the moment to tidy up, now that there is one clip more.
     fn saved(&self, what: &str, done: &Saved) {
-        crate::library::tidy(&self.settings.clips_dir(), self.settings.keep_days, self.settings.max_gb);
-        if self.settings.save_sound {
-            crate::sys::chime();
-        }
-        if self.settings.overlay {
-            let game = done.path.parent().filter(|_| self.settings.game_folders).and_then(|p| p.file_name());
-            let length = done.secs.map(|s| format!("{}:{:02}", s as u64 / 60, s as u64 % 60));
-            let detail: Vec<String> =
-                [game.map(|g| g.to_string_lossy().into_owned()), length].into_iter().flatten().collect();
-            crate::overlay::flash(what, &detail.join(" · "));
-        }
+        announce(&self.settings, what, done);
+    }
+}
+
+/// The signs that a save worked, since a game in front hides every other.
+/// Also the moment to tidy up, now that there is one clip more.
+fn announce(s: &Settings, what: &str, done: &Saved) {
+    crate::library::tidy(&s.clips_dir(), s.keep_days, s.max_gb);
+    if s.save_sound {
+        crate::sys::chime();
+    }
+    if s.overlay {
+        let game = done.path.parent().filter(|_| s.game_folders).and_then(|p| p.file_name());
+        let length = done.secs.map(|s| format!("{}:{:02}", s as u64 / 60, s as u64 % 60));
+        let detail: Vec<String> = [game.map(|g| g.to_string_lossy().into_owned()), length].into_iter().flatten().collect();
+        crate::overlay::flash(what, &detail.join(" · "));
+    }
+}
+
+/// Ends and saves a recording that `ring` is writing, because the capture
+/// behind it is about to go away: a new ring, a new ffmpeg or none at all.
+/// The next capture cannot carry it on — its stream starts over and may
+/// even have another size.
+/// `recording` is what was taken out of the shared state, so no lock is held
+/// while ffmpeg writes the file.
+fn rescue(ffmpeg_bin: &Path, s: &Settings, ring: &Ring, recording: Option<(PathBuf, Instant)>) {
+    let Some((out_dir, _)) = recording else { return };
+    match ring.stop_recording().and_then(|file| clip::save_file(ffmpeg_bin, &file, &out_dir)) {
+        Ok(done) => announce(s, "Aufnahme gespeichert", &done),
+        Err(e) => eprintln!("clipd: die Aufnahme ließ sich nicht retten — {e:#}"),
     }
 }
 
@@ -155,10 +172,19 @@ impl Drop for Recorder {
     }
 }
 
+/// [`tend_capture`], and whatever recording is still running saved at the
+/// end, however the capture ended.
+fn tend(buf: Buffer, s: Settings, ffmpeg_bin: &Path, shared: &Shared, on_end: impl FnOnce(String)) {
+    tend_capture(buf, s.clone(), ffmpeg_bin, shared, on_end);
+    let ring = lock(&shared.ring).clone();
+    let recording = lock(&shared.recording).take();
+    rescue(ffmpeg_bin, &s, &ring, recording);
+}
+
 /// Watches ffmpeg until told to stop, and in game mode follows the game in
 /// front: a fullscreen game gets a capture of its own window, everything
 /// else the screen. Owns the buffer, so returning from here ends the capture.
-fn tend(mut buf: Buffer, mut s: Settings, ffmpeg_bin: &Path, shared: &Shared, on_end: impl FnOnce(String)) {
+fn tend_capture(mut buf: Buffer, mut s: Settings, ffmpeg_bin: &Path, shared: &Shared, on_end: impl FnOnce(String)) {
     let mut last_look = Instant::now();
     let mut refused = None;
     while !shared.stop.load(Ordering::Relaxed) {
@@ -200,11 +226,17 @@ fn tend(mut buf: Buffer, mut s: Settings, ffmpeg_bin: &Path, shared: &Shared, on
     // Dropping the buffer here ends ffmpeg.
 }
 
-/// A fresh capture with `s`, its ring put in place of the old one.
+/// A fresh capture with `s`, its ring put in place of the old one. A
+/// recording on the old ring is saved rather than lost; the recording lock
+/// is held over the swap, so none can start on the old ring meanwhile.
 fn restart(ffmpeg_bin: &Path, s: &Settings, shared: &Shared) -> Option<Buffer> {
     let mut buf = Buffer::start(ffmpeg_bin, s).ok()?;
     buf.wait_until_recording(Duration::from_secs(10)).ok()?;
-    *lock(&shared.ring) = buf.ring.clone();
+    let (old, recording) = {
+        let mut recording = lock(&shared.recording);
+        (std::mem::replace(&mut *lock(&shared.ring), buf.ring.clone()), recording.take())
+    };
+    rescue(ffmpeg_bin, s, &old, recording);
     Some(buf)
 }
 

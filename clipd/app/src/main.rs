@@ -23,6 +23,8 @@ struct App {
     /// Why there is no capture, or why it is incomplete.
     problem: Mutex<Option<String>>,
     starting: AtomicBool,
+    /// Asked to start again while starting, with settings saved meanwhile.
+    again: AtomicBool,
     /// The tray entry that starts or ends a recording, to rename it.
     record_item: Mutex<Option<MenuItem<Wry>>>,
     /// The volume warning, asked for at most every few seconds.
@@ -112,55 +114,74 @@ fn emit_status(app: &AppHandle) {
 
 /// (Re)starts the capture with what config.toml says, off the main thread:
 /// settling the card and waiting for the first segment takes a second or two.
+/// Ending the old one happens there too — it waits for the hotkey thread,
+/// which may itself be waiting for the main thread to rename a tray entry,
+/// and it saves a recording still running.
 fn start_capture(app: &AppHandle) {
     let st = app.state::<App>();
     if st.starting.swap(true, Ordering::SeqCst) {
+        st.again.store(true, Ordering::SeqCst);
         return;
     }
-    // The keys go first, since they hold a clone of the recorder.
-    *lock(&st.keys) = None;
-    *lock(&st.recorder) = None;
-    *lock(&st.problem) = None;
     emit_status(app);
     let app = app.clone();
     std::thread::spawn(move || {
         let st = app.state::<App>();
-        let fetched = ffmpeg::find().or_else(|_| {
-            let progress_app = app.clone();
-            let mut last = Instant::now();
-            let got = ffmpeg::ensure(&mut |got, total| {
-                *lock(&progress_app.state::<App>().download) = Some((got, total));
-                if last.elapsed() > Duration::from_millis(400) {
-                    last = Instant::now();
-                    emit_status(&progress_app);
-                }
-            });
-            *lock(&st.download) = None;
-            got
-        });
-        let started = fetched.and_then(|bin| {
-            let on_end = app.clone();
-            Recorder::start(&bin, Settings::load(), move |why| {
-                *lock(&on_end.state::<App>().problem) = Some(why);
-                emit_status(&on_end);
-            })
-        });
-        match started {
-            Ok(rec) => {
-                let rec = Arc::new(rec);
-                allow_clips(&app, &rec.settings);
-                match listen(&app, &rec) {
-                    Ok(keys) => *lock(&st.keys) = Some(keys),
-                    Err(e) => *lock(&st.problem) = Some(format!("{e:#}")),
-                }
-                *lock(&st.recorder) = Some(rec);
+        loop {
+            capture(&app);
+            if !st.again.swap(false, Ordering::SeqCst) {
+                break;
             }
-            Err(e) => *lock(&st.problem) = Some(format!("{e:#}")),
         }
         st.starting.store(false, Ordering::SeqCst);
         update_tray(&app);
         emit_status(&app);
     });
+}
+
+fn capture(app: &AppHandle) {
+    let st = app.state::<App>();
+    // The keys go first, since they hold a clone of the recorder.
+    let keys = lock(&st.keys).take();
+    drop(keys);
+    let old = lock(&st.recorder).take();
+    drop(old);
+    *lock(&st.problem) = None;
+    // Before the start, which may fail: the library of a folder just picked
+    // should show either way.
+    let settings = Settings::load();
+    allow_clips(app, &settings);
+    let fetched = ffmpeg::find().or_else(|_| {
+        let progress_app = app.clone();
+        let mut last = Instant::now();
+        let got = ffmpeg::ensure(&mut |got, total| {
+            *lock(&progress_app.state::<App>().download) = Some((got, total));
+            if last.elapsed() > Duration::from_millis(400) {
+                last = Instant::now();
+                emit_status(&progress_app);
+            }
+        });
+        *lock(&st.download) = None;
+        got
+    });
+    let started = fetched.and_then(|bin| {
+        let on_end = app.clone();
+        Recorder::start(&bin, settings, move |why| {
+            *lock(&on_end.state::<App>().problem) = Some(why);
+            emit_status(&on_end);
+        })
+    });
+    match started {
+        Ok(rec) => {
+            let rec = Arc::new(rec);
+            match listen(app, &rec) {
+                Ok(keys) => *lock(&st.keys) = Some(keys),
+                Err(e) => *lock(&st.problem) = Some(format!("{e:#}")),
+            }
+            *lock(&st.recorder) = Some(rec);
+        }
+        Err(e) => *lock(&st.problem) = Some(format!("{e:#}")),
+    }
 }
 
 /// Lets the window load clips and thumbnails through the asset protocol —
@@ -341,9 +362,12 @@ async fn strip(path: PathBuf) -> Result<Vec<PathBuf>, String> {
 async fn copy_file(path: PathBuf) -> Result<(), String> {
     blocking(move || {
         use std::os::windows::process::CommandExt;
+        // The path goes in through the environment: with -Command, Windows
+        // PowerShell does not fill $args but glues extra arguments onto the
+        // script, so a path would run as code.
         let out = std::process::Command::new("powershell")
-            .args(["-NoProfile", "-NonInteractive", "-Command", "Set-Clipboard -LiteralPath $args[0]"])
-            .arg(&path)
+            .args(["-NoProfile", "-NonInteractive", "-Command", "Set-Clipboard -LiteralPath $env:CLIPD_COPY"])
+            .env("CLIPD_COPY", &path)
             .creation_flags(0x0800_0000)
             .output()
             .map_err(err)?;
@@ -480,7 +504,18 @@ fn tray(app: &AppHandle) -> tauri::Result<()> {
                     });
                 }
                 "show" => show_main(&app),
-                "quit" => app.exit(0),
+                // Ending the capture first saves a recording still running;
+                // the job object would take ffmpeg down with it otherwise.
+                "quit" => {
+                    std::thread::spawn(move || {
+                        let st = app.state::<App>();
+                        let keys = lock(&st.keys).take();
+                        drop(keys);
+                        let rec = lock(&st.recorder).take();
+                        drop(rec);
+                        app.exit(0);
+                    });
+                }
                 _ => {}
             }
         })

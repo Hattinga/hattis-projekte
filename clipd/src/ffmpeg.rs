@@ -71,15 +71,28 @@ pub fn ensure(progress: &mut dyn FnMut(u64, Option<u64>)) -> Result<PathBuf> {
     }
     progress(total.unwrap_or(0), total);
 
-    // Only the bin folder, without the folder the zip wraps it in.
+    // Only the bin folder, without the folder the zip wraps it in. Unpacked
+    // aside first and ffmpeg.exe moved in last: an ffmpeg.exe without its
+    // DLLs would count as found and never be fetched again.
+    let unpacked = bin.join("neu");
+    let _ = std::fs::remove_dir_all(&unpacked);
+    std::fs::create_dir_all(&unpacked).with_context(|| format!("{} lässt sich nicht anlegen", unpacked.display()))?;
     let mut untar = quiet(Command::new("tar.exe"));
-    untar.args(["-xf"]).arg(&zip).args(["--strip-components", "2", "-C"]).arg(&bin).arg("*/bin/*");
+    untar.args(["-xf"]).arg(&zip).args(["--strip-components", "2", "-C"]).arg(&unpacked).arg("*/bin/*");
     let out = untar.output().context("tar.exe lässt sich nicht starten")?;
     let _ = std::fs::remove_file(&zip);
-    let _ = std::fs::remove_file(bin.join(exe("ffplay")));
     if !out.status.success() {
+        let _ = std::fs::remove_dir_all(&unpacked);
         bail!("ffmpeg ließ sich nicht entpacken: {}", String::from_utf8_lossy(&out.stderr).trim());
     }
+    let _ = std::fs::remove_file(unpacked.join(exe("ffplay")));
+    let mut files: Vec<_> = std::fs::read_dir(&unpacked)?.filter_map(|e| e.ok()).map(|e| e.path()).collect();
+    files.sort_by_key(|p| p.file_name().is_some_and(|n| n == exe("ffmpeg").as_str()));
+    for file in files {
+        let to = bin.join(file.file_name().context("Dateiname")?);
+        std::fs::rename(&file, &to).with_context(|| format!("{} lässt sich nicht anlegen", to.display()))?;
+    }
+    let _ = std::fs::remove_dir_all(&unpacked);
     find()
 }
 
@@ -115,8 +128,14 @@ fn on_path(name: &str) -> Option<PathBuf> {
 /// A command that writes no console window and reads no stdin, so it cannot
 /// steal the terminal or block on a prompt.
 pub fn command(ffmpeg: &Path) -> Command {
-    let mut cmd = Command::new(ffmpeg);
+    let mut cmd = hidden(Command::new(ffmpeg));
     cmd.args(["-hide_banner", "-nostdin"]);
+    cmd
+}
+
+/// `cmd` without a console window: the app has none of its own, so every
+/// child would open one, and over a game that can cost it its fullscreen.
+pub fn hidden(mut cmd: Command) -> Command {
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
@@ -328,7 +347,7 @@ fn size_of(ffmpeg: &Path, idx: u32) -> Option<String> {
 
 /// Length of a finished file in seconds, for reporting a saved clip.
 pub fn duration(ffprobe: &Path, file: &Path) -> Option<f64> {
-    let out = Command::new(ffprobe)
+    let out = hidden(Command::new(ffprobe))
         .args(["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0"])
         .arg(file)
         .output()
