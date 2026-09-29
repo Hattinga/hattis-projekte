@@ -138,7 +138,7 @@ impl Default for Settings {
         Self {
             monitor: 0,
             fps: 60,
-            buffer_secs: 120,
+            buffer_secs: 60,
             segment_secs: 1,
             clip_secs: 30,
             gpu: Gpu::Auto,

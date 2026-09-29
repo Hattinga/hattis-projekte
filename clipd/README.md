@@ -34,8 +34,8 @@ Drei Dinge daran sind wichtiger, als sie aussehen:
   Ring liegt im Arbeitsspeicher, ein Clip ist einfach ein zusammenhängendes
   Stück davon ab einem Keyframe, das ffmpeg ohne neues Kodieren in ein MP4
   packt. 30 Sekunden sind in Bruchteilen einer Sekunde geschrieben. Der Ring
-  kostet so viel Arbeitsspeicher, wie er Sekunden hält: bei 120 s rund 25 bis
-  50 MB.
+  kostet so viel Arbeitsspeicher, wie er Sekunden hält: bei 60 s rund 12 bis
+  25 MB.
 - **Den Ton holt clipd selbst.** ffmpeg kann unter Windows nicht mitschneiden,
   was die Boxen spielen — DirectShow kennt nur Mikrofone. clipd zapft deshalb
   WASAPI im Loopback-Modus an und schiebt die Samples in ffmpegs Eingabe.
@@ -104,7 +104,7 @@ standardmäßig in `clips/`.
 |---|---|---|
 | `monitor` | `0` | Bildschirm, wie ihn `clipd monitors` zählt |
 | `fps` | `60` | Bildrate |
-| `buffer_secs` | `120` | wie weit ein Clip zurückreichen kann |
+| `buffer_secs` | `60` | wie weit ein Clip zurückreichen kann |
 | `segment_secs` | `1` | Abstand der Keyframes; so genau hält ein Clip seine Länge |
 | `clip_secs` | `30` | was ein Tastendruck speichert |
 | `capture` | `screen` | `game` nimmt, solange ein Spiel im Vollbild vorne ist, nur dessen Fenster auf — was darüber aufpoppt, landet in keinem Clip |
@@ -130,8 +130,8 @@ standardmäßig in `clips/`.
 | `out_dir` | leer | leer heißt `clips/` |
 
 Der Puffer kostet Arbeitsspeicher: 1080p60 mit `quality = 22` sind je nach Bild und
-Format rund 200 bis 400 KB pro Sekunde, also 25 bis 50 MB für die
-voreingestellten 120 Sekunden.
+Format rund 200 bis 400 KB pro Sekunde, also 12 bis 25 MB für die
+voreingestellten 60 Sekunden.
 
 ## Was noch fehlt
 

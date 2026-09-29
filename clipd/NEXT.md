@@ -3,11 +3,13 @@
 Stand 2026-09-28, Branch `feat/clipd`.
 
 ## Offen / ungetestet
-- **Fenster schließen gibt WebView frei** (letzter Commit): `create: false` in
-  tauri.conf.json, `show_main` baut das Fenster bei Bedarf, `RunEvent::ExitRequested`
-  mit `code: None` verhindert das Beenden. Baut und Clippy ist sauber, **zur Laufzeit
-  noch nicht ausprobiert**: Fenster öffnen/schließen/wieder öffnen über das Tray-Symbol
-  prüfen, und dass „Beenden“ wirklich beendet.
+- **Fenster schließen gibt WebView frei**: am 2026-09-29 auf dem Laptop getestet
+  (Release-Build, eigener `CLIPD_HOME`, ohne Ton/Mikro/Overlay). Ergebnis: Fenster zu →
+  App und ffmpeg laufen weiter, alle 6 WebView2-Prozesse (~197 MB) sind weg, clipd
+  bleibt bei ~14 MB privat (ffmpeg ~80 MB); zweiter Start (Single-Instance, wie der
+  Tray-Klick) baut das Fenster wieder; `app.exit(0)` von „Beenden“ trägt `code: Some(0)`
+  (Tauri-Quelltext geprüft), nur das Schließen des letzten Fensters hat `None`.
+  Nicht per Klick geprüft: das Tray-Menü selbst.
 - **Bild-Ton-Synchronität messen** (nur zuhause, macht Ton): Skript `sync.ps1`
   (weißer Blitz + Testton, misst Versatz). Vor der Korrektur: Ton 0,4 s zu spät.
 - **NVIDIA** und **Spielfenster-Modus** (`capture = "game"`) mit echtem Spiel testen.
@@ -19,11 +21,13 @@ Stand 2026-09-28, Branch `feat/clipd`.
 - RAM clipd: Ring ~30 MB bei 120 s Desktop, steigt mit Bildinhalt (Spiele eher
   100–300 MB). Kein Leck (6-Minuten-Test).
 - Clip speichern: ~0,7 s (0,3 s bewusste Wartezeit auf den Ton, Rest ffmpeg + ffprobe).
-- App im Tray vorher: WebView2 6 Prozesse, ~193 MB privat → mit letztem Commit sollte
-  das beim geschlossenen Fenster wegfallen (nachmessen: `perf.ps1 -Mode app`).
+- App im Tray: WebView2 6 Prozesse, ~193 MB privat solange das Fenster offen ist;
+  seit dem letzten Commit beim geschlossenen Fenster 0 (nachgemessen 2026-09-29).
 - Umgesetzt: kein Doppel-Kopieren beim Speichern, Ring-Lock nur kurz (Arc-Segmente),
   `shrink_to_fit` (−20 % RAM), Spielfenster-Check ohne EXE-Versionsinfo, Lautstärke-Check alle 10 s.
-- Ideen: ffprobe nach dem Speichern sparen; Default `buffer_secs` 120 → 60 halbiert RAM.
+- Default `buffer_secs` ist jetzt 60 (halber RAM); bestehende config.toml behalten ihren Wert.
+- ffprobe nach dem Speichern kostet nur ~95 ms und liefert die Länge für Overlay und
+  Toast; bewusst behalten.
 
 ## Regeln
 - Nutzer ist oft in der Schule: keine Töne, keine Lautstärkeänderung, keine
