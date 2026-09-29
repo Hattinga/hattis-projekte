@@ -69,8 +69,16 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         env:
           GH_TOKEN: ${{ github.token }}
+        # The notes are this version's section of CHANGELOG.md (a test makes
+        # sure there is one).
         run: |
+          version="${{ steps.version.outputs.version }}"
+          {
+            awk -v h="## $version" '$0 == h { on = 1; next } /^## / { on = 0 } on' CHANGELOG.md
+            echo
+            echo "Installer für Windows. ffmpeg lädt clipd beim ersten Start selbst (rund 90 MB)."
+          } > notes.md
           gh release create "$GITHUB_REF_NAME" dist/* \
-            --title "clipd ${{ steps.version.outputs.version }}" \
-            --notes "Installer für Windows. ffmpeg lädt clipd beim ersten Start selbst (rund 90 MB)." \
+            --title "clipd $version" \
+            --notes-file notes.md \
             --latest=false

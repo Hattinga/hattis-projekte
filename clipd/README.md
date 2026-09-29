@@ -8,6 +8,13 @@ Nur Windows, und es braucht eine Grafikkarte von NVIDIA oder AMD: aufgenommen
 wird mit der Desktop Duplication API, kodiert wird auf der Grafikkarte — mit
 NVENC oder AMF. Welche Karte es wird, findet clipd beim Start selbst heraus.
 
+## Installieren
+
+Unter [Releases](https://github.com/Hattinga/hattis-projekte/releases) liegt bei
+den Einträgen `clipd-v…` ein `clipd-…-setup.exe`. Der Installer braucht keine
+Administratorrechte und legt clipd samt `clipd.exe` fürs Terminal ins
+Benutzerprofil. ffmpeg lädt clipd beim ersten Start selbst (rund 90 MB).
+
 ## Wie es funktioniert
 
 ```
@@ -135,8 +142,6 @@ voreingestellten 60 Sekunden.
 
 ## Was noch fehlt
 
-- **Ein Installer.** Tauri kann einen bauen (`cargo tauri build` in `app/`),
-  eingerichtet ist das noch nicht.
 - **Linux und macOS.** Aufnahme, Ton und Hotkeys sind heute Windows-APIs.
 
 ## Bekannte Eigenheiten
@@ -198,6 +203,12 @@ die Tonaufnahme gerade klemmt.
 cargo build --release
 cargo test
 ```
+
+Den Installer baut `cargo tauri build --config tauri.release.conf.json` in
+`app/` (braucht `cargo install tauri-cli --version "^2"`). Ein Release entsteht
+aus einem Tag `clipd-vX.Y.Z`: Version in `Cargo.toml`, `app/Cargo.toml` und
+`app/tauri.conf.json` erhöhen, einen Abschnitt in `CHANGELOG.md` schreiben (ein
+Test prüft beides), Tag pushen.
 
 `ffmpeg.exe` und `ffprobe.exe` gehören nach `bin/` neben die `clipd.exe` (oder
 in den PATH). Der Build muss `ddagrab` und NVENC oder AMF samt `vpp_amf`
