@@ -35,6 +35,11 @@ halb entpacktes ffmpeg; COM5–9/LPT4–9, `;` in Discord-Dateinamen, Webhook-Ho
   (`--latest=false`, omnidl bleibt „latest“, Text aus CHANGELOG.md). Lokal gebaut am
   2026-09-29: `cargo tauri build --config tauri.release.conf.json` → 2 MB Setup.
 
+## FiveM (2026-09-29, live gelesen)
+- Spielprozess `FiveM_b3258_GTAProcess.exe`, Beschreibung „FiveM Game subprocess“ →
+  Ordner heißt jetzt „FiveM“. Fenster randlos 0,0–1920×1080 auf DISPLAY1, zählt also
+  als Vollbild. Aufnahme mit clipd im Spiel noch nicht probiert.
+
 ## Performance-Review (Laptop, Ryzen 7730U, AMD, 1920×1200@60, Desktop-Inhalt)
 - Aufnahme: ffmpeg 14–17 % eines Kerns, clipd 1 %, GPU 3D ~16 %.
 - RAM clipd: Ring ~30 MB bei 120 s Desktop, steigt mit Bildinhalt (Spiele eher
