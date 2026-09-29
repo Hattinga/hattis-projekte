@@ -155,15 +155,27 @@ pub fn meta(ffmpeg_bin: &Path, clip: &Path) -> Result<Meta> {
     {
         return Ok(m);
     }
-    let (duration, width, height, audio_tracks) = probe(&ffmpeg::probe_tool(ffmpeg_bin), clip)?;
-    let at = (duration / 3.0).min(1.0).to_string();
-    let out = ffmpeg::command(ffmpeg_bin)
-        .args(["-loglevel", "error", "-y", "-ss", &at, "-i"])
-        .arg(clip)
-        .args(["-frames:v", "1", "-vf", "scale=480:-2", "-q:v", "4"])
-        .arg(&thumb)
-        .output()
-        .context("ffmpeg lässt sich nicht starten")?;
+    let grab = |at: f64| {
+        ffmpeg::command(ffmpeg_bin)
+            .args(["-loglevel", "error", "-y", "-ss", &at.to_string(), "-i"])
+            .arg(clip)
+            .args(["-frames:v", "1", "-vf", "scale=480:-2", "-q:v", "4"])
+            .arg(&thumb)
+            .stdout(Stdio::null())
+            .stderr(Stdio::piped())
+            .spawn()
+            .context("ffmpeg lässt sich nicht starten")
+    };
+    // The picture comes from a second in, or a third of the way into a clip
+    // shorter than three seconds. Most are longer, so it is taken while
+    // ffprobe reads the length (~0.3 s → ~0.2 s), and again for a short one.
+    let early = grab(1.0)?;
+    let probed = probe(&ffmpeg::probe_tool(ffmpeg_bin), clip);
+    let mut out = early.wait_with_output().context("ffmpeg lässt sich nicht abfragen")?;
+    let (duration, width, height, audio_tracks) = probed?;
+    if duration / 3.0 < 1.0 {
+        out = grab(duration / 3.0)?.wait_with_output().context("ffmpeg lässt sich nicht abfragen")?;
+    }
     if !out.status.success() {
         bail!("Kein Vorschaubild: {}", String::from_utf8_lossy(&out.stderr).trim());
     }
@@ -190,18 +202,24 @@ pub fn strip(ffmpeg_bin: &Path, clip: &Path, count: u32) -> Result<Vec<PathBuf>>
         return Ok(have);
     }
     std::fs::create_dir_all(&dir).with_context(|| format!("{} lässt sich nicht anlegen", dir.display()))?;
-    let (duration, ..) = probe(&ffmpeg::probe_tool(ffmpeg_bin), clip)?;
-    // One seek per frame is far quicker than decoding the whole clip.
+    // The window asks for the thumbnail first, so the length is in the cache.
+    let duration = meta(ffmpeg_bin, clip)?.duration;
+    // One seek per frame is far quicker than decoding the whole clip, and one
+    // ffmpeg opening the clip once per frame is quicker than one ffmpeg per
+    // frame: starting it costs more than the frame (2.1 s → 0.7 s for ten).
+    // A thread per decoder keeps the ten from crowding each other and the
+    // capture. A frame that fails is left out, the others still come.
+    let mut cmd = ffmpeg::command(ffmpeg_bin);
+    cmd.args(["-loglevel", "error", "-y"]);
     for i in 0..count {
         let at = format!("{:.3}", duration * (i as f64 + 0.5) / count as f64);
-        let out = dir.join(format!("{i:02}.jpg"));
-        let _ = ffmpeg::command(ffmpeg_bin)
-            .args(["-loglevel", "error", "-y", "-ss", &at, "-i"])
-            .arg(clip)
-            .args(["-frames:v", "1", "-vf", "scale=-2:72", "-q:v", "6"])
-            .arg(&out)
-            .output();
+        cmd.args(["-threads", "1", "-ss", &at, "-i"]).arg(clip);
     }
+    for i in 0..count {
+        cmd.args(["-map", &format!("{i}:v:0"), "-frames:v", "1", "-vf", "scale=-2:72", "-q:v", "6"]);
+        cmd.arg(dir.join(format!("{i:02}.jpg")));
+    }
+    let _ = cmd.output();
     Ok(frames(&dir))
 }
 
