@@ -2,6 +2,7 @@
 
 use crate::config::{Gpu, Settings};
 use anyhow::{Context, Result, bail};
+use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -341,11 +342,7 @@ pub fn duration(ffprobe: &Path, file: &Path) -> Option<f64> {
 /// is a real answer: the usual Windows builds list NVENC and AMF whether or
 /// not the machine has either card, and only opening the encoder tells.
 pub fn pick_gpu(ffmpeg: &Path, s: &Settings) -> Result<Gpu> {
-    let listed = |what: &str| -> Result<String> {
-        let out = command(ffmpeg).args(["-loglevel", "quiet", what]).output().context("ffmpeg lässt sich nicht starten")?;
-        Ok(String::from_utf8_lossy(&out.stdout).into_owned())
-    };
-    let (encoders, filters) = (listed("-encoders")?, listed("-filters")?);
+    let BuildLists { encoders, filters, .. } = build_lists(ffmpeg)?;
     let tries: &[Gpu] = match s.gpu {
         Gpu::Auto => &[Gpu::Nvidia, Gpu::Amd],
         Gpu::Nvidia => &[Gpu::Nvidia],
@@ -364,6 +361,58 @@ pub fn pick_gpu(ffmpeg: &Path, s: &Settings) -> Result<Gpu> {
         }
     }
     bail!("Keine Grafikkarte nimmt hier {} auf:\n  {}", s.codec.label(), why.join("\n  "))
+}
+
+/// ffmpeg's `-encoders` and `-filters` output, and which build it came from.
+#[derive(Serialize, Deserialize)]
+struct BuildLists {
+    build: String,
+    encoders: String,
+    filters: String,
+}
+
+/// The lists [`build_lacks`] reads. They only change with the ffmpeg build,
+/// so they are kept in the cache folder and asked for once per build rather
+/// than at every start of the capture (two ffmpeg starts, ~0.35 s).
+fn build_lists(ffmpeg: &Path) -> Result<BuildLists> {
+    let file = crate::config::base_dir().join("cache").join("ffmpeg-lists.json");
+    let build = build_id(ffmpeg);
+    if let Some(lists) = build.as_deref().and_then(|b| cached_lists(&file, b)) {
+        return Ok(lists);
+    }
+    let listed = |what: &str| {
+        command(ffmpeg)
+            .args(["-loglevel", "quiet", what])
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::null())
+            .spawn()
+            .context("ffmpeg lässt sich nicht starten")
+    };
+    // Both at once: each start costs more than the listing itself.
+    let (encoders, filters) = (listed("-encoders")?, listed("-filters")?);
+    let text = |child: std::process::Child| -> Result<(bool, String)> {
+        let out = child.wait_with_output().context("ffmpeg lässt sich nicht abfragen")?;
+        Ok((out.status.success(), String::from_utf8_lossy(&out.stdout).into_owned()))
+    };
+    let ((enc_ok, encoders), (filt_ok, filters)) = (text(encoders)?, text(filters)?);
+    let lists = BuildLists { build: build.clone().unwrap_or_default(), encoders, filters };
+    if build.is_some() && enc_ok && filt_ok {
+        let _ = std::fs::create_dir_all(file.parent().unwrap_or(Path::new(".")));
+        let _ = std::fs::write(&file, serde_json::to_string(&lists)?);
+    }
+    Ok(lists)
+}
+
+/// Which ffmpeg this is: its path, size and time of change.
+fn build_id(ffmpeg: &Path) -> Option<String> {
+    let meta = std::fs::metadata(ffmpeg).ok()?;
+    let modified = meta.modified().ok()?.duration_since(std::time::UNIX_EPOCH).ok()?;
+    Some(format!("{}|{}|{}", ffmpeg.display(), meta.len(), modified.as_nanos()))
+}
+
+fn cached_lists(file: &Path, build: &str) -> Option<BuildLists> {
+    let lists: BuildLists = serde_json::from_str(&std::fs::read_to_string(file).ok()?).ok()?;
+    (lists.build == build).then_some(lists)
 }
 
 /// What this ffmpeg build is missing for the card in `s`, judged from its
@@ -609,6 +658,25 @@ mod tests {
         assert!(build_lacks(encoders, filters, &h264).is_some_and(|m| m.contains("h264_nvenc")));
         let hevc_only = " V....D hevc_nvenc_extra";
         assert!(build_lacks(hevc_only, filters, &nvidia).is_some(), "nur ganze Namen zählen");
+    }
+
+    /// Die gemerkten Listen gelten nur für das ffmpeg, von dem sie stammen.
+    #[test]
+    fn build_lists_belong_to_one_build() {
+        let dir = std::env::temp_dir().join(format!("clipd-lists-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let file = dir.join("ffmpeg-lists.json");
+        let lists = BuildLists { build: "a|1|2".into(), encoders: "hevc_amf".into(), filters: "ddagrab".into() };
+        std::fs::write(&file, serde_json::to_string(&lists).unwrap()).unwrap();
+        assert!(cached_lists(&file, "a|1|2").is_some_and(|l| l.encoders == "hevc_amf" && l.filters == "ddagrab"));
+        assert!(cached_lists(&file, "a|1|3").is_none(), "ein anderes ffmpeg fragt neu");
+        std::fs::write(&file, "kaputt").unwrap();
+        assert!(cached_lists(&file, "a|1|2").is_none());
+        assert!(build_id(&dir.join("fehlt.exe")).is_none());
+        let exe = dir.join("ffmpeg.exe");
+        std::fs::write(&exe, b"x").unwrap();
+        assert!(build_id(&exe).is_some_and(|id| id.contains("|1|")), "Pfad, Größe, Zeit");
+        std::fs::remove_dir_all(&dir).ok();
     }
 
     /// Nach allen Weiterleitungen zählt die Größe der letzten Antwort; die
