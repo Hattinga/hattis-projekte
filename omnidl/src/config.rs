@@ -332,10 +332,9 @@ fn locate_base(exe_dir: &Path, var: &dyn Fn(&str) -> Option<PathBuf>, os: &str) 
     let parent = exe_dir.parent();
     if matches!(profile, "debug" | "release")
         && parent.and_then(|p| p.file_name()).and_then(|n| n.to_str()) == Some("target")
+        && let Some(root) = parent.and_then(|p| p.parent())
     {
-        if let Some(root) = parent.and_then(|p| p.parent()) {
-            return root.to_path_buf();
-        }
+        return root.to_path_buf();
     }
     let home = var("HOME");
     match os {

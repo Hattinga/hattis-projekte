@@ -73,10 +73,10 @@ fn search_path() -> Vec<PathBuf> {
     if cfg!(target_os = "macos") {
         dirs.extend(["/opt/homebrew/bin", "/usr/local/bin", "/opt/local/bin"].map(PathBuf::from));
     }
-    if cfg!(unix) {
-        if let Some(home) = std::env::var_os("HOME") {
-            dirs.push(PathBuf::from(home).join(".local").join("bin"));
-        }
+    if cfg!(unix)
+        && let Some(home) = std::env::var_os("HOME")
+    {
+        dirs.push(PathBuf::from(home).join(".local").join("bin"));
     }
     dirs
 }
@@ -325,19 +325,19 @@ pub async fn ensure(tools: &Tools, force_ytdlp: bool, mut progress: impl FnMut(S
     }
 
     // Without a JavaScript runtime only YouTube suffers; the app warns about it.
-    if let Some(url) = &sources.deno {
-        if !tools.deno().is_file() && find_program("node").is_none() {
-            install_from_zip(tools, url, "deno", &mut progress).await?;
-        }
+    if let Some(url) = &sources.deno
+        && !tools.deno().is_file() && find_program("node").is_none()
+    {
+        install_from_zip(tools, url, "deno", &mut progress).await?;
     }
 
     // gallery-dl is optional; where no build exists it may be installed by hand.
-    if let Some(url) = &sources.gallery {
-        if !tools.gallery_dl().is_file() {
-            let dest = tools.bin.join(exe("gallery-dl"));
-            fetch(url, &dest, "gallery-dl", &mut progress).await?;
-            make_executable(&dest)?;
-        }
+    if let Some(url) = &sources.gallery
+        && !tools.gallery_dl().is_file()
+    {
+        let dest = tools.bin.join(exe("gallery-dl"));
+        fetch(url, &dest, "gallery-dl", &mut progress).await?;
+        make_executable(&dest)?;
     }
     Ok(())
 }

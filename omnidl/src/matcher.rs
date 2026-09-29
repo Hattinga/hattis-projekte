@@ -205,9 +205,8 @@ mod tests {
         let good = cand("Bass Persuades", Some(202.0), "Miley Cyrus - Topic", false);
         let remix = cand("Bass Persuades (Tiesto Remix)", Some(202.0), "Miley Cyrus", false);
         let sg = score(&track(), &good).unwrap();
-        match score(&track(), &remix) {
-            Some(sr) => assert!(sg > sr, "Original schlägt Remix"),
-            None => {}
+        if let Some(sr) = score(&track(), &remix) {
+            assert!(sg > sr, "Original schlägt Remix");
         }
     }
 

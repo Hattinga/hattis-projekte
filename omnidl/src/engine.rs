@@ -681,12 +681,12 @@ async fn spotify_track(
 
     // The list view has no cover art and splits artist names on commas.
     let mut track = track.clone();
-    if !track.id.is_empty() {
-        if let Ok(full) = spotify::track_details(&track.id).await {
-            track.cover = full.cover.or(track.cover);
-            if !full.artists.is_empty() {
-                track.artists = full.artists;
-            }
+    if !track.id.is_empty()
+        && let Ok(full) = spotify::track_details(&track.id).await
+    {
+        track.cover = full.cover.or(track.cover);
+        if !full.artists.is_empty() {
+            track.artists = full.artists;
         }
     }
 
@@ -706,7 +706,7 @@ async fn spotify_track(
     let template = format!("{}.%(ext)s", util::escape_template(&name));
     let window = (track.duration_s * 0.07).max(10.0);
     let duration = (track.duration_s > 0.0)
-        .then(|| (track.duration_s - window, track.duration_s + window));
+        .then_some((track.duration_s - window, track.duration_s + window));
 
     shared.emit(id, JobUpdate::State(JobState::Downloading));
     for cand in candidates.iter().take(3) {
@@ -861,10 +861,10 @@ mod tests {
         let deadline = Instant::now() + Duration::from_secs(5);
         loop {
             while let Ok(ev) = rx.try_recv() {
-                if let Event::Job(id, u) = &ev {
-                    if want(*id, u) {
-                        return;
-                    }
+                if let Event::Job(id, u) = &ev
+                    && want(*id, u)
+                {
+                    return;
                 }
             }
             assert!(Instant::now() < deadline, "erwartetes Ereignis kam nicht");
@@ -881,11 +881,11 @@ mod tests {
         let (shared, rx, cfg) = test_env("sched-cancel");
         submit(&shared, Entry::new("https://youtu.be/x".into(), cfg, Some(later())));
         wait_for(&rx, |id, u| id == 1 && matches!(u, JobUpdate::State(JobState::Scheduled(_)))).await;
-        assert_eq!(shared.journal.len(), 1, "geplant heißt: steht im Journal");
+        assert_eq!(shared.journal.count(), 1, "geplant heißt: steht im Journal");
 
         shared.cancel(1);
         wait_for(&rx, |id, u| id == 1 && matches!(u, JobUpdate::State(JobState::Cancelled))).await;
-        assert_eq!(shared.journal.len(), 0, "abgebrochen: nichts mehr fortzusetzen");
+        assert_eq!(shared.journal.count(), 0, "abgebrochen: nichts mehr fortzusetzen");
     }
 
     #[tokio::test]

@@ -70,10 +70,10 @@ impl Journal {
 
     pub fn mark_done(&self, id: JobId, key: &str) {
         self.change(|list| {
-            if let Some((_, e)) = list.iter_mut().find(|(i, _)| *i == id) {
-                if !e.done.iter().any(|k| k == key) {
-                    e.done.push(key.to_string());
-                }
+            if let Some((_, e)) = list.iter_mut().find(|(i, _)| *i == id)
+                && !e.done.iter().any(|k| k == key)
+            {
+                e.done.push(key.to_string());
             }
         });
     }
@@ -89,7 +89,7 @@ impl Journal {
     }
 
     #[cfg(test)]
-    pub fn len(&self) -> usize {
+    pub fn count(&self) -> usize {
         self.entries.lock().unwrap().len()
     }
 
@@ -186,7 +186,7 @@ mod tests {
         let (j, left) = Journal::open(p);
         assert!(left.is_empty());
         j.insert(1, entry("https://a"));
-        assert_eq!(j.len(), 1);
+        assert_eq!(j.count(), 1);
     }
 
     #[test]
@@ -196,6 +196,6 @@ mod tests {
         j.mark_done(1, "k");
         assert_eq!(j.get(1).unwrap().done, vec!["k"]);
         j.remove(1);
-        assert_eq!(j.len(), 0);
+        assert_eq!(j.count(), 0);
     }
 }

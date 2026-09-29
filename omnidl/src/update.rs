@@ -268,11 +268,11 @@ pub async fn install(rel: &Release, exe: &Path, mut progress: impl FnMut(Option<
 
     let app_new = new_path(exe);
     download(&rel.app, &app_new, |f| progress(f.map(|f| f * app_share))).await?;
-    if let Some((cli_exe, asset)) = &cli {
-        if let Err(e) = download(asset, &new_path(cli_exe), |f| progress(f.map(|f| app_share + f * (1.0 - app_share)))).await {
-            let _ = std::fs::remove_file(&app_new);
-            return Err(e.context("omnidl-cli"));
-        }
+    if let Some((cli_exe, asset)) = &cli
+        && let Err(e) = download(asset, &new_path(cli_exe), |f| progress(f.map(|f| app_share + f * (1.0 - app_share)))).await
+    {
+        let _ = std::fs::remove_file(&app_new);
+        return Err(e.context("omnidl-cli"));
     }
     progress(Some(1.0));
 

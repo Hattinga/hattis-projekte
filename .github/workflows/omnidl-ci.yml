@@ -26,6 +26,12 @@ jobs:
           workspaces: omnidl
       - name: Tests
         run: cargo test --locked
+      # Warnings fail the build, so they cannot pile up again.
+      - name: Clippy
+        run: cargo clippy --locked --all-targets -- -D warnings
+      - name: Clippy (server build)
+        if: runner.os == 'Linux'
+        run: cargo clippy --locked --all-targets --no-default-features --features cli -- -D warnings
       # Downloads yt-dlp, ffmpeg and Deno for this system and starts them;
       # also checks every download link of every platform.
       - name: Tool downloads

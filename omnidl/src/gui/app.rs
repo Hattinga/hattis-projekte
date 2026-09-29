@@ -613,10 +613,10 @@ impl App {
                                 }
                             }
                         }
-                        if let Some((label, action)) = banner.action {
-                            if widgets::text_button(ui, label, p.blue).clicked() {
-                                clicked = Some(action);
-                            }
+                        if let Some((label, action)) = banner.action
+                            && widgets::text_button(ui, label, p.blue).clicked()
+                        {
+                            clicked = Some(action);
                         }
                         ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
                             ui.add(Label::new(RichText::new(&banner.text).font(regular(13.0)).color(p.label)).truncate());
@@ -685,11 +685,11 @@ impl App {
         if let Some(id) = actions.start_now {
             self.send(Command::StartNow(id));
         }
-        if let Some(id) = actions.retry {
-            if let Some(url) = self.jobs.get(id).map(|j| j.url.clone()) {
-                self.jobs.remove_tree(id);
-                self.send(Command::Add { urls: vec![url], cfg: self.cfg.clone(), start_at: None });
-            }
+        if let Some(id) = actions.retry
+            && let Some(url) = self.jobs.get(id).map(|j| j.url.clone())
+        {
+            self.jobs.remove_tree(id);
+            self.send(Command::Add { urls: vec![url], cfg: self.cfg.clone(), start_at: None });
         }
         if let Some(path) = actions.reveal {
             util::reveal(&path);
@@ -781,10 +781,10 @@ impl App {
         if job.is_group() && resp.clicked() {
             act.toggle = Some(idx);
         }
-        if resp.double_clicked() {
-            if let Some(path) = &job.output {
-                act.reveal = Some(path.clone());
-            }
+        if resp.double_clicked()
+            && let Some(path) = &job.output
+        {
+            act.reveal = Some(path.clone());
         }
         if elided || matches!(job.state, JobState::Failed(_)) {
             let detail = match &job.state {
@@ -849,11 +849,11 @@ impl App {
                     section(ui, p, "Downloads", None, |ui| {
                         let dir = self.cfg.download_dir.display().to_string();
                         form_row(ui, "Speicherort", p.label, |ui| {
-                            if widgets::text_button(ui, "Ändern …", p.blue).clicked() {
-                                if let Some(dir) = rfd::FileDialog::new().set_directory(&self.cfg.download_dir).pick_folder() {
-                                    self.cfg.download_dir = dir;
-                                    self.config_changed();
-                                }
+                            if widgets::text_button(ui, "Ändern …", p.blue).clicked()
+                                && let Some(dir) = rfd::FileDialog::new().set_directory(&self.cfg.download_dir).pick_folder()
+                            {
+                                self.cfg.download_dir = dir;
+                                self.config_changed();
                             }
                             ui.label(RichText::new(truncate_start(&dir, 30)).color(p.secondary)).on_hover_text(&dir);
                         });
@@ -918,12 +918,12 @@ impl App {
                                 UpdateStatus::Checking | UpdateStatus::Downloading { .. } => (None, None),
                                 _ => (Some("Nach Updates suchen"), None),
                             };
-                            if let Some(label) = label {
-                                if widgets::text_button(ui, label, p.blue).clicked() {
-                                    match act {
-                                        Some(a) => action = Some(a),
-                                        None => self.send(Command::CheckUpdate { manual: true }),
-                                    }
+                            if let Some(label) = label
+                                && widgets::text_button(ui, label, p.blue).clicked()
+                            {
+                                match act {
+                                    Some(a) => action = Some(a),
+                                    None => self.send(Command::CheckUpdate { manual: true }),
                                 }
                             }
                             ui.label(RichText::new(update::VERSION).color(p.secondary));
