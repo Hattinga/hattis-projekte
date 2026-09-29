@@ -248,6 +248,7 @@ mod tests {
     /// hängt am startenden Thread, darum genügt hier ein Thread, der endet.
     #[cfg(target_os = "linux")]
     #[test]
+    #[allow(clippy::zombie_processes, reason = "the test waits for the kernel to end sleep, not for a wait()")]
     fn tools_die_with_omnidl() {
         let pipe = std::thread::spawn(|| {
             let mut c = command(Path::new("sleep"));
