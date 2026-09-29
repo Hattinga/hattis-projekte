@@ -38,7 +38,13 @@ halb entpacktes ffmpeg; COM5–9/LPT4–9, `;` in Discord-Dateinamen, Webhook-Ho
 ## FiveM (2026-09-29, live gelesen)
 - Spielprozess `FiveM_b3258_GTAProcess.exe`, Beschreibung „FiveM Game subprocess“ →
   Ordner heißt jetzt „FiveM“. Fenster randlos 0,0–1920×1080 auf DISPLAY1, zählt also
-  als Vollbild. Aufnahme mit clipd im Spiel noch nicht probiert.
+  als Vollbild.
+- Live-Test (CLI, `capture = "game"`, Debug-Build): Start scheiterte zuerst an Sonar
+  (8 Kanäle, ADTS) → behoben, Ton jetzt Stereo. Clip mit FiveM vorne landet in
+  `clips/FiveM/`, Bild zeigt das Spiel (nicht schwarz), 20,3 s, 1080p H.264.
+  Last neben FiveM: NVENC 14–25 %, clipd/ffmpeg je ~6 % eines Kerns (Debug), 33/99 MB.
+- Noch offen: laut im Spiel prüfen, ob der Stereo-Downmix richtig klingt (Center/LFE),
+  und die Rettung einer Aufnahme beim Schließen von FiveM.
 
 ## Performance-Review (Laptop, Ryzen 7730U, AMD, 1920×1200@60, Desktop-Inhalt)
 - Aufnahme: ffmpeg 14–17 % eines Kerns, clipd 1 %, GPU 3D ~16 %.
