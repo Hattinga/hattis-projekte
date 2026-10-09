@@ -1,0 +1,30 @@
+{
+  "name": "hivemind",
+  "version": "0.3.0",
+  "description": "Eine kleine KI-Firma im Terminal: Prompt-Optimizer, Planungs-Team und Coder-Team aus Claude-Agents",
+  "type": "module",
+  "bin": {
+    "hivemind": "bin/hivemind.mjs"
+  },
+  "scripts": {
+    "start": "tsx src/cli.tsx",
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test test/*.test.ts"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.3.295",
+    "ink": "^8.0.0",
+    "react": "^19.3.0",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "@types/react": "^19.3.0",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}

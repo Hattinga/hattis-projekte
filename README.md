@@ -6,6 +6,7 @@ Alle meine Programme in einem Repo, jedes in seinem eigenen Ordner.
 |---|---|---|---|
 | [**omnidl**](omnidl/) | Lädt Videos, Musik und Bilder von fast jeder Seite (yt-dlp-Oberfläche) | Windows, macOS, Linux, Server, Docker | [![omnidl](https://img.shields.io/github/v/release/Hattinga/hattis-projekte?filter=v*&label=omnidl&color=0a84ff)](https://github.com/Hattinga/hattis-projekte/releases/latest) |
 | [**clipd**](clipd/) | Schlanker Clipper fürs Zocken: Replay-Buffer, Hotkey, schneiden, teilen | Windows | in Arbeit |
+| [**hivemind**](hivemind/) | KI-Firma im Terminal: Prompt-Optimizer, Planungs-Team und Coder-Team aus Claude-Agents | Windows, macOS, Linux | in Arbeit |
 
 ## Releases
 
