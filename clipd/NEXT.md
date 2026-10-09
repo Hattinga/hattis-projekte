@@ -20,6 +20,23 @@ halb entpacktes ffmpeg; COM5–9/LPT4–9, `;` in Discord-Dateinamen, Webhook-Ho
   Spiel beenden, Clip muss im Ordner liegen. Rauchtest ohne Ton ok: Start 0,7 s,
   `clipd clip` und `clipd record` an/aus liefern korrekte MP4s.
 
+## Rückmeldung 2026-10-09
+- Bild-Ton-Synchronität: passt (zuhause geprüft).
+- NVIDIA im Spielfenster-Modus: dürfte gehen (FiveM-Test lief mit NVENC).
+- Tray-Menü: noch nicht getestet. Rettung beim Spiel-Beenden: unklar.
+- **Hotkey geht auf dem Heim-PC nicht** — laut Nutzer generell bei selbst
+  geschriebenen Programmen, nicht nur clipd. Zuhause prüfen:
+  1. Startet clipd ohne Fehler? Ein belegter Hotkey bricht mit „lässt sich nicht
+     belegen“ ab (NVIDIA-Overlay, SteelSeries GG, Discord, AMD halten oft Strg+Alt+…).
+  2. Feuert er auf dem Desktop, aber nicht im Spiel? Dann frisst ihn das Spiel bzw.
+     Anti-Cheat (FiveM) — anderen Hotkey testen, z. B. `Alt+F9` oder `Strg+Umschalt+F9`.
+  3. Kommt die Taste über SteelSeries-Software/Makro statt echter Tastatur? Hotkey
+     direkt auf der Tastatur ohne GG-Profil probieren.
+  4. Läuft das Spiel als Administrator und clipd nicht? `RegisterHotKey` sollte trotzdem
+     gehen — zum Ausschluss clipd einmal als Admin starten.
+  5. Fallback falls `RegisterHotKey` nie ankommt: Low-Level-Hook (`WH_KEYBOARD_LL`)
+     oder Raw Input als zweite Methode.
+
 ## Offen / ungetestet
 - **Fenster schließen gibt WebView frei**: am 2026-09-29 auf dem Laptop getestet
   (Release-Build, eigener `CLIPD_HOME`, ohne Ton/Mikro/Overlay). Ergebnis: Fenster zu →
@@ -28,9 +45,6 @@ halb entpacktes ffmpeg; COM5–9/LPT4–9, `;` in Discord-Dateinamen, Webhook-Ho
   Tray-Klick) baut das Fenster wieder; `app.exit(0)` von „Beenden“ trägt `code: Some(0)`
   (Tauri-Quelltext geprüft), nur das Schließen des letzten Fensters hat `None`.
   Nicht per Klick geprüft: das Tray-Menü selbst.
-- **Bild-Ton-Synchronität messen** (nur zuhause, macht Ton): Skript `sync.ps1`
-  (weißer Blitz + Testton, misst Versatz). Vor der Korrektur: Ton 0,4 s zu spät.
-- **NVIDIA** und **Spielfenster-Modus** (`capture = "game"`) mit echtem Spiel testen.
 - Release: Tag `clipd-v0.1.0` pushen → `clipd-release.yml` baut den Installer
   (`--latest=false`, omnidl bleibt „latest“, Text aus CHANGELOG.md). Lokal gebaut am
   2026-09-29: `cargo tauri build --config tauri.release.conf.json` → 2 MB Setup.
