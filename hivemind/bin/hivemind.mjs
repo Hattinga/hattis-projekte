@@ -7,5 +7,7 @@ import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const tsx = createRequire(import.meta.url).resolve("tsx/cli");
-const { status } = spawnSync(process.execPath, [tsx, join(root, "src", "cli.tsx"), ...process.argv.slice(2)], { stdio: "inherit" });
+// tsx looks for tsconfig.json in the current folder, which is your project, not hivemind; point it at ours.
+const args = [tsx, "--tsconfig", join(root, "tsconfig.json"), join(root, "src", "cli.tsx"), ...process.argv.slice(2)];
+const { status } = spawnSync(process.execPath, args, { stdio: "inherit" });
 process.exit(status ?? 1);
