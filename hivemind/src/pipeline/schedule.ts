@@ -19,13 +19,20 @@ export async function schedule<T extends Schedulable>(
   tasks: T[],
   slots: number,
   work: (task: T, slot: number) => Promise<void>,
-  options: { alreadyDone?: Iterable<string>; signal?: AbortSignal; onFail?: (task: T, error: unknown) => void } = {},
+  options: {
+    alreadyDone?: Iterable<string>;
+    signal?: AbortSignal;
+    onFail?: (task: T, error: unknown) => void;
+    /** A ready task that clashes with a running one (e.g. same files) waits until that one is done. */
+    clashes?: (task: T, running: T[]) => boolean;
+  } = {},
 ): Promise<ScheduleResult> {
   const ids = new Set(tasks.map((t) => t.id));
   const done = new Set(options.alreadyDone ?? []);
   const result: ScheduleResult = { done: [], failed: [], skipped: [] };
   const pending = tasks.filter((t) => !done.has(t.id));
   const running = new Map<string, Promise<void>>();
+  const runningTasks = new Map<string, T>();
   const freeSlots = Array.from({ length: Math.max(1, slots) }, (_, i) => i + 1);
   const blocked = (t: T) => t.dependsOn.some((id) => result.failed.includes(id) || result.skipped.includes(id));
   const ready = (t: T) => t.dependsOn.every((id) => done.has(id) || !ids.has(id));
@@ -39,9 +46,11 @@ export async function schedule<T extends Schedulable>(
     }
 
     for (const task of pending.filter(ready)) {
+      if (options.clashes?.(task, [...runningTasks.values()])) continue;
       const slot = freeSlots.shift();
       if (slot === undefined) break;
       pending.splice(pending.indexOf(task), 1);
+      runningTasks.set(task.id, task);
       running.set(
         task.id,
         work(task, slot)
@@ -55,6 +64,7 @@ export async function schedule<T extends Schedulable>(
           })
           .finally(() => {
             running.delete(task.id);
+            runningTasks.delete(task.id);
             freeSlots.push(slot);
             freeSlots.sort((a, b) => a - b);
           }),

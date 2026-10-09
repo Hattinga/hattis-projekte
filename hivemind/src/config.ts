@@ -1,7 +1,12 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import type { PermissionMode } from "@anthropic-ai/claude-agent-sdk";
+
+/** ~/.hivemind, or HIVEMIND_HOME (used by the tests, so they never touch your real one). */
+export function hivemindHome(): string {
+  return process.env.HIVEMIND_HOME || join(homedir(), ".hivemind");
+}
 
 export type Effort = "low" | "medium" | "high" | "xhigh" | "max";
 
@@ -48,6 +53,14 @@ export interface Config {
   /** Role keys of the planners that discuss (the moderator always joins). */
   planners: string[];
   roles: Record<string, Role>;
+  /** Stop the run once the estimated cost reaches this many dollars. */
+  budgetUsd?: number;
+  /** How often failing checks at the end become fix tasks for the coders before the result is handed over. */
+  fixRounds: number;
+  /** Keep a memory per project that the team updates after every finished run. */
+  memory: boolean;
+  /** Extra rules every agent gets, e.g. from a team preset ("Roblox: never trust the client"). */
+  guidance?: string;
 }
 
 export const DEFAULT_ROLES: Record<string, Role> = {
@@ -58,6 +71,9 @@ export const DEFAULT_ROLES: Record<string, Role> = {
 Du bekommst die rohe Anfrage des Kunden. Schau dir kurz das Projekt an (Struktur, Sprache, wichtige Dateien) und mach daraus einen präzisen Auftrag für das Planungs-Team:
 Ziel, Kontext im Code, Anforderungen, Akzeptanzkriterien, was ausdrücklich NICHT gemacht werden soll.
 Erfinde keine Anforderungen. Wenn etwas Wesentliches unklar ist und sich nicht aus dem Code ergibt, stell höchstens 3 Rückfragen.
+Schreib außerdem einen Projektüberblick für das ganze Team, höchstens etwa 400 Wörter: Sprache und Frameworks, Ordnerstruktur,
+wichtige Dateien und was sie tun, Befehle zum Bauen und Testen, Konventionen. Das Team liest den Überblick, statt das Projekt selbst
+noch einmal zu erkunden, also nenne, was für diesen Auftrag zählt. Bei einem leeren Projekt reicht ein Satz.
 Schätze außerdem die Größe ein, danach richtet sich, wie viele Leute an der Planung sitzen:
 S = kleine, klar umrissene Änderung (eine Funktion, ein Bugfix, ein paar Dateien).
 M = ein Feature über mehrere Dateien mit ein paar Designentscheidungen.
@@ -126,7 +142,17 @@ prüfe, dass das Projekt danach baut, und schließe den Merge mit git commit ab.
     effort: "medium",
     persona: `Du bist die Testerin. Das Team hat alle Tasks umgesetzt und gemergt. Prüfe das Gesamtergebnis gegen den Auftrag:
 bauen, vorhandene Tests laufen lassen, und wenn sinnvoll kurz manuell ausprobieren. Kleine, eindeutige Fehler darfst du direkt beheben und committen.
-Pushe nie. Antworte mit einem kurzen Abschlussbericht auf Deutsch: was funktioniert, was nicht, was der Kunde noch prüfen sollte.`,
+Pushe nie. Antworte mit einem kurzen Abschlussbericht auf Deutsch: was funktioniert, was nicht, was der Kunde noch prüfen sollte.
+Setze passed nur auf false, wenn etwas wirklich kaputt ist oder eine Anforderung fehlt, und beschreibe dann jedes Problem in problems
+so, dass ein Coder es ohne Rückfrage beheben kann (was, wo, wie man es nachprüft). Geschmacksfragen sind keine Probleme.`,
+  },
+  historian: {
+    title: "Chronistin",
+    effort: "low",
+    persona: `Du führst das Gedächtnis des Teams für dieses Projekt. Nach jedem Lauf hältst du fest, was künftigen Läufen hilft:
+Konventionen, Architekturentscheidungen und ihre Gründe, Befehle zum Bauen und Testen, Stolperfallen, Vorlieben des Kunden.
+Kein Protokoll des Laufs und keine Liste, was gebaut wurde, außer es ist für künftige Arbeit wichtig. Veraltetes streichst du.
+Höchstens etwa 400 Wörter, Markdown-Stichpunkte nach Themen.`,
   },
 };
 
@@ -142,7 +168,81 @@ export const DEFAULT_CONFIG: Config = {
   permissionMode: "bypassPermissions",
   planners: ["architect", "skeptic", "security", "pragmatist"],
   roles: DEFAULT_ROLES,
+  fixRounds: 1,
+  memory: true,
 };
+
+export interface TeamPreset {
+  description: string;
+  config: Partial<Config>;
+}
+
+/** Ready-made teams for `--team <name>`. Your own go into ~/.hivemind/teams/<name>.json. */
+export const BUILTIN_TEAMS: Record<string, TeamPreset> = {
+  sparsam: {
+    description: "kleines Team, eine Runde, kein Opus bei Codern: schont dein Limit",
+    config: {
+      planners: ["architect", "skeptic"],
+      discussionRounds: 1,
+      coders: 2,
+      models: { easy: "claude-haiku-5-5", normal: "claude-sonnet-5-5", hard: "claude-sonnet-5-5" },
+    },
+  },
+  roblox: {
+    description: "Roblox/Luau-Spiele, mit Roblox-Profi im Planungs-Team",
+    config: {
+      planners: ["architect", "roblox", "skeptic", "security"],
+      roles: {
+        roblox: {
+          title: "Roblox-Profi",
+          effort: "high",
+          persona: `Du bist der Roblox-Profi im Planungs-Team. Du kennst Luau, die Roblox-Engine und ihre Services in- und auswendig.
+Achte auf saubere Client/Server-Trennung, Replikation, RemoteEvents/RemoteFunctions, DataStores (Limits, Retries, Session-Locking) und Performance.`,
+        },
+      },
+      guidance: `Das ist ein Roblox-Projekt (Luau). Vertraue nie dem Client: jede RemoteEvent-Eingabe wird auf dem Server geprüft.
+Spiellogik und Daten gehören auf den Server, der Client macht Darstellung und Eingabe. Halte dich an die vorhandene Struktur (z.B. Rojo-Projekt,
+ServerScriptService/ReplicatedStorage/StarterPlayer). Roblox Studio kann hier niemand bedienen: was nur im Studio prüfbar ist, gehört in den Abschlussbericht.`,
+    },
+  },
+  web: {
+    description: "Webseiten und Web-Apps, mit UX-Designerin im Planungs-Team",
+    config: {
+      planners: ["architect", "ux", "skeptic", "security"],
+      roles: {
+        ux: {
+          title: "UX-Designerin",
+          effort: "medium",
+          persona: `Du bist die UX-Designerin im Planungs-Team. Du achtest darauf, dass die Oberfläche verständlich, zugänglich (Tastatur, Kontraste, Screenreader)
+und auf Handy und Desktop gut benutzbar ist, und dass Lade-, Leer- und Fehlerzustände bedacht sind.`,
+        },
+      },
+      guidance: "Web-Projekt: Barrierefreiheit (semantisches HTML, Tastatur, Kontraste) und responsives Layout gehören zu jeder Oberfläche dazu.",
+    },
+  },
+};
+
+/** Built-in teams plus your own from ~/.hivemind/teams/*.json. */
+export function listTeams(): Record<string, TeamPreset> {
+  const teams = { ...BUILTIN_TEAMS };
+  const dir = join(hivemindHome(), "teams");
+  if (existsSync(dir)) {
+    for (const file of readdirSync(dir).filter((f) => f.endsWith(".json"))) {
+      const preset = JSON.parse(readFileSync(join(dir, file), "utf8")) as Partial<TeamPreset> & Partial<Config>;
+      const { description = "eigenes Team", config, ...rest } = preset;
+      teams[file.slice(0, -5)] = { description, config: config ?? (rest as Partial<Config>) };
+    }
+  }
+  return teams;
+}
+
+function merge(config: Config, override: Partial<Config>): Config {
+  const roles = { ...config.roles };
+  for (const [key, role] of Object.entries(override.roles ?? {})) {
+    roles[key] = { ...roles[key], ...role } as Role;
+  }
+  return { ...config, ...override, models: { ...config.models, ...override.models }, roles };
+}
 
 /** The model an agent of `role` gets for a job of `tier`. */
 export function modelFor(role: Role, tier: Tier, config: Config): string {
@@ -158,21 +258,20 @@ export function modelLabel(model: string): string {
 }
 
 /**
- * Loads ~/.hivemind/config.json, then hivemind.config.json in the project,
- * each overriding the defaults. Roles are merged field by field.
+ * Loads ~/.hivemind/config.json, then hivemind.config.json in the project, then the team preset,
+ * each overriding what came before. Roles are merged field by field.
  */
-export function loadConfig(cwd: string): Config {
+export function loadConfig(cwd: string, team?: string): Config {
   let config: Config = { ...DEFAULT_CONFIG, roles: { ...DEFAULT_ROLES } };
-  for (const path of [join(homedir(), ".hivemind", "config.json"), join(cwd, "hivemind.config.json")]) {
-    if (!existsSync(path)) continue;
-    const override = JSON.parse(readFileSync(path, "utf8")) as Partial<Config>;
-    const roles = { ...config.roles };
-    for (const [key, role] of Object.entries(override.roles ?? {})) {
-      roles[key] = { ...roles[key], ...role } as Role;
-    }
-    config = { ...config, ...override, models: { ...config.models, ...override.models }, roles };
+  for (const path of [join(hivemindHome(), "config.json"), join(cwd, "hivemind.config.json")]) {
+    if (existsSync(path)) config = merge(config, JSON.parse(readFileSync(path, "utf8")) as Partial<Config>);
   }
-  for (const key of ["optimizer", "moderator", "coder", "reviewer", "integrator", "tester", ...config.planners]) {
+  if (team) {
+    const preset = listTeams()[team];
+    if (!preset) throw new Error(`Team "${team}" gibt es nicht. Siehe: hivemind teams`);
+    config = merge(config, preset.config);
+  }
+  for (const key of ["optimizer", "moderator", "coder", "reviewer", "integrator", "tester", "historian", ...config.planners]) {
     if (!config.roles[key]) throw new Error(`Rolle "${key}" ist in keiner Config definiert.`);
   }
   return config;

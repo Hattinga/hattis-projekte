@@ -9,12 +9,14 @@ export type Size = z.infer<typeof Size>;
 const Brief = z.object({
   brief: z.string().describe("Der optimierte, vollständige Auftrag für das Planungs-Team (Markdown)."),
   size: Size.describe("S, M oder L, siehe Anweisungen."),
+  overview: z.string().describe("Projektüberblick für das ganze Team (Markdown), siehe Anweisungen."),
   questions: z.array(z.string()).describe("Rückfragen an den Kunden. Leer, wenn alles klar ist."),
 });
 
 export interface Briefing {
   brief: string;
   size: Size;
+  overview: string;
 }
 
 /** Turns the raw request into a precise brief, asking the human when something essential is unclear. */
@@ -42,7 +44,7 @@ export async function optimizePrompt(request: string, cwd: string, config: Confi
 
     if (data.questions.length === 0 || attempt >= 1) {
       bus.emitEvent({ type: "say", agent: "Optimizer", text: `${data.brief}\n\nGröße: ${data.size}` });
-      return { brief: data.brief, size: data.size };
+      return { brief: data.brief, size: data.size, overview: data.overview };
     }
 
     const answers: string[] = [];

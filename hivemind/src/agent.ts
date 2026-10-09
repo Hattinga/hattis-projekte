@@ -117,14 +117,35 @@ function accessOptions(run: AgentRun<unknown>): Partial<Options> {
   }
 }
 
-/** Runs one Claude Code agent and retries once if it crashes (not when you abort). */
-export async function runAgent<T = undefined>(run: AgentRun<T>): Promise<AgentResult<T>> {
-  try {
-    return await runAgentOnce(run);
-  } catch (error) {
-    if (run.signal?.aborted || error instanceof AgentFailed) throw error;
-    bus.emitEvent({ type: "info", text: `${run.name} ist abgestürzt (${errorText(error)}), neuer Versuch …` });
-    return await runAgentOnce(run);
+/**
+ * What every agent of the current run should know, set by the pipeline.
+ * One run per process, so module state is fine here.
+ */
+export const shared = {
+  /** Team memory and project overview, put in front of every fresh agent's prompt. */
+  background: "",
+  /** What you wrote to the team while the run was going. */
+  notes: [] as string[],
+  budgetUsd: Number.POSITIVE_INFINITY,
+  spentUsd: 0,
+};
+
+bus.onEvent((event) => {
+  if (event.type === "cost") shared.spentUsd += event.usd;
+  if (event.type === "note") shared.notes.push(event.text);
+});
+
+/** The run's budget is used up. Not retried; the run stops and can be resumed with a higher budget. */
+export class BudgetExceeded extends Error {
+  constructor() {
+    super(`Budget von $${shared.budgetUsd.toFixed(2)} ist aufgebraucht.`);
+  }
+}
+
+/** Your plan's usage limit is reached. `resetsAt` is when it frees up again (ms), if known. */
+class RateLimited extends Error {
+  constructor(readonly resetsAt: number | undefined, readonly sessionId: string) {
+    super("Nutzungslimit erreicht.");
   }
 }
 
@@ -134,6 +155,78 @@ class AgentFailed extends Error {}
 export function errorText(error: unknown): string {
   return (error instanceof Error ? error.message : String(error)).split("\n")[0]!.slice(0, 200);
 }
+
+type Implementation = (run: AgentRun<unknown>) => Promise<AgentResult<unknown>>;
+let implementation: Implementation = runAgentOnce;
+
+/** Swaps the real Claude Code agent for a fake one. Only for tests. */
+export function setAgentImplementation(fake: Implementation | null) {
+  implementation = fake ?? runAgentOnce;
+}
+
+function withContext<T>(run: AgentRun<T>): AgentRun<T> {
+  const parts: string[] = [];
+  // A resumed session already has the background from its first prompt.
+  if (shared.background && !run.resume) parts.push(shared.background);
+  if (shared.notes.length) parts.push(`Nachrichten des Kunden während des Laufs (haben Vorrang):\n${shared.notes.map((n) => `- ${n}`).join("\n")}`);
+  return parts.length ? { ...run, prompt: `${parts.join("\n\n")}\n\n---\n\n${run.prompt}` } : run;
+}
+
+/**
+ * Runs one agent. Waits out usage limits and continues where the agent stopped,
+ * retries once if it crashes, and refuses to start once the budget is used up.
+ */
+export async function runAgent<T = undefined>(run: AgentRun<T>): Promise<AgentResult<T>> {
+  let current = run;
+  let crashed = false;
+  for (;;) {
+    if (shared.spentUsd >= shared.budgetUsd) throw new BudgetExceeded();
+    try {
+      return (await implementation(withContext(current) as AgentRun<unknown>)) as AgentResult<T>;
+    } catch (error) {
+      if (run.signal?.aborted || error instanceof AgentFailed || error instanceof BudgetExceeded) throw error;
+      if (error instanceof RateLimited) {
+        await waitForLimit(run.name, error.resetsAt, run.signal);
+        current = error.sessionId
+          ? { ...run, resume: error.sessionId, prompt: "Du wurdest durch ein Nutzungslimit unterbrochen. Mach genau dort weiter, wo du aufgehört hast." }
+          : run;
+        continue;
+      }
+      if (crashed) throw error;
+      crashed = true;
+      bus.emitEvent({ type: "info", text: `${run.name} ist abgestürzt (${errorText(error)}), neuer Versuch …` });
+    }
+  }
+}
+
+/** Sleeps until the usage limit resets (plus a minute of slack), or 15 minutes if the reset time is unknown. */
+async function waitForLimit(agent: string, resetsAt: number | undefined, signal?: AbortSignal) {
+  const until = resetsAt && resetsAt > Date.now() ? resetsAt + 60_000 : Date.now() + 15 * 60_000;
+  bus.emitEvent({ type: "limit", agent, until });
+  await new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(done, until - Date.now());
+    function done() {
+      signal?.removeEventListener("abort", stop);
+      resolve();
+    }
+    function stop() {
+      clearTimeout(timer);
+      reject(new Error("Abgebrochen."));
+    }
+    signal?.addEventListener("abort", stop, { once: true });
+  });
+  bus.emitEvent({ type: "info", text: `Limit wieder frei, ${agent} macht weiter.` });
+}
+
+/** Limit warnings already shown, so each appears once per run. */
+const warned = new Set<string>();
+
+const LIMIT_NAMES: Record<string, string> = {
+  five_hour: "5-Stunden-Limits",
+  seven_day: "Wochenlimits",
+  seven_day_opus: "Opus-Wochenlimits",
+  seven_day_sonnet: "Sonnet-Wochenlimits",
+};
 
 async function runAgentOnce<T>(run: AgentRun<T>): Promise<AgentResult<T>> {
   const { name, team, role, config } = run;
@@ -148,6 +241,9 @@ async function runAgentOnce<T>(run: AgentRun<T>): Promise<AgentResult<T>> {
   let costUsd = 0;
   let sessionId = "";
   let spoke = false;
+  let limitResetsAt: number | undefined;
+  let limited = false;
+  const budgetLeft = shared.budgetUsd - shared.spentUsd;
 
   try {
     const messages = query({
@@ -160,6 +256,7 @@ async function runAgentOnce<T>(run: AgentRun<T>): Promise<AgentResult<T>> {
         resume: run.resume,
         abortController,
         includePartialMessages: true,
+        maxBudgetUsd: Number.isFinite(budgetLeft) ? Math.max(0.01, budgetLeft) : undefined,
         // Isolated from your own Claude Code setup: no MCP servers, plugins, skills or hooks from
         // ~/.claude. Those cost tens of thousands of tokens per turn and no agent here needs them.
         // The project's own settings and CLAUDE.md still apply.
@@ -167,18 +264,31 @@ async function runAgentOnce<T>(run: AgentRun<T>): Promise<AgentResult<T>> {
         strictMcpConfig: true,
         mcpServers: run.teamTools ? { team: run.teamTools.server } : {},
         skills: [],
-        env: { ...process.env, CLAUDE_AGENT_SDK_CLIENT_APP: "hivemind/0.2.0" },
+        env: { ...process.env, CLAUDE_AGENT_SDK_CLIENT_APP: "hivemind/0.3.0" },
         ...accessOptions(run as AgentRun<unknown>),
       },
     });
 
     for await (const message of messages) {
-      if (message.type === "stream_event" && message.parent_tool_use_id === null) {
+      if (message.type === "system" && message.subtype === "init") {
+        sessionId = message.session_id;
+      } else if (message.type === "rate_limit_event") {
+        const info = message.rate_limit_info;
+        if (info.status === "rejected") {
+          limited = true;
+          if (info.resetsAt) limitResetsAt = info.resetsAt < 1e12 ? info.resetsAt * 1000 : info.resetsAt;
+        } else if (info.status === "allowed_warning" && info.rateLimitType && !warned.has(info.rateLimitType)) {
+          warned.add(info.rateLimitType);
+          const used = info.utilization === undefined ? "" : `${Math.round(info.utilization <= 1 ? info.utilization * 100 : info.utilization)} % `;
+          bus.emitEvent({ type: "info", text: `Achtung: ${used}deines ${LIMIT_NAMES[info.rateLimitType] ?? "Limits"} sind verbraucht.` });
+        }
+      } else if (message.type === "stream_event" && message.parent_tool_use_id === null) {
         const event = message.event;
         if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
           bus.emitEvent({ type: "delta", agent: name, text: event.delta.text });
         }
       } else if (message.type === "assistant" && message.parent_tool_use_id === null) {
+        if (message.error === "rate_limit") limited = true;
         for (const block of message.message.content) {
           if (block.type === "text" && block.text.trim()) {
             texts.push(block.text);
@@ -195,6 +305,8 @@ async function runAgentOnce<T>(run: AgentRun<T>): Promise<AgentResult<T>> {
         costUsd = message.total_cost_usd - (run.resume ? (sessionCosts.get(run.resume) ?? 0) : 0);
         sessionCosts.set(sessionId, message.total_cost_usd);
         bus.emitEvent({ type: "cost", agent: name, usd: costUsd });
+        if (limited) throw new RateLimited(limitResetsAt, sessionId);
+        if (message.subtype === "error_max_budget_usd") throw new BudgetExceeded();
         if (message.subtype !== "success") throw new AgentFailed(`${name} ist abgebrochen (${message.subtype}).`);
         if (message.result.trim()) texts.push(message.result);
         structured = message.structured_output;
@@ -205,8 +317,11 @@ async function runAgentOnce<T>(run: AgentRun<T>): Promise<AgentResult<T>> {
     bus.emitEvent({ type: "agent", agent: name, team, status: "done" });
     return { text: texts.at(-1) ?? "", data, costUsd, sessionId, spoke };
   } catch (error) {
-    bus.emitEvent({ type: "agent", agent: name, team, status: "error", note: errorText(error) });
-    throw error;
+    // The CLI may also just exit when the limit hits; what it reported before decides.
+    const failure = limited && !(error instanceof RateLimited) ? new RateLimited(limitResetsAt, sessionId) : error;
+    const waiting = failure instanceof RateLimited;
+    bus.emitEvent({ type: "agent", agent: name, team, status: waiting ? "waiting" : "error", note: waiting ? "wartet auf Limit" : errorText(error) });
+    throw failure;
   } finally {
     run.signal?.removeEventListener("abort", onAbort);
   }

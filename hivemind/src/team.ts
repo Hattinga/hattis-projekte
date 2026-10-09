@@ -12,6 +12,18 @@ export interface BoardMessage {
 export class TeamBoard {
   readonly messages: BoardMessage[] = [];
   private readCursor = new Map<string, number>();
+  private stopListening: () => void;
+
+  constructor() {
+    // What you write during the run lands on the board too, so running coders see it on their next read.
+    this.stopListening = bus.onEvent((event) => {
+      if (event.type === "note") this.messages.push({ from: "Kunde", text: event.text });
+    });
+  }
+
+  close() {
+    this.stopListening();
+  }
 
   post(from: string, text: string) {
     this.messages.push({ from, text });

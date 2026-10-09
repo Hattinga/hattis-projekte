@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
 import { basename, join, resolve } from "node:path";
+import { hivemindHome } from "./config.js";
 import type { Size } from "./pipeline/optimize.js";
 import type { Plan } from "./pipeline/plan.js";
 
@@ -19,6 +19,8 @@ export interface RunState {
   costUsd: number;
   brief?: string;
   size?: Size;
+  /** The optimizer's overview of the project, shared with every agent. */
+  overview?: string;
   /** Approved plans: the first one, then one per round of follow-ups. */
   plans: Plan[];
   doneTasks: string[];
@@ -45,7 +47,7 @@ export class RunStore {
 export function runsRoot(project: string): string {
   const path = resolve(project);
   const hash = createHash("sha1").update(path.toLowerCase()).digest("hex").slice(0, 8);
-  return join(homedir(), ".hivemind", "projects", `${basename(path)}-${hash}`);
+  return join(hivemindHome(), "projects", `${basename(path)}-${hash}`);
 }
 
 /** All runs in `root` (see runsRoot), newest first. */

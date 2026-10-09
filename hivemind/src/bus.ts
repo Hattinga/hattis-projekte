@@ -1,6 +1,6 @@
 import { EventEmitter } from "node:events";
 
-export type AgentStatus = "idle" | "thinking" | "working" | "done" | "error";
+export type AgentStatus = "idle" | "thinking" | "working" | "waiting" | "done" | "error";
 
 export type HiveEvent =
   | { type: "phase"; phase: string }
@@ -10,6 +10,10 @@ export type HiveEvent =
   | { type: "delta"; agent: string; text: string }
   /** A message on the team board, visible to every coder. */
   | { type: "chat"; from: string; text: string }
+  /** Something you wrote to the team while the run is going. Every agent that starts later sees it. */
+  | { type: "note"; text: string }
+  /** An agent waits for your plan's usage limit to reset, until `until` (ms). */
+  | { type: "limit"; agent: string; until: number }
   | { type: "tool"; agent: string; tool: string; detail: string }
   | { type: "cost"; agent: string; usd: number }
   | { type: "info"; text: string }

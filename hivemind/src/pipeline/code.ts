@@ -8,6 +8,12 @@ import { TEAM_TOOLS_HINT, TeamBoard, teamTools } from "../team.js";
 import { formatPlan, type Plan, type Task } from "./plan.js";
 import { schedule } from "./schedule.js";
 
+const TestReport = z.object({
+  report: z.string().describe("Kurzer Abschlussbericht für den Kunden (Markdown)."),
+  passed: z.boolean().describe("false nur, wenn etwas wirklich kaputt ist oder eine Anforderung fehlt."),
+  problems: z.array(z.string()).describe("Jedes Problem so beschrieben, dass ein Coder es ohne Rückfrage beheben kann. Leer, wenn passed."),
+});
+
 const Review = z.object({
   approved: z.boolean(),
   feedback: z.string().describe("Was der Coder ändern muss. Leer, wenn approved."),
@@ -162,30 +168,80 @@ export async function codingTeam(options: CodingOptions): Promise<CodingResult> 
     }
   };
 
-  const result = await schedule(plan.tasks, config.coders, work, {
-    alreadyDone: options.alreadyDone,
-    signal,
-    onFail: (task, error) => bus.emitEvent({ type: "error", text: `[${task.id}] fehlgeschlagen: ${errorText(error)}` }),
-  });
-  for (const id of result.skipped) {
-    bus.emitEvent({ type: "error", text: `[${id}] übersprungen, weil eine Abhängigkeit fehlgeschlagen ist.` });
+  // Two parallel tasks that touch the same file end in a merge conflict, so they run one after the other.
+  const normalize = (file: string) => file.replace(/\\/g, "/").replace(/^\.\//, "").toLowerCase();
+  const announced = new Set<string>();
+  const clashes = (task: Task, running: Task[]) => {
+    const mine = new Set(task.files.map(normalize));
+    const other = running.find((r) => r.files.some((f) => mine.has(normalize(f))));
+    if (other && !announced.has(task.id)) {
+      announced.add(task.id);
+      bus.emitEvent({ type: "info", text: `[${task.id}] wartet auf [${other.id}], beide ändern dieselben Dateien.` });
+    }
+    return other !== undefined;
+  };
+
+  const runTasks = async (tasks: Task[], alreadyDone?: string[]) => {
+    const result = await schedule(tasks, config.coders, work, {
+      alreadyDone,
+      signal,
+      clashes,
+      onFail: (task, error) => bus.emitEvent({ type: "error", text: `[${task.id}] fehlgeschlagen: ${errorText(error)}` }),
+    });
+    for (const id of result.skipped) {
+      bus.emitEvent({ type: "error", text: `[${id}] übersprungen, weil eine Abhängigkeit fehlgeschlagen ist.` });
+    }
+    if (signal.aborted) throw new Error("Abgebrochen.");
+    return [...result.failed, ...result.skipped];
+  };
+
+  try {
+    const failed = await runTasks(plan.tasks, options.alreadyDone);
+    const tester = config.roles.tester!;
+    let prompt = `${context}\n\nAlle Tasks sind umgesetzt und gemergt${failed.length ? `, außer: ${failed.join(", ")}` : ""}. Prüfe das Ergebnis.`;
+    let resume: string | undefined;
+
+    // The tester checks; what she finds goes back to the coders, up to config.fixRounds times.
+    for (let round = 0; ; round++) {
+      bus.emitEvent({ type: "phase", phase: round === 0 ? "Test" : "Nachtest" });
+      const check = await runAgent({
+        name: tester.title,
+        team: "Umsetzung",
+        role: tester,
+        model: modelFor(tester, "normal", config),
+        config,
+        prompt,
+        cwd: integrationCwd,
+        access: "write",
+        schema: TestReport,
+        resume,
+        signal,
+      });
+      resume = check.sessionId;
+      workspace.commitLeftovers(workspace.integration, "hivemind: Korrekturen der Testerin");
+      const { report, passed, problems } = check.data;
+      if (!check.spoke) bus.emitEvent({ type: "say", agent: tester.title, text: report });
+      if (passed || problems.length === 0) return { report, failed };
+
+      const list = problems.map((p) => `- ${p}`).join("\n");
+      if (round >= config.fixRounds) {
+        bus.emitEvent({ type: "error", text: `Nach ${round} Korrekturrunden noch offen:\n${list}` });
+        return { report: `${report}\n\n**Noch offen:**\n${list}`, failed };
+      }
+      bus.emitEvent({ type: "phase", phase: "Korrektur" });
+      const fix: Task = {
+        id: `fix-${Date.now().toString(36)}`,
+        title: "Befunde der Testerin beheben",
+        description: `Die Testerin hat beim Prüfen des Gesamtergebnisses diese Probleme gefunden. Behebe sie alle und prüf selbst nach, dass sie weg sind:\n\n${list}`,
+        files: [],
+        dependsOn: [],
+        difficulty: "normal",
+      };
+      const stillFailed = await runTasks([fix]);
+      if (stillFailed.length) return { report: `${report}\n\n**Noch offen:**\n${list}`, failed };
+      prompt = "Die Coder haben deine Befunde bearbeitet und gemergt. Prüfe erneut, ob sie behoben sind und nichts anderes kaputtgegangen ist.";
+    }
+  } finally {
+    board.close();
   }
-  const failed = [...result.failed, ...result.skipped];
-  if (signal.aborted) throw new Error("Abgebrochen.");
-
-  bus.emitEvent({ type: "phase", phase: "Test" });
-  const tester = await runAgent({
-    name: "Testerin",
-    team: "Umsetzung",
-    role: config.roles.tester!,
-    model: modelFor(config.roles.tester!, "normal", config),
-    config,
-    prompt: `${context}\n\nAlle Tasks sind umgesetzt und gemergt${failed.length ? `, außer: ${failed.join(", ")}` : ""}. Prüfe das Ergebnis.`,
-    cwd: integrationCwd,
-    access: "write",
-    signal,
-  });
-  workspace.commitLeftovers(workspace.integration, "hivemind: Korrekturen der Testerin");
-
-  return { report: tester.text, failed };
 }

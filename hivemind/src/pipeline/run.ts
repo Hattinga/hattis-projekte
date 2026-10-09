@@ -1,11 +1,13 @@
 import { appendFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
-import { errorText } from "../agent.js";
+import { BudgetExceeded, errorText, shared } from "../agent.js";
 import { bus, type HiveEvent } from "../bus.js";
 import type { Config } from "../config.js";
 import { git, hasCommits, hasUncommittedChanges, isGitRepo, Workspace } from "../git.js";
+import { canOpenPullRequest, openPullRequest } from "../pr.js";
 import { RunStore, runsRoot, type RunState } from "../state.js";
 import { codingTeam } from "./code.js";
+import { readMemory, updateMemory } from "./memory.js";
 import { optimizePrompt } from "./optimize.js";
 import { CancelledByUser, followUpPlan, formatPlan, planTeam, type Plan } from "./plan.js";
 
@@ -34,6 +36,8 @@ function recordTranscript(dir: string) {
       case "phase": return `\n## ${event.phase}\n`;
       case "say": return `### ${event.agent}\n\n${event.text}\n`;
       case "chat": return `> 💬 **${event.from}:** ${event.text}\n`;
+      case "note": return `> ✉ **Du ans Team:** ${event.text}\n`;
+      case "limit": return `> ⏸ ${event.agent} wartet aufs Nutzungslimit bis ${new Date(event.until).toLocaleTimeString("de-AT")}\n`;
       case "tool": return `- \`${event.agent}\` ${event.tool}: ${event.detail}`;
       case "info": return `> ${event.text}\n`;
       case "error": return `> **Fehler:** ${event.text}\n`;
@@ -54,6 +58,15 @@ function prefixTasks(plan: Plan, round: number): Plan {
   return { ...plan, tasks: plan.tasks.map((t) => ({ ...t, id: prefix(t.id), dependsOn: t.dependsOn.map(prefix) })) };
 }
 
+/** Memory, project overview and team rules: what every agent reads before its task. */
+function background(memory: string, overview: string | undefined, config: Config): string {
+  const parts: string[] = [];
+  if (memory) parts.push(`## Was das Team aus früheren Läufen über dieses Projekt weiß\n\n${memory}`);
+  if (overview) parts.push(`## Projektüberblick (vom Optimizer, du musst das Projekt dafür nicht erneut erkunden)\n\n${overview}`);
+  if (config.guidance) parts.push(`## Regeln für dieses Team\n\n${config.guidance}`);
+  return parts.join("\n\n");
+}
+
 export async function runHivemind({ request, resume, cwd, config, planOnly, signal }: RunOptions): Promise<void> {
   const isGit = isGitRepo(cwd);
   const repo = isGit ? git(cwd, "rev-parse", "--show-toplevel") : cwd;
@@ -69,15 +82,20 @@ export async function runHivemind({ request, resume, cwd, config, planOnly, sign
   );
   store.update({});
   const stopRecording = recordTranscript(runDir);
+  shared.spentUsd = store.state.costUsd;
+  shared.budgetUsd = config.budgetUsd ?? Number.POSITIVE_INFINITY;
+  shared.notes = [];
   const stopTracking = bus.onEvent((e) => {
     if (e.type === "cost") store.update({ costUsd: store.state.costUsd + e.usd });
     if (e.type === "phase") store.update({ phase: e.phase });
   });
-  const cost = () => `Kosten (geschätzt): $${store.state.costUsd.toFixed(2)}`;
+  const cost = () => `Kosten (geschätzt): $${store.state.costUsd.toFixed(2)}${Number.isFinite(shared.budgetUsd) ? ` von $${shared.budgetUsd.toFixed(2)} Budget` : ""}`;
+  const memory = config.memory ? readMemory(repo) : "";
   let workspace: Workspace | undefined;
 
   try {
     if (resume) bus.emitEvent({ type: "info", text: `Setze Lauf ${id} fort: ${resume.request}` });
+    if (memory) bus.emitEvent({ type: "info", text: "Das Team kennt dieses Projekt schon aus früheren Läufen." });
 
     // Worktrees need a commit to start from. Better to find out now than after the planning.
     if (isGit && !planOnly && !hasCommits(repo)) {
@@ -87,9 +105,11 @@ export async function runHivemind({ request, resume, cwd, config, planOnly, sign
       bus.emitEvent({ type: "info", text: "Leerer Start-Commit angelegt." });
     }
 
+    shared.background = background(memory, store.state.overview, config);
     if (!store.state.brief) {
-      const { brief, size } = await optimizePrompt(store.state.request, cwd, config, signal);
-      store.update({ brief, size });
+      const { brief, size, overview } = await optimizePrompt(store.state.request, cwd, config, signal);
+      store.update({ brief, size, overview });
+      shared.background = background(memory, overview, config);
     }
     const brief = store.state.brief!;
 
@@ -100,7 +120,7 @@ export async function runHivemind({ request, resume, cwd, config, planOnly, sign
     }
 
     if (planOnly || !isGit) {
-      const why = isGit ? "" : "\n\nDas Coder-Team braucht ein Git-Repo (jeder Coder arbeitet in seinem eigenen Worktree). Führ `git init` aus und committe einmal, dann geht's mit `hivemind --resume` weiter.";
+      const why = isGit ? "" : "\n\nDas Coder-Team braucht ein Git-Repo (jeder Coder arbeitet in seinem eigenen Worktree). Führ `git init` aus, dann geht's mit `hivemind --resume` weiter.";
       store.update({ status: isGit ? "done" : "aborted" });
       bus.emitEvent({ type: "finished", summary: `${formatPlan(store.state.plans[0]!)}\n\nPlan gespeichert in ${join(runDir, "plan.json")}.${why}\n\n${cost()}` });
       return;
@@ -115,6 +135,7 @@ export async function runHivemind({ request, resume, cwd, config, planOnly, sign
     const resultCwd = join(workspace.integration, relative(repo, cwd));
 
     let ending = "";
+    let report = "";
     for (;;) {
       const plan = store.state.plans.at(-1)!;
       const result = await codingTeam({
@@ -127,9 +148,12 @@ export async function runHivemind({ request, resume, cwd, config, planOnly, sign
         alreadyDone: store.state.doneTasks,
         onTaskDone: (taskId) => store.update({ doneTasks: [...store.state.doneTasks, taskId] }),
       });
+      report = result.report;
       if (result.failed.length) bus.emitEvent({ type: "error", text: `Nicht umgesetzt: ${result.failed.join(", ")}` });
 
-      const next = await bus.ask(`Alles liegt auf ${workspace.branch}. Wie geht's weiter?`, ["fertig", "nachbessern", "in meinen Branch mergen"]);
+      const choices = ["fertig", "nachbessern", "in meinen Branch mergen"];
+      if (canOpenPullRequest(repo)) choices.push("Pull Request erstellen");
+      const next = await bus.ask(`Alles liegt auf ${workspace.branch}. Wie geht's weiter?`, choices);
       if (next === "nachbessern") {
         const feedback = await bus.ask("Was soll das Team nachbessern?");
         const followUp = await followUpPlan(brief, plan, feedback, resultCwd, config, signal);
@@ -138,25 +162,49 @@ export async function runHivemind({ request, resume, cwd, config, planOnly, sign
       }
       if (next === "in meinen Branch mergen") {
         ending = workspace.mergeIntoCheckout().message;
+      } else if (next === "Pull Request erstellen") {
+        ending = pullRequest(repo, workspace.branch, store.state.request, store.state.plans, report);
       } else {
         ending = `Dein Branch ist unverändert.\nAnschauen: git diff HEAD...${workspace.branch}\nÜbernehmen: git merge ${workspace.branch}`;
       }
       break;
     }
 
+    if (config.memory) {
+      bus.emitEvent({ type: "phase", phase: "Abschluss" });
+      try {
+        await updateMemory({ repo, cwd: resultCwd, brief, plans: store.state.plans, report, config, signal });
+      } catch (error) {
+        // The work is done; a memory that failed to update is not worth failing the run for.
+        bus.emitEvent({ type: "error", text: `Gedächtnis nicht aktualisiert: ${errorText(error)}` });
+      }
+    }
+
     store.update({ status: "done" });
     bus.emitEvent({ type: "finished", summary: `${ending}\n\nProtokoll: ${join(runDir, "transcript.md")}\n${cost()}` });
   } catch (error) {
-    const aborted = signal.aborted || error instanceof CancelledByUser;
+    const budget = error instanceof BudgetExceeded;
+    const aborted = signal.aborted || error instanceof CancelledByUser || budget;
     store.update({ status: aborted ? "aborted" : "failed" });
-    if (!aborted) bus.emitEvent({ type: "error", text: errorText(error) });
+    if (!aborted || budget) bus.emitEvent({ type: "error", text: errorText(error) });
+    const how = budget ? `hivemind --resume ${id} --budget <mehr>` : `hivemind --resume ${id}`;
     bus.emitEvent({
       type: "finished",
-      summary: `${aborted ? "Abgebrochen" : "Fehlgeschlagen"}. Weitermachen mit: hivemind --resume ${id}\nProtokoll: ${join(runDir, "transcript.md")}\n${cost()}`,
+      summary: `${aborted ? "Abgebrochen" : "Fehlgeschlagen"}. Weitermachen mit: ${how}\nProtokoll: ${join(runDir, "transcript.md")}\n${cost()}`,
     });
   } finally {
     workspace?.cleanup();
     stopTracking();
     stopRecording();
+  }
+}
+
+function pullRequest(repo: string, branch: string, request: string, plans: Plan[], report: string): string {
+  const title = `hivemind: ${request.replace(/\s+/g, " ").slice(0, 70)}${request.length > 70 ? "…" : ""}`;
+  const body = `${plans.map(formatPlan).join("\n\n---\n\n")}\n\n## Abschlussbericht der Testerin\n\n${report}\n\n---\nErstellt von hivemind.`;
+  try {
+    return `Pull Request erstellt: ${openPullRequest(repo, branch, title, body)}`;
+  } catch (error) {
+    return `Pull Request ging nicht: ${errorText(error)}\nDer Branch ${branch} liegt lokal, du kannst ihn selbst pushen.`;
   }
 }

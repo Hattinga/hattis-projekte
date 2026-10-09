@@ -1,6 +1,6 @@
 {
   "name": "hivemind",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Eine kleine KI-Firma im Terminal: Prompt-Optimizer, Planungs-Team und Coder-Team aus Claude-Agents",
   "type": "module",
   "bin": {

@@ -5,7 +5,8 @@ import { modelLabel } from "../config.js";
 import { Markdown } from "./Markdown.js";
 import { TextInput } from "./TextInput.js";
 
-type LogEvent = Exclude<HiveEvent, { type: "agent" | "cost" | "ask" | "delta" }> & { key: number };
+/** `compact` is decided when the event arrives: lines already printed can't change anymore. */
+type LogEvent = Exclude<HiveEvent, { type: "agent" | "cost" | "ask" | "delta" | "limit" }> & { key: number; compact: boolean };
 type Ask = Extract<HiveEvent, { type: "ask" }>;
 
 interface Member {
@@ -20,10 +21,21 @@ interface Member {
 const COLORS = ["cyan", "magenta", "yellow", "green", "blue", "redBright", "cyanBright", "magentaBright", "greenBright", "yellowBright"];
 const colorOf = (name: string) => COLORS[[...name].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % COLORS.length]!;
 
-const ICON: Record<AgentStatus, string> = { idle: "○", thinking: "◐", working: "●", done: "✓", error: "✗" };
+const ICON: Record<AgentStatus, string> = { idle: "○", thinking: "◐", working: "●", waiting: "⏸", done: "✓", error: "✗" };
 const SPINNER = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 /** How many lines of an agent's live text stay visible while it writes. */
 const LIVE_LINES = 4;
+/** In the compact view, longer messages are cut to this many lines; the transcript keeps everything. */
+const COMPACT_LINES = 8;
+
+function shorten(text: string): string {
+  const lines = text.split("\n");
+  if (lines.length <= COMPACT_LINES + 2) return text;
+  // Never cut inside a code block: that would swallow the rest of the message into it.
+  let cut = lines.slice(0, COMPACT_LINES);
+  if (cut.filter((l) => l.trimStart().startsWith("```")).length % 2 === 1) cut = [...cut, "```"];
+  return `${cut.join("\n")}\n\n*… ${lines.length - COMPACT_LINES} Zeilen mehr im Protokoll (Tab zeigt künftig alles)*`;
+}
 
 function LogLine({ event }: { event: LogEvent }) {
   switch (event.type) {
@@ -38,7 +50,7 @@ function LogLine({ event }: { event: LogEvent }) {
         <Box flexDirection="column" marginTop={1}>
           <Text bold color={colorOf(event.agent)}>● {event.agent}</Text>
           <Box paddingLeft={2}>
-            <Markdown text={event.text} />
+            <Markdown text={event.compact ? shorten(event.text) : event.text} />
           </Box>
         </Box>
       );
@@ -51,7 +63,17 @@ function LogLine({ event }: { event: LogEvent }) {
           {event.text}
         </Text>
       );
+    case "note":
+      return (
+        <Text>
+          <Text color="cyan">✉ </Text>
+          <Text bold color="cyan">Du</Text>
+          <Text color="cyan"> ▸ Team: </Text>
+          {event.text}
+        </Text>
+      );
     case "tool":
+      if (event.compact) return null;
       return (
         <Text dimColor>
           {"  "}
@@ -82,8 +104,8 @@ function Roster({ members, tick }: { members: Member[]; tick: number }) {
           {members
             .filter((m) => m.team === team)
             .map((m) => {
-              const busy = m.status === "thinking" || m.status === "working";
-              const icon = busy ? SPINNER[tick % SPINNER.length] : ICON[m.status];
+              const busy = m.status === "thinking" || m.status === "working" || m.status === "waiting";
+              const icon = m.status === "waiting" ? ICON.waiting : busy ? SPINNER[tick % SPINNER.length] : ICON[m.status];
               return (
                 <Text key={m.name} dimColor={m.status === "done" || m.status === "idle"}>
                   <Text color={m.status === "error" ? "red" : colorOf(m.name)}>
@@ -133,7 +155,7 @@ function Choices({ choices, onChoose }: { choices: string[]; onChoose: (choice: 
   const [selected, setSelected] = useState(0);
   useInput((input, key) => {
     if (key.leftArrow || key.upArrow) setSelected((s) => (s + choices.length - 1) % choices.length);
-    else if (key.rightArrow || key.downArrow || key.tab) setSelected((s) => (s + 1) % choices.length);
+    else if (key.rightArrow || key.downArrow) setSelected((s) => (s + 1) % choices.length);
     else if (key.return) onChoose(choices[selected]!);
     else {
       // Number keys pick directly: 1 = first choice.
@@ -161,12 +183,27 @@ function Question({ question, choices, onAnswer }: { question: string; choices?:
   );
 }
 
+function clock(ms: number): string {
+  return new Date(ms).toLocaleTimeString("de-AT", { hour: "2-digit", minute: "2-digit" });
+}
+
 function elapsed(ms: number): string {
   const s = Math.floor(ms / 1000);
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
-export function App({ initialRequest, autoStart, start }: { initialRequest?: string; autoStart?: boolean; start: (request?: string) => void }) {
+export function App({
+  initialRequest,
+  autoStart,
+  start,
+  alwaysFull = [],
+}: {
+  initialRequest?: string;
+  autoStart?: boolean;
+  start: (request?: string) => void;
+  /** Agents whose messages are never shortened, e.g. the moderator: you approve her plan. */
+  alwaysFull?: string[];
+}) {
   const { exit } = useApp();
   const { columns } = useWindowSize();
   const [log, setLog] = useState<LogEvent[]>([]);
@@ -176,6 +213,9 @@ export function App({ initialRequest, autoStart, start }: { initialRequest?: str
   const [finished, setFinished] = useState(false);
   const [startedAt, setStartedAt] = useState<number | null>(initialRequest || autoStart ? Date.now() : null);
   const [tick, setTick] = useState(0);
+  const [compact, setCompact] = useState(true);
+  const [limitUntil, setLimitUntil] = useState(0);
+  const compactRef = useRef(true);
   const nextKey = useRef(0);
   // Deltas arrive per token; they are collected here and drawn on the next spinner tick.
   const live = useRef<Record<string, string>>({});
@@ -200,6 +240,9 @@ export function App({ initialRequest, autoStart, start }: { initialRequest?: str
         case "ask":
           setAsks((a) => [...a, event]);
           return;
+        case "limit":
+          setLimitUntil((u) => Math.max(u, event.until));
+          return;
         case "say":
         case "tool":
           // The text so far is now complete (say) or the agent moved on to a tool.
@@ -212,7 +255,8 @@ export function App({ initialRequest, autoStart, start }: { initialRequest?: str
           setFinished(true);
           break;
       }
-      setLog((l) => [...l, { ...event, key: nextKey.current++ }]);
+      const isCompact = compactRef.current && !(event.type === "say" && alwaysFull.includes(event.agent));
+      setLog((l) => [...l, { ...event, key: nextKey.current++, compact: isCompact }]);
     });
     if (initialRequest || autoStart) start(initialRequest);
     return off;
@@ -226,6 +270,13 @@ export function App({ initialRequest, autoStart, start }: { initialRequest?: str
   useEffect(() => {
     if (finished) setTimeout(exit, 100);
   }, [finished]);
+
+  useInput((_input, key) => {
+    if (!key.tab) return;
+    compactRef.current = !compactRef.current;
+    setCompact(compactRef.current);
+    bus.emitEvent({ type: "info", text: compactRef.current ? "Ansicht: kompakt" : "Ansicht: alles" });
+  });
 
   const total = members.reduce((sum, m) => sum + m.usd, 0);
   const current = asks[0];
@@ -241,8 +292,13 @@ export function App({ initialRequest, autoStart, start }: { initialRequest?: str
             {phase ? <Text bold>{phase}</Text> : null}
             {startedAt !== null ? <Text dimColor>{elapsed(Date.now() - startedAt)}</Text> : null}
             {total > 0 ? <Text color="green">${total.toFixed(2)}</Text> : null}
-            <Text dimColor>Strg+C bricht ab</Text>
+            <Text dimColor>Tab: {compact ? "alles zeigen" : "kompakt"} · Strg+C bricht ab</Text>
           </Box>
+          {limitUntil > Date.now() && (
+            <Text color="yellow">
+              ⏸ Nutzungslimit erreicht. Es geht um {clock(limitUntil)} automatisch weiter (noch {elapsed(limitUntil - Date.now())}).
+            </Text>
+          )}
           {members.length > 0 && <Roster members={members} tick={tick} />}
           {startedAt === null ? (
             <Question
@@ -263,7 +319,11 @@ export function App({ initialRequest, autoStart, start }: { initialRequest?: str
                 bus.answer(current.id, answer);
               }}
             />
-          ) : null}
+          ) : (
+            <Box marginTop={1}>
+              <TextInput onSubmit={(text) => bus.emitEvent({ type: "note", text })} placeholder="Nachricht ans Team, Enter schickt ab" />
+            </Box>
+          )}
         </Box>
       )}
     </>

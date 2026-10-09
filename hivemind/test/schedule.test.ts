@@ -72,3 +72,20 @@ test("stops when aborted", async () => {
     /Abgebrochen/,
   );
 });
+
+test("tasks that clash wait for each other, the rest still runs in parallel", async () => {
+  const files: Record<string, string[]> = { a: ["x.js"], b: ["x.js", "y.js"], c: ["z.js"] };
+  const log: string[] = [];
+  await schedule(
+    [task("a"), task("b"), task("c")],
+    3,
+    async (t) => {
+      log.push(`start ${t.id}`);
+      await tick();
+      log.push(`end ${t.id}`);
+    },
+    { clashes: (t, running) => running.some((r) => files[r.id]!.some((f) => files[t.id]!.includes(f))) },
+  );
+  assert.ok(log.indexOf("start b") > log.indexOf("end a"), "b waits for a");
+  assert.ok(log.indexOf("start c") < log.indexOf("end a"), "c does not wait");
+});

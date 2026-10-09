@@ -3,8 +3,9 @@ import { render } from "ink";
 import { resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { bus } from "./bus.js";
-import { loadConfig } from "./config.js";
+import { listTeams, loadConfig } from "./config.js";
 import { git, isGitRepo } from "./git.js";
+import { memoryFile, readMemory } from "./pipeline/memory.js";
 import { runHivemind } from "./pipeline/run.js";
 import { findResumable, listRuns, runsRoot, type RunState } from "./state.js";
 import { App } from "./ui/App.js";
@@ -14,12 +15,16 @@ const HELP = `hivemind - eine kleine KI-Firma für dein Projekt
   hivemind ["was gebaut werden soll"] [Optionen]
   hivemind runs                 zeigt die bisherigen Läufe in diesem Projekt
   hivemind --resume [id]        setzt einen abgebrochenen Lauf fort
+  hivemind teams                zeigt die Team-Vorlagen
+  hivemind memory               zeigt, was das Team über dieses Projekt weiß
 
 Ohne Prompt fragt hivemind dich danach.
 
 Optionen:
   -C, --cwd <ordner>   Projektordner (Standard: aktueller Ordner)
   -p, --plan-only      nur Optimizer + Planungs-Team, kein Code
+  -t, --team <name>    Team-Vorlage, z.B. sparsam, roblox, web (siehe hivemind teams)
+  -b, --budget <usd>   höchstens so viele Dollar (Schätzung), dann sauber stoppen
   -f, --full           immer das ganze Planungs-Team, egal wie klein der Auftrag ist
   -r, --rounds <n>     höchstens so viele Diskussionsrunden (Standard: 3)
   -c, --coders <n>     parallele Coder (Standard: 3)
@@ -35,6 +40,8 @@ const { values, positionals } = parseArgs({
   options: {
     cwd: { type: "string", short: "C" },
     "plan-only": { type: "boolean", short: "p", default: false },
+    team: { type: "string", short: "t" },
+    budget: { type: "string", short: "b" },
     full: { type: "boolean", short: "f", default: false },
     rounds: { type: "string", short: "r" },
     coders: { type: "string", short: "c" },
@@ -67,6 +74,19 @@ if (positionals[0] === "runs" && positionals.length === 1) {
   process.exit(0);
 }
 
+if (positionals[0] === "teams" && positionals.length === 1) {
+  for (const [name, team] of Object.entries(listTeams())) console.log(`${name.padEnd(12)} ${team.description}`);
+  console.log("\nEigene Teams: ~/.hivemind/teams/<name>.json (Aufbau wie hivemind.config.json, plus \"description\")");
+  process.exit(0);
+}
+
+if (positionals[0] === "memory" && positionals.length === 1) {
+  const memory = readMemory(repo);
+  console.log(memory || "Das Team weiß noch nichts über dieses Projekt. Nach dem ersten fertigen Lauf steht hier etwas.");
+  console.log(`\n(${memoryFile(repo)}, du kannst die Datei selbst bearbeiten)`);
+  process.exit(0);
+}
+
 let resume: RunState | undefined;
 if (values.resume) {
   resume = findResumable(runsRoot(repo), positionals[0]);
@@ -76,7 +96,21 @@ if (values.resume) {
   }
 }
 
-const config = loadConfig(cwd);
+let config: ReturnType<typeof loadConfig>;
+try {
+  config = loadConfig(cwd, values.team);
+} catch (error) {
+  console.error(error instanceof Error ? error.message : error);
+  process.exit(1);
+}
+if (values.budget) {
+  const budget = Number(values.budget.replace(",", "."));
+  if (!(budget > 0)) {
+    console.error(`--budget braucht einen Betrag in Dollar, z.B. --budget 3 (nicht "${values.budget}").`);
+    process.exit(1);
+  }
+  config.budgetUsd = budget;
+}
 if (values.rounds) config.discussionRounds = Math.max(1, Number(values.rounds));
 if (values.coders) config.coders = Math.max(1, Number(values.coders));
 if (values.model) {
@@ -100,7 +134,7 @@ bus.onEvent((event) => {
 });
 
 const initialRequest = resume ? undefined : positionals.join(" ").trim() || undefined;
-const app = render(<App initialRequest={initialRequest} autoStart={Boolean(resume)} start={start} />);
+const app = render(<App initialRequest={initialRequest} autoStart={Boolean(resume)} start={start} alwaysFull={[config.roles.moderator!.title]} />);
 await app.waitUntilExit();
 uiClosed = true;
 
