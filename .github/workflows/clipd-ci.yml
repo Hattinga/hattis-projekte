@@ -1,0 +1,36 @@
+name: clipd CI
+
+on:
+  push:
+    branches: ['**']
+    paths: ['clipd/**', '.github/workflows/clipd-ci.yml']
+  pull_request:
+    paths: ['clipd/**', '.github/workflows/clipd-ci.yml']
+
+defaults:
+  run:
+    working-directory: clipd
+
+# clipd captures with the Desktop Duplication API and encodes on an NVIDIA or
+# AMD card, so only Windows is built. The tests get by without both: they cover
+# the parts that decide whether a recording is correct — the ffmpeg command
+# lines, the ring, the hotkey combinations.
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: clipd
+      - name: Format
+        run: cargo fmt --check
+      - name: Clippy
+        run: cargo clippy --locked --workspace --all-targets -- -D warnings
+      - name: Tests
+        run: cargo test --locked --workspace
+      - name: Build
+        run: cargo build --release --locked --workspace

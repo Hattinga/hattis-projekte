@@ -1,0 +1,75 @@
+[package]
+name = "clipd"
+version = "0.1.0"
+edition = "2024"
+description = "Schlanker Clipper fürs Zocken: Replay-Buffer, Hotkey, schneiden, teilen"
+license = "MIT"
+repository = "https://github.com/Hattinga/hattis-projekte"
+
+[workspace]
+# The window lives in app/ and builds into the same target folder, so it
+# finds the same config.toml, buffer and ffmpeg during development.
+members = [".", "app"]
+
+[lib]
+name = "clipd"
+path = "src/lib.rs"
+
+[[bin]]
+name = "clipd"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1.0.104"
+chrono = { version = "0.4.45", default-features = false, features = ["clock", "std"] }
+clap = { version = "4.6.7", features = ["derive"] }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1"
+toml = "1.1.6"
+
+# The replay buffer only exists on Windows: it captures with the Desktop
+# Duplication API and encodes on the graphics card.
+[target.'cfg(windows)'.dependencies]
+# Game sound. ffmpeg has no way to record what the speakers play on Windows —
+# DirectShow only offers microphones — so clipd taps WASAPI itself.
+wasapi = "0.24.0"
+# The same version wasapi already pulls in: the foreground window for the game
+# name, and the playback volume a silent clip would come from.
+windows = { version = "0.62", features = [
+    "Win32_Foundation",
+    "Win32_Graphics_Gdi",
+    "Win32_Media_Audio",
+    "Win32_Media_Audio_Endpoints",
+    "Win32_Storage_FileSystem",
+    "Win32_System_Com",
+    "Win32_System_LibraryLoader",
+    "Win32_System_Threading",
+    "Win32_UI_Shell",
+    "Win32_UI_WindowsAndMessaging",
+] }
+windows-sys = { version = "0.61.2", features = [
+    "Win32_Foundation",
+    # CreateJobObjectW takes SECURITY_ATTRIBUTES and needs this.
+    "Win32_Security",
+    "Win32_System_Console",
+    # MessageBeep lives here, not with the windows.
+    "Win32_System_Diagnostics_Debug",
+    "Win32_System_JobObjects",
+    # The named pipe `clipd clip` talks to the running capture through.
+    "Win32_Storage_FileSystem",
+    "Win32_System_IO",
+    "Win32_System_Pipes",
+    "Win32_System_Threading",
+    "Win32_UI_Input_KeyboardAndMouse",
+    "Win32_UI_WindowsAndMessaging",
+] }
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = true
+
+[profile.dev.package."*"]
+opt-level = 2

@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <title>clipd</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="sb-heading">Bibliothek</div>
+      <nav class="nav" id="nav"></nav>
+      <div class="status" id="status">
+        <div class="line"><span class="dot gray"></span><span id="status-text">Startet …</span></div>
+        <div class="sub" id="status-sub"></div>
+      </div>
+    </aside>
+
+    <main>
+      <header class="toolbar">
+        <button class="back hidden" id="back">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>Bibliothek
+        </button>
+        <h1 id="title">Alle Clips</h1>
+        <div class="spacer"></div>
+        <button class="btn" id="rec" title="Aufnahme beliebiger Länge starten oder beenden"><span class="rec-dot"></span><span id="rec-label">Aufnahme</span></button>
+        <button class="btn primary" id="save" title="Die letzten Sekunden als Clip speichern">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>Clip speichern
+        </button>
+        <button class="icon-btn" id="folder" title="Clip-Ordner öffnen">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        </button>
+        <button class="icon-btn" id="gear" title="Einstellungen (Strg+,)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+        </button>
+      </header>
+
+      <div class="banner hidden" id="banner">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 1 21h22L12 2zm1 15h-2v-2h2v2zm0-4h-2V9h2v4z"/></svg>
+        <div class="text" id="banner-text"></div>
+        <button class="btn hidden" id="banner-retry">Erneut versuchen</button>
+        <button class="btn hidden" id="banner-settings">Einstellungen</button>
+      </div>
+
+      <div class="content" id="content">
+        <div id="library"></div>
+        <div class="empty hidden" id="empty">
+          <img src="icon.png" alt="">
+          <h2>Noch keine Clips</h2>
+          <p id="empty-text"></p>
+        </div>
+
+        <div class="detail hidden" id="detail">
+          <div class="player">
+            <video id="video" preload="auto"></video>
+            <div class="novideo hidden" id="novideo">
+              <div id="novideo-text">Dieses Format kann die Vorschau nicht abspielen.</div>
+              <button class="btn" id="open-external">Im Windows-Player öffnen</button>
+            </div>
+          </div>
+
+          <div class="transport">
+            <button class="play" id="play" title="Abspielen (Leertaste)"></button>
+            <div class="timeline" id="timeline">
+              <div class="track"><div class="strip" id="strip"></div></div>
+              <div class="shade" id="shade-l"></div>
+              <div class="shade" id="shade-r"></div>
+              <div class="frame" id="frame"></div>
+              <div class="grip" id="grip-in" title="Anfang (I)"></div>
+              <div class="grip" id="grip-out" title="Ende (O)"></div>
+              <div class="playhead" id="playhead"></div>
+            </div>
+            <div class="times"><b id="t-cur">0:00</b> · <span id="t-len">0:00</span></div>
+          </div>
+
+          <div class="panel">
+            <div>
+              <div class="name-row"><input class="name-input" id="name" spellcheck="false"></div>
+              <div class="info" id="info"></div>
+              <div class="mixer" id="mixer">
+                <div class="mix">
+                  <span class="label">Spiel</span>
+                  <input type="range" id="vol-game" min="0" max="200" value="100">
+                  <span class="val" id="vol-game-val">100 %</span>
+                </div>
+                <div class="mix" id="mix-mic">
+                  <span class="label">Mikrofon</span>
+                  <input type="range" id="vol-mic" min="0" max="200" value="100">
+                  <span class="val" id="vol-mic-val">100 %</span>
+                </div>
+              </div>
+              <div class="hint" id="mix-hint">Das Mikrofon hört man in der Vorschau nicht, es wird beim Speichern gemischt.</div>
+            </div>
+            <div>
+              <div class="actions" id="actions">
+                <button class="icon-btn star" id="star"></button>
+                <button class="btn" id="copy" title="Datei in die Zwischenablage — in Discord mit Strg+V einfügen">Kopieren</button>
+                <button class="btn" id="reveal">Im Ordner zeigen</button>
+                <button class="btn danger" id="delete">Löschen</button>
+              </div>
+              <div class="actions" style="margin-top: 10px" id="exports">
+                <div class="select more"><select id="more" title="Weitere Formate">
+                  <option value="" selected disabled>Mehr …</option>
+                  <option value="gif">Als GIF</option>
+                  <option value="vertical">Hochformat 9:16</option>
+                </select></div>
+                <button class="btn" id="send" title="Unter 10 MB machen und direkt in den Discord-Kanal schicken">An Discord senden</button>
+                <button class="btn" id="discord" title="H.264, eine Tonspur, unter 10 MB">Für Discord</button>
+                <button class="btn primary" id="trim" title="Den gelb markierten Teil als neuen Clip speichern">Zuschneiden</button>
+              </div>
+              <div class="actions hidden" style="margin-top: 10px" id="busy">
+                <div class="busy"><span id="busy-text">Wird gespeichert …</span><div class="progress"><div id="busy-bar"></div></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div class="backdrop hidden" id="sheet">
+    <div class="sheet">
+      <header>Einstellungen</header>
+      <div class="body" id="settings-body"></div>
+      <footer>
+        <button class="btn" id="settings-cancel">Abbrechen</button>
+        <button class="btn primary" id="settings-save">Sichern</button>
+      </footer>
+    </div>
+  </div>
+
+  <div class="backdrop hidden" id="alert">
+    <div class="alert">
+      <h3 id="alert-title"></h3>
+      <p id="alert-text"></p>
+      <div class="buttons">
+        <button class="btn" id="alert-cancel">Abbrechen</button>
+        <button class="btn primary" id="alert-ok"></button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">
+    <svg viewBox="0 0 24 24" fill="currentColor" id="toast-icon"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-1.2 14.2-4-4 1.4-1.4 2.6 2.6 5.6-5.6 1.4 1.4-7 7z"/></svg>
+    <span id="toast-text"></span>
+    <button class="btn hidden" id="toast-action"></button>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

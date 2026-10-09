@@ -1,0 +1,58 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "clipd",
+  "version": "0.1.0",
+  "identifier": "dev.hattinga.clipd",
+  "build": {
+    "frontendDist": "ui"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "label": "main",
+        "title": "clipd",
+        "width": 1180,
+        "height": 760,
+        "minWidth": 820,
+        "minHeight": 540,
+        "visible": false,
+        "center": true,
+        "create": false
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; img-src 'self' asset: http://asset.localhost data:; media-src 'self' asset: http://asset.localhost; style-src 'self' 'unsafe-inline'; connect-src ipc: http://ipc.localhost",
+      "assetProtocol": {
+        "enable": true,
+        "scope": []
+      }
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": [
+      "nsis"
+    ],
+    "publisher": "Hattinga",
+    "shortDescription": "Schlanker Clipper fürs Zocken",
+    "longDescription": "clipd nimmt den Bildschirm laufend auf und speichert auf Tastendruck die letzten Sekunden.",
+    "copyright": "MIT",
+    "category": "Video",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.ico"
+    ],
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": [
+          "German"
+        ],
+        "installerIcon": "icons/icon.ico"
+      }
+    }
+  }
+}
