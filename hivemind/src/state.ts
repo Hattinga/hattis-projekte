@@ -1,5 +1,7 @@
+import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { homedir } from "node:os";
+import { basename, join, resolve } from "node:path";
 import type { Size } from "./pipeline/optimize.js";
 import type { Plan } from "./pipeline/plan.js";
 
@@ -36,9 +38,18 @@ export class RunStore {
   }
 }
 
-/** All runs under <repo>/.hivemind, newest first. */
-export function listRuns(repo: string): RunState[] {
-  const root = join(repo, ".hivemind");
+/**
+ * Where a project's runs live: ~/.hivemind/projects/<name>-<hash>/. Outside the project on purpose,
+ * so agents looking around the project never stumble over transcripts or other runs' worktrees.
+ */
+export function runsRoot(project: string): string {
+  const path = resolve(project);
+  const hash = createHash("sha1").update(path.toLowerCase()).digest("hex").slice(0, 8);
+  return join(homedir(), ".hivemind", "projects", `${basename(path)}-${hash}`);
+}
+
+/** All runs in `root` (see runsRoot), newest first. */
+export function listRuns(root: string): RunState[] {
   if (!existsSync(root)) return [];
   return readdirSync(root)
     .map((id) => join(root, id, "state.json"))
@@ -48,8 +59,8 @@ export function listRuns(repo: string): RunState[] {
 }
 
 /** The run to continue: the given id, or the newest one that did not finish. */
-export function findResumable(repo: string, id?: string): RunState | undefined {
-  const runs = listRuns(repo);
+export function findResumable(root: string, id?: string): RunState | undefined {
+  const runs = listRuns(root);
   if (id) return runs.find((r) => r.id === id);
   return runs.find((r) => r.status !== "done");
 }

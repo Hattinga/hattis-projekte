@@ -37,6 +37,8 @@ export interface AgentResult<T> {
   data: T;
   costUsd: number;
   sessionId: string;
+  /** Whether the agent already said something visible, so callers don't repeat it. */
+  spoke: boolean;
 }
 
 const READ_TOOLS = ["Read", "Glob", "Grep"];
@@ -145,6 +147,7 @@ async function runAgentOnce<T>(run: AgentRun<T>): Promise<AgentResult<T>> {
   let structured: unknown;
   let costUsd = 0;
   let sessionId = "";
+  let spoke = false;
 
   try {
     const messages = query({
@@ -179,8 +182,9 @@ async function runAgentOnce<T>(run: AgentRun<T>): Promise<AgentResult<T>> {
         for (const block of message.message.content) {
           if (block.type === "text" && block.text.trim()) {
             texts.push(block.text);
+            spoke = true;
             bus.emitEvent({ type: "say", agent: name, text: block.text.trim() });
-          } else if (block.type === "tool_use") {
+          } else if (block.type === "tool_use" && block.name !== "StructuredOutput") {
             const input = (block.input ?? {}) as Record<string, unknown>;
             bus.emitEvent({ type: "agent", agent: name, team, status: "working", note: block.name });
             bus.emitEvent({ type: "tool", agent: name, tool: block.name, detail: describeTool(block.name, input) });
@@ -199,7 +203,7 @@ async function runAgentOnce<T>(run: AgentRun<T>): Promise<AgentResult<T>> {
 
     const data = run.schema ? run.schema.parse(structured) : (undefined as T);
     bus.emitEvent({ type: "agent", agent: name, team, status: "done" });
-    return { text: texts.at(-1) ?? "", data, costUsd, sessionId };
+    return { text: texts.at(-1) ?? "", data, costUsd, sessionId, spoke };
   } catch (error) {
     bus.emitEvent({ type: "agent", agent: name, team, status: "error", note: errorText(error) });
     throw error;

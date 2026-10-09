@@ -1,5 +1,5 @@
 import { Box, Text } from "ink";
-import { parseMarkdown, type Span } from "./parseMarkdown.js";
+import { parseInline, parseMarkdown, type Span } from "./parseMarkdown.js";
 
 function Spans({ spans }: { spans: Span[] }) {
   return (
@@ -14,6 +14,32 @@ function Spans({ spans }: { spans: Span[] }) {
         ),
       )}
     </>
+  );
+}
+
+function Table({ rows }: { rows: string[][] }) {
+  const [header = [], ...body] = rows;
+  return (
+    <Box flexDirection="column">
+      {body.map((cells, j) => (
+        <Box key={j}>
+          <Box width={2} flexShrink={0}>
+            <Text color="gray">•</Text>
+          </Box>
+          <Text>
+            <Text bold>
+              <Spans spans={parseInline(cells[0] ?? "")} />
+            </Text>
+            {cells.slice(1).map((cell, k) => (
+              <Text key={k}>
+                <Text dimColor>{k === 0 ? " — " : " · "}{header[k + 1] ? `${header[k + 1]}: ` : ""}</Text>
+                <Spans spans={parseInline(cell)} />
+              </Text>
+            ))}
+          </Text>
+        </Box>
+      ))}
+    </Box>
   );
 }
 
@@ -39,7 +65,10 @@ export function Markdown({ text }: { text: string }) {
           case "item":
             return (
               <Box key={i} paddingLeft={block.depth * 2}>
-                <Text color="gray">{block.marker} </Text>
+                {/* A fixed-width marker column keeps the space after "•" when the text wraps. */}
+                <Box width={block.marker.length + 1} flexShrink={0}>
+                  <Text color="gray">{block.marker}</Text>
+                </Box>
                 <Text>
                   <Spans spans={block.spans} />
                 </Text>
@@ -60,13 +89,9 @@ export function Markdown({ text }: { text: string }) {
               </Box>
             );
           case "table":
-            return (
-              <Box key={i} flexDirection="column">
-                {block.lines.map((line, j) => (
-                  <Text key={j} bold={j === 0}>{line}</Text>
-                ))}
-              </Box>
-            );
+            // Terminal tables with long cells wrap into chaos, so each row becomes a list entry:
+            // "• first cell — header: cell · header: cell".
+            return <Table key={i} rows={block.rows} />;
           case "rule":
             return <Text key={i} dimColor>{"─".repeat(40)}</Text>;
           case "blank":

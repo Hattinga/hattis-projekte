@@ -59,8 +59,8 @@ export function planningTeam(size: Size, config: Config): { planners: string[]; 
 export async function planTeam(brief: string, size: Size, cwd: string, config: Config, signal: AbortSignal): Promise<Plan> {
   bus.emitEvent({ type: "phase", phase: "Planung" });
   const { planners, rounds } = planningTeam(size, config);
-  // Small requests don't need the strongest model to discuss them.
-  const tier: Tier = size === "S" ? "normal" : "hard";
+  // Only large requests need the strongest model in the discussion; the moderator decides on Opus anyway.
+  const tier: Tier = size === "L" ? "hard" : "normal";
   const names = planners.map((key) => config.roles[key]!.title).join(", ");
   bus.emitEvent({ type: "info", text: `Größe ${size}: ${names} planen, höchstens ${rounds} ${rounds === 1 ? "Runde" : "Runden"}.` });
 
@@ -75,7 +75,7 @@ export async function planTeam(brief: string, size: Size, cwd: string, config: C
     planners.map(async (key) => {
       const { text } = await runPlanner(
         key,
-        `Auftrag:\n\n${brief}\n\nDas Planungs-Team (${names}) bespricht, wie dieser Auftrag umgesetzt wird. Schau dir den relevanten Code an und gib aus deiner Rolle heraus deinen Vorschlag bzw. deine Einschätzung ab.`,
+        `Auftrag:\n\n${brief}\n\nDas Planungs-Team (${names}) bespricht, wie dieser Auftrag umgesetzt wird. Schau dir den relevanten Code an und gib aus deiner Rolle heraus deinen Vorschlag bzw. deine Einschätzung ab. Höchstens etwa 250 Wörter: nur was für die Entscheidung zählt, keine Wiederholung des Auftrags.`,
       );
       return `**${config.roles[key]!.title}:**\n${text}`;
     }),
@@ -87,19 +87,20 @@ export async function planTeam(brief: string, size: Size, cwd: string, config: C
     let everyoneAgrees = true;
     for (const key of planners) {
       const role = config.roles[key]!;
-      const { data } = await runAgent({
+      const { data, spoke } = await runAgent({
         name: role.title,
         team: "Planung",
         role,
         model: modelFor(role, tier, config),
         config,
-        prompt: `Auftrag:\n\n${brief}\n\nBisherige Diskussion:\n\n${transcript()}\n\nReagiere auf die anderen: Wo stimmst du zu, wo nicht und warum, was fehlt noch? Wiederhole nichts, was schon gesagt wurde. Wenn du einverstanden bist, sag das in einem Satz.`,
+        prompt: `Auftrag:\n\n${brief}\n\nBisherige Diskussion:\n\n${transcript()}\n\nReagiere auf die anderen: Wo stimmst du zu, wo nicht und warum, was fehlt noch? Wiederhole nichts, was schon gesagt wurde. Höchstens etwa 120 Wörter. Wenn du einverstanden bist und nichts Wesentliches fehlt, reicht ein Satz.`,
         cwd,
         access: "read",
         schema: Statement,
         signal,
       });
-      bus.emitEvent({ type: "say", agent: role.title, text: data.agrees ? `${data.message}\n\n✓ einverstanden` : data.message });
+      if (!spoke) bus.emitEvent({ type: "say", agent: role.title, text: data.message });
+      if (data.agrees) bus.emitEvent({ type: "info", text: `${role.title} ist einverstanden.` });
       discussion.push(`**${role.title}:**\n${data.message}`);
       everyoneAgrees &&= data.agrees;
     }

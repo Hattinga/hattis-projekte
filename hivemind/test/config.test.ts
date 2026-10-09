@@ -57,14 +57,15 @@ test("team board: everyone reads what the others posted, once", () => {
 test("runs: newest first, resume picks the newest unfinished one", () => {
   const base: Omit<RunState, "id" | "status"> = { request: "x", cwd: dir, createdAt: "", phase: "", costUsd: 0, plans: [], doneTasks: [] };
   for (const [id, status] of [["20261001-0900", "aborted"], ["20261002-0900", "done"], ["20261003-0900", "failed"]] as const) {
-    const runDir = join(dir, ".hivemind", id);
+    const runDir = join(dir, "runs", id);
     mkdirSync(runDir, { recursive: true });
     new RunStore(runDir, { ...base, id, status }).update({});
   }
-  assert.deepEqual(listRuns(dir).map((r) => r.id), ["20261003-0900", "20261002-0900", "20261001-0900"]);
-  assert.equal(findResumable(dir)?.id, "20261003-0900");
-  assert.equal(findResumable(dir, "20261001-0900")?.status, "aborted");
-  assert.equal(findResumable(dir, "nope"), undefined);
+  const root = join(dir, "runs");
+  assert.deepEqual(listRuns(root).map((r) => r.id), ["20261003-0900", "20261002-0900", "20261001-0900"]);
+  assert.equal(findResumable(root)?.id, "20261003-0900");
+  assert.equal(findResumable(root, "20261001-0900")?.status, "aborted");
+  assert.equal(findResumable(root, "nope"), undefined);
 });
 
 test("routing: the tier picks the model, a role's own model wins, --model turns it off", async () => {

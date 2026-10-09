@@ -3,8 +3,8 @@ import { join, relative } from "node:path";
 import { errorText } from "../agent.js";
 import { bus, type HiveEvent } from "../bus.js";
 import type { Config } from "../config.js";
-import { excludeHivemindDir, git, hasUncommittedChanges, isGitRepo, Workspace } from "../git.js";
-import { RunStore, type RunState } from "../state.js";
+import { git, hasCommits, hasUncommittedChanges, isGitRepo, Workspace } from "../git.js";
+import { RunStore, runsRoot, type RunState } from "../state.js";
 import { codingTeam } from "./code.js";
 import { optimizePrompt } from "./optimize.js";
 import { CancelledByUser, followUpPlan, formatPlan, planTeam, type Plan } from "./plan.js";
@@ -58,9 +58,8 @@ export async function runHivemind({ request, resume, cwd, config, planOnly, sign
   const isGit = isGitRepo(cwd);
   const repo = isGit ? git(cwd, "rev-parse", "--show-toplevel") : cwd;
   const id = resume?.id ?? newRunId();
-  const runDir = join(repo, ".hivemind", id);
+  const runDir = join(runsRoot(repo), id);
   mkdirSync(runDir, { recursive: true });
-  if (isGit) excludeHivemindDir(repo);
 
   const store = new RunStore(
     runDir,
@@ -79,6 +78,14 @@ export async function runHivemind({ request, resume, cwd, config, planOnly, sign
 
   try {
     if (resume) bus.emitEvent({ type: "info", text: `Setze Lauf ${id} fort: ${resume.request}` });
+
+    // Worktrees need a commit to start from. Better to find out now than after the planning.
+    if (isGit && !planOnly && !hasCommits(repo)) {
+      const answer = await bus.ask("Dein Repo hat noch keinen Commit, ohne den können die Coder nicht starten.", ["leeren Start-Commit anlegen", "abbrechen"]);
+      if (answer !== "leeren Start-Commit anlegen") throw new CancelledByUser();
+      git(repo, "commit", "--allow-empty", "-m", "Start");
+      bus.emitEvent({ type: "info", text: "Leerer Start-Commit angelegt." });
+    }
 
     if (!store.state.brief) {
       const { brief, size } = await optimizePrompt(store.state.request, cwd, config, signal);
@@ -102,7 +109,7 @@ export async function runHivemind({ request, resume, cwd, config, planOnly, sign
     if (hasUncommittedChanges(repo)) {
       bus.emitEvent({ type: "info", text: "Achtung: Du hast uncommittete Änderungen. Die Coder starten vom letzten Commit und sehen sie nicht." });
     }
-    workspace = new Workspace(repo, id);
+    workspace = new Workspace(repo, id, runDir);
     workspace.open();
     store.update({ branch: workspace.branch });
     const resultCwd = join(workspace.integration, relative(repo, cwd));

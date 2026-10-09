@@ -14,7 +14,8 @@ export type Block =
   | { kind: "item"; depth: number; marker: string; spans: Span[] }
   | { kind: "quote"; spans: Span[] }
   | { kind: "code"; lang: string; lines: string[] }
-  | { kind: "table"; lines: string[] }
+  /** First row is the header. Cells are already split, with `\|` unescaped. */
+  | { kind: "table"; rows: string[][] }
   | { kind: "rule" }
   | { kind: "blank" };
 
@@ -39,6 +40,12 @@ export function parseInline(text: string): Span[] {
   return spans;
 }
 
+/** "| a | b \| c |" → ["a", "b | c"] */
+function splitRow(line: string): string[] {
+  const inner = line.trim().replace(/^\|/, "").replace(/(?<!\\)\|$/, "");
+  return inner.split(/(?<!\\)\|/).map((cell) => cell.trim().replace(/\\\|/g, "|"));
+}
+
 export function parseMarkdown(markdown: string): Block[] {
   const blocks: Block[] = [];
   const lines = markdown.replace(/\r\n/g, "\n").split("\n");
@@ -52,13 +59,13 @@ export function parseMarkdown(markdown: string): Block[] {
       continue;
     }
     if (/^\s*\|/.test(line)) {
-      const table: string[] = [];
+      const rows: string[][] = [];
       for (; i < lines.length && /^\s*\|/.test(lines[i]!); i++) {
         // The |---|---| separator row only matters to Markdown, not to readers.
-        if (!/^\s*\|[\s:|-]+\|\s*$/.test(lines[i]!)) table.push(lines[i]!.trim());
+        if (!/^\s*\|[\s:|-]+\|\s*$/.test(lines[i]!)) rows.push(splitRow(lines[i]!));
       }
       i--;
-      blocks.push({ kind: "table", lines: table });
+      blocks.push({ kind: "table", rows });
       continue;
     }
     if (!line.trim()) {

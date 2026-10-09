@@ -6,7 +6,7 @@ import { bus } from "./bus.js";
 import { loadConfig } from "./config.js";
 import { git, isGitRepo } from "./git.js";
 import { runHivemind } from "./pipeline/run.js";
-import { findResumable, listRuns, type RunState } from "./state.js";
+import { findResumable, listRuns, runsRoot, type RunState } from "./state.js";
 import { App } from "./ui/App.js";
 
 const HELP = `hivemind - eine kleine KI-Firma für dein Projekt
@@ -56,7 +56,7 @@ const repo = isGitRepo(cwd) ? git(cwd, "rev-parse", "--show-toplevel") : cwd;
 const STATUS: Record<RunState["status"], string> = { running: "läuft", done: "fertig", aborted: "abgebrochen", failed: "fehlgeschlagen" };
 
 if (positionals[0] === "runs" && positionals.length === 1) {
-  const runs = listRuns(repo);
+  const runs = listRuns(runsRoot(repo));
   if (runs.length === 0) console.log("Noch keine Läufe in diesem Projekt.");
   for (const run of runs) {
     const request = run.request.replace(/\s+/g, " ");
@@ -69,7 +69,7 @@ if (positionals[0] === "runs" && positionals.length === 1) {
 
 let resume: RunState | undefined;
 if (values.resume) {
-  resume = findResumable(repo, positionals[0]);
+  resume = findResumable(runsRoot(repo), positionals[0]);
   if (!resume) {
     console.error(positionals[0] ? `Lauf ${positionals[0]} gibt es nicht. Siehe: hivemind runs` : "Kein abgebrochener Lauf zum Fortsetzen.");
     process.exit(1);

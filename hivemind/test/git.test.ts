@@ -3,7 +3,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "no
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, beforeEach, test } from "node:test";
-import { branchExists, excludeHivemindDir, git, hasUncommittedChanges, Workspace } from "../src/git.js";
+import { branchExists, git, hasCommits, hasUncommittedChanges, Workspace } from "../src/git.js";
 
 const dirs: string[] = [];
 let repo: string;
@@ -25,13 +25,19 @@ beforeEach(() => {
   repo = newRepo();
 });
 
+/** Runs live outside the project, like in ~/.hivemind/projects/… */
+function workspace(id: string): Workspace {
+  const runs = mkdtempSync(join(tmpdir(), "hivemind-runs-"));
+  dirs.push(runs);
+  return new Workspace(repo, id, join(runs, id));
+}
+
 after(() => {
   for (const dir of dirs) rmSync(dir, { recursive: true, force: true });
 });
 
 test("tasks run in their own worktrees and merge into the run's branch, the checkout stays untouched", () => {
-  excludeHivemindDir(repo);
-  const ws = new Workspace(repo, "run1");
+  const ws = workspace("run1");
   ws.open();
 
   const t1 = ws.taskWorktree("t1");
@@ -43,11 +49,11 @@ test("tasks run in their own worktrees and merge into the run's branch, the chec
   assert.equal(readFileSync(join(ws.integration, "b.txt"), "utf8"), "von t1\n");
   assert.equal(existsSync(join(repo, "b.txt")), false);
   assert.equal(git(repo, "branch", "--show-current"), "main");
-  assert.equal(hasUncommittedChanges(repo), false, ".hivemind/ must not show up in git status");
+  assert.equal(hasUncommittedChanges(repo), false, "nothing of the run may show up in the project");
 });
 
 test("a later task starts from what is already merged", () => {
-  const ws = new Workspace(repo, "run2");
+  const ws = workspace("run2");
   ws.open();
   const t1 = ws.taskWorktree("t1");
   writeFileSync(join(t1.dir, "b.txt"), "b\n");
@@ -60,7 +66,7 @@ test("a later task starts from what is already merged", () => {
 });
 
 test("conflicting tasks are detected and the merge can be rolled back", () => {
-  const ws = new Workspace(repo, "run3");
+  const ws = workspace("run3");
   ws.open();
   const t1 = ws.taskWorktree("t1");
   const t2 = ws.taskWorktree("t2");
@@ -78,7 +84,7 @@ test("conflicting tasks are detected and the merge can be rolled back", () => {
 });
 
 test("cleanup removes worktrees and task branches but keeps the result, and the run can be reopened", () => {
-  const ws = new Workspace(repo, "run4");
+  const ws = workspace("run4");
   ws.open();
   const t1 = ws.taskWorktree("t1");
   writeFileSync(join(t1.dir, "b.txt"), "b\n");
@@ -100,7 +106,7 @@ test("cleanup removes worktrees and task branches but keeps the result, and the 
 });
 
 test("a task interrupted last time starts over cleanly", () => {
-  const ws = new Workspace(repo, "run5");
+  const ws = workspace("run5");
   ws.open();
   const first = ws.taskWorktree("t1");
   writeFileSync(join(first.dir, "halb.txt"), "halb fertig\n");
@@ -109,7 +115,7 @@ test("a task interrupted last time starts over cleanly", () => {
 });
 
 test("merging into the checkout works when clean and refuses when dirty", () => {
-  const ws = new Workspace(repo, "run6");
+  const ws = workspace("run6");
   ws.open();
   writeFileSync(join(ws.integration, "neu.txt"), "neu\n");
   ws.commitLeftovers(ws.integration, "neu");
@@ -123,9 +129,10 @@ test("merging into the checkout works when clean and refuses when dirty", () => 
   ws.cleanup();
 });
 
-test("the exclude entry is added only once", () => {
-  excludeHivemindDir(repo);
-  excludeHivemindDir(repo);
-  const exclude = readFileSync(join(repo, ".git", "info", "exclude"), "utf8");
-  assert.equal(exclude.split("\n").filter((l) => l.trim() === ".hivemind/").length, 1);
+test("an empty repo is recognised before anyone starts working", () => {
+  const empty = mkdtempSync(join(tmpdir(), "hivemind-empty-"));
+  dirs.push(empty);
+  git(empty, "init", "-q");
+  assert.equal(hasCommits(empty), false);
+  assert.equal(hasCommits(repo), true);
 });

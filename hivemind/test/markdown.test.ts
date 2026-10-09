@@ -37,8 +37,8 @@ test("blocks: code fences keep their content untouched", () => {
 });
 
 test("blocks: tables drop the separator row", () => {
-  const blocks = parseMarkdown("| A | B |\n|---|:-:|\n| 1 | 2 |");
-  assert.deepEqual(blocks, [{ kind: "table", lines: ["| A | B |", "| 1 | 2 |"] }]);
+  const blocks = parseMarkdown("| A | B |\n|---|:-:|\n| 1 | `list [--open\\|--done]` |");
+  assert.deepEqual(blocks, [{ kind: "table", rows: [["A", "B"], ["1", "`list [--open|--done]`"]] }]);
 });
 
 test("blocks: windows line endings and surrounding blank lines", () => {

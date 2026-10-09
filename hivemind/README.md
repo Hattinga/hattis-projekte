@@ -34,7 +34,7 @@ Alle Agents sind vollwertige Claude-Code-Agents (über das [Claude Agent SDK](ht
 
 - Node.js 20 oder neuer
 - Claude Code, eingeloggt (`claude` einmal starten und anmelden). hivemind nutzt diesen Login, läuft also über dein Claude-Abo. Mit gesetztem `ANTHROPIC_API_KEY` wird stattdessen pro Token über die API abgerechnet.
-- Für das Coder-Team muss das Projekt ein git-Repo mit mindestens einem Commit sein.
+- Für das Coder-Team muss das Projekt ein git-Repo sein. Hat es noch keinen Commit, bietet hivemind gleich am Anfang an, einen leeren Start-Commit anzulegen.
 
 ## Installation
 
@@ -80,7 +80,7 @@ hivemind wählt das Modell pro Agent selbst, je nachdem, wie schwer seine Aufgab
 | Agent | Modell |
 |---|---|
 | Prompt-Optimizer | Sonnet 5.5 |
-| Planer | Sonnet 5.5 bei kleinen Aufträgen (S), sonst Opus 5.5 |
+| Planer | Sonnet 5.5, bei großen Aufträgen (L) Opus 5.5 |
 | Moderatorin, Integrator, Architektin bei Rückfragen | Opus 5.5 |
 | Coder | je nach Task: leicht → Haiku 5.5, normal → Sonnet 5.5, schwer → Opus 5.5 |
 | Reviewer | Opus 5.5 bei schweren Tasks, sonst Sonnet 5.5 |
@@ -114,7 +114,7 @@ hivemind --resume <id>     # einen bestimmten
 
 Strg+C bricht sauber ab: alle Agents stoppen, die Worktrees werden aufgeräumt, der Stand bleibt gespeichert. Beim Fortsetzen überspringt hivemind, was schon fertig ist (Auftrag, Plan, gemergte Tasks).
 
-Pro Lauf liegen in `.hivemind/<id>/` das komplette Protokoll (`transcript.md`), der Plan (`plan.json`) und der Zustand (`state.json`). Der Ordner wird automatisch aus git rausgehalten.
+Pro Lauf liegen in `~/.hivemind/projects/<projekt>-<hash>/<id>/` das komplette Protokoll (`transcript.md`), der Plan (`plan.json`), der Zustand (`state.json`) und während der Arbeit die Worktrees. Bewusst außerhalb deines Projekts: so landet nichts davon in git, und die Agents stolpern beim Umschauen nicht über alte Protokolle.
 
 ## Teams anpassen
 
@@ -156,6 +156,7 @@ Mehrere Agents verbrauchen mehr als einer. Mit dem Abo heißt das: deine Nutzung
 - **Isolierte Agents:** Die Agents laden weder deine MCP-Server noch Plugins, Skills oder Hooks aus `~/.claude`, nur die Projekt-Settings und die `CLAUDE.md`. Mit vielen MCP-Servern spart das pro Agent-Schritt leicht 90 % der Tokens.
 - **Schlanke Planer:** Lesende Agents bekommen einen kurzen eigenen Systemprompt statt des kompletten Claude-Code-Prompts.
 - **Triage:** Kleine Aufträge bekommen zwei Planer und eine Runde, mittlere alle Planer und höchstens zwei Runden.
+- **Kurze Beiträge:** Planer haben eine Wortgrenze (etwa 250 Wörter zum Start, 120 pro Antwort), weil jeder Beitrag in allen folgenden Runden mitgelesen wird.
 - **Früher Schluss:** Die Diskussion endet, sobald alle einverstanden sind.
 - **Passende Modelle:** Leichte Aufgaben laufen auf Haiku oder Sonnet statt auf Opus.
 

@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 export function git(cwd: string, ...args: string[]): string {
@@ -33,8 +33,12 @@ export function branchExists(repo: string, branch: string): boolean {
   return tryGit(repo, "rev-parse", "--verify", "--quiet", `refs/heads/${branch}`).ok;
 }
 
+export function hasCommits(repo: string): boolean {
+  return tryGit(repo, "rev-parse", "--verify", "--quiet", "HEAD").ok;
+}
+
 /**
- * All of a run's work happens under <repo>/.hivemind/<runId>/: one integration
+ * All of a run's work happens in `root` (outside the project): one integration
  * worktree on branch hivemind/<runId> plus one worktree per task. Your own
  * checkout and branch are never touched; you merge hivemind/<runId> when you like it.
  */
@@ -43,8 +47,8 @@ export class Workspace {
   readonly branch: string;
   readonly integration: string;
 
-  constructor(readonly repo: string, readonly runId: string) {
-    this.root = join(repo, ".hivemind", runId);
+  constructor(readonly repo: string, readonly runId: string, root: string) {
+    this.root = root;
     this.branch = `hivemind/${runId}`;
     this.integration = join(this.root, "integration");
   }
@@ -118,14 +122,4 @@ export class Workspace {
     tryGit(this.repo, "merge", "--abort");
     return { ok: false, message: `Merge-Konflikt, nichts geändert. Merge selbst mit: git merge ${this.branch}` };
   }
-}
-
-/** Keeps .hivemind/ out of `git status` without touching the project's .gitignore. */
-export function excludeHivemindDir(repo: string) {
-  const infoDir = join(resolve(repo, git(repo, "rev-parse", "--git-common-dir")), "info");
-  const exclude = join(infoDir, "exclude");
-  const current = existsSync(exclude) ? readFileSync(exclude, "utf8") : "";
-  if (lines(current).includes(".hivemind/")) return;
-  mkdirSync(infoDir, { recursive: true });
-  appendFileSync(exclude, `${current && !current.endsWith("\n") ? "\n" : ""}.hivemind/\n`);
 }
