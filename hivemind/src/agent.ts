@@ -2,6 +2,7 @@ import { query, type CanUseTool, type McpServerConfig, type Options } from "@ant
 import { z } from "zod";
 import { bus } from "./bus.js";
 import type { Config, Role } from "./config.js";
+import { resolveMcpServers } from "./mcp.js";
 
 /** read: look at the code only. review: also run commands. write: full Claude Code toolset. */
 export type Access = "read" | "review" | "write";
@@ -90,11 +91,11 @@ function permissions(agent: string, config: Config, trusted: string[]): Partial<
 
 function accessOptions(run: AgentRun<unknown>): Partial<Options> {
   const { access, name, config, role, teamTools } = run;
-  const extra = teamTools?.names ?? [];
+  const extra = [...(teamTools?.names ?? []), ...(role.mcpTools ?? [])];
   const trusted = [...READ_TOOLS, ...extra];
   switch (access) {
     case "read":
-      // Nothing outside these tools exists, and nothing ever prompts.
+      // Nothing outside these tools exists or is allowed, and nothing ever prompts.
       return {
         tools: READ_TOOLS,
         allowedTools: trusted,
@@ -105,7 +106,11 @@ function accessOptions(run: AgentRun<unknown>): Partial<Options> {
       return {
         tools: [...READ_TOOLS, "Bash"],
         systemPrompt: `${READ_ONLY_PREAMBLE}\nZusätzlich darfst du Befehle zum Lesen, Bauen und Testen ausführen (Bash), aber keine Dateien ändern.\n\n${role.persona}`,
-        ...permissions(name, config, trusted),
+        // With an MCP allow-list (e.g. Studio tools that only read or playtest), the list is the limit:
+        // a reviewer or tester must not be able to edit the game through some other tool of the server.
+        ...(role.mcpTools
+          ? { allowedTools: [...trusted, "Bash"], permissionMode: "dontAsk" as const }
+          : permissions(name, config, trusted)),
       };
     case "write":
       return {
@@ -262,7 +267,10 @@ async function runAgentOnce<T>(run: AgentRun<T>): Promise<AgentResult<T>> {
         // The project's own settings and CLAUDE.md still apply.
         settingSources: ["project"],
         strictMcpConfig: true,
-        mcpServers: run.teamTools ? { team: run.teamTools.server } : {},
+        mcpServers: {
+          ...resolveMcpServers(role.mcp ?? [], run.cwd, config),
+          ...(run.teamTools ? { team: run.teamTools.server } : {}),
+        },
         skills: [],
         env: { ...process.env, CLAUDE_AGENT_SDK_CLIENT_APP: "hivemind/0.3.0" },
         ...accessOptions(run as AgentRun<unknown>),
@@ -272,6 +280,11 @@ async function runAgentOnce<T>(run: AgentRun<T>): Promise<AgentResult<T>> {
     for await (const message of messages) {
       if (message.type === "system" && message.subtype === "init") {
         sessionId = message.session_id;
+        // Without its MCP server (e.g. Studio is closed) an agent would only guess. Better to stop clearly.
+        const broken = message.mcp_servers.filter((s) => role.mcp?.includes(s.name) && s.status === "failed");
+        if (broken.length) {
+          throw new AgentFailed(`${broken.map((s) => s.name).join(", ")} nicht erreichbar. Läuft das Programm dazu (z.B. Roblox Studio mit MCP)?`);
+        }
       } else if (message.type === "rate_limit_event") {
         const info = message.rate_limit_info;
         if (info.status === "rejected") {

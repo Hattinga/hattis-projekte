@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import type { PermissionMode } from "@anthropic-ai/claude-agent-sdk";
+import type { McpServerConfig, PermissionMode } from "@anthropic-ai/claude-agent-sdk";
 
 /** ~/.hivemind, or HIVEMIND_HOME (used by the tests, so they never touch your real one). */
 export function hivemindHome(): string {
@@ -20,9 +20,25 @@ export interface Role {
   persona: string;
   model?: string;
   effort?: Effort;
+  /** MCP servers this role may use, by name (looked up in `mcpServers`, then in your Claude Code setup). */
+  mcp?: string[];
+  /**
+   * For roles that only read or test: exactly these MCP tools (full names) are allowed, everything else
+   * is denied, whatever the permission mode. Roles that write (coders) get every tool of their servers.
+   */
+  mcpTools?: string[];
 }
 
+/**
+ * git: coders work in parallel git worktrees on files, the result is a branch.
+ * studio: the game lives in Roblox Studio; coders change it one after another through the Studio MCP.
+ */
+export type Mode = "git" | "studio";
+
 export interface Config {
+  mode: Mode;
+  /** MCP servers roles can name in `mcp`, in addition to the ones from your Claude Code setup. */
+  mcpServers?: Record<string, McpServerConfig>;
   /** Model for every agent when `routing` is off, and for roles whose tier is unknown. */
   model: string;
   /**
@@ -61,6 +77,8 @@ export interface Config {
   memory: boolean;
   /** Extra rules every agent gets, e.g. from a team preset ("Roblox: never trust the client"). */
   guidance?: string;
+  /** A team preset this config builds on (`hivemind teams`). `--team` on the command line wins. */
+  team?: string;
 }
 
 export const DEFAULT_ROLES: Record<string, Role> = {
@@ -157,6 +175,7 @@ Höchstens etwa 400 Wörter, Markdown-Stichpunkte nach Themen.`,
 };
 
 export const DEFAULT_CONFIG: Config = {
+  mode: "git",
   model: "claude-opus-5-5",
   routing: true,
   models: { easy: "claude-haiku-5-5", normal: "claude-sonnet-5-5", hard: "claude-opus-5-5" },
@@ -172,10 +191,30 @@ export const DEFAULT_CONFIG: Config = {
   memory: true,
 };
 
+/** What a config file or team preset may contain: any part of Config, and roles only partly. */
+export type ConfigOverride = Omit<Partial<Config>, "roles"> & { roles?: Record<string, Partial<Role>> };
+
 export interface TeamPreset {
   description: string;
-  config: Partial<Config>;
+  config: ConfigOverride;
 }
+
+const STUDIO = "mcp__Roblox_Studio__";
+/** Studio tools that only look: scripts, the instance tree, the output window. */
+export const STUDIO_READ_TOOLS = ["get_studio_state", "list_roblox_studios", "script_read", "script_grep", "script_search", "search_game_tree", "inspect_instance", "get_console_output"].map((t) => STUDIO + t);
+/** What QA needs on top: playtests, screenshots, simulated input, reading state with Luau. */
+export const STUDIO_QA_TOOLS = [
+  ...STUDIO_READ_TOOLS,
+  ...["start_stop_play", "screen_capture", "execute_luau", "user_mouse_input", "user_keyboard_input", "character_navigation", "wait_job_finished"].map((t) => STUDIO + t),
+];
+
+const ROBLOX_PROFI: Role = {
+  title: "Roblox-Profi",
+  effort: "high",
+  persona: `Du bist der Roblox-Profi im Planungs-Team. Du kennst Luau, die Roblox-Engine und ihre Services in- und auswendig.
+Achte auf saubere Client/Server-Trennung, Replikation und Netzwerk-Besitz, RemoteEvents/RemoteFunctions (Validierung, Rate-Limits),
+DataStores (Limits, Retries, Session-Locking), Streaming und Performance auf schwachen Handys.`,
+};
 
 /** Ready-made teams for `--team <name>`. Your own go into ~/.hivemind/teams/<name>.json. */
 export const BUILTIN_TEAMS: Record<string, TeamPreset> = {
@@ -188,17 +227,56 @@ export const BUILTIN_TEAMS: Record<string, TeamPreset> = {
       models: { easy: "claude-haiku-5-5", normal: "claude-sonnet-5-5", hard: "claude-sonnet-5-5" },
     },
   },
+  "roblox-studio": {
+    description: "Roblox-Spiele, die in Roblox Studio leben: das Team arbeitet über den Studio-MCP, nacheinander, ohne git",
+    config: {
+      mode: "studio",
+      planners: ["architect", "roblox", "skeptic", "security"],
+      roles: {
+        roblox: ROBLOX_PROFI,
+        optimizer: { mcp: ["Roblox_Studio"], mcpTools: STUDIO_READ_TOOLS },
+        coder: {
+          mcp: ["Roblox_Studio"],
+          persona: `Du bist Roblox-Entwickler in einer Software-Firma aus KI-Agents. Du bekommst genau eine Task aus einem abgestimmten Plan
+und setzt sie direkt im laufenden Roblox Studio um, über die Roblox-Studio-Tools: Skripte lesen und ändern, Instanzen anlegen, Luau ausführen.
+Wähle zuerst mit list_roblox_studios die richtige Studio-Instanz. Halte dich an die vorhandene Struktur und die Konventionen der Skripte.
+Mach nur, was die Task verlangt. Prüf dein Ergebnis kurz (Output-Fenster auf Fehler, bei Bedarf ein kurzer stiller Playtest, den du wieder stoppst).
+Studio nicht speichern oder veröffentlichen. Antworte zum Schluss mit einer kurzen Zusammenfassung auf Deutsch:
+welche Skripte und Instanzen du geändert hast, was geprüft ist, was offen ist.`,
+        },
+        reviewer: {
+          mcp: ["Roblox_Studio"],
+          mcpTools: STUDIO_READ_TOOLS,
+          persona: `Du bist Code-Reviewer für ein Roblox-Spiel. Die Änderungen des Coders sind live in Roblox Studio; lies die betroffenen Skripte
+und Instanzen mit den Studio-Tools (zuerst list_roblox_studios und die richtige Instanz wählen). Fokus: Korrektheit, Bugs, Randfälle,
+Client/Server-Trennung (der Server prüft jede Client-Eingabe), Rate-Limits, Speicherlecks durch nicht getrennte Verbindungen, ob die Task erfüllt ist.
+Keine Stil-Kleinigkeiten. approved nur, wenn du es so ins Spiel nehmen würdest; sonst konkret, was zu ändern ist (Skript-Pfad, Zeile, warum).`,
+        },
+        tester: {
+          mcp: ["Roblox_Studio"],
+          mcpTools: STUDIO_QA_TOOLS,
+          persona: `Du bist die Testerin für ein Roblox-Spiel in Roblox Studio. Wähle mit list_roblox_studios die richtige Instanz.
+Teste das Ergebnis gegen den Auftrag: Playtests, Output-Fenster, Zustand mit execute_luau auslesen, Screenshots, simulierte Eingaben.
+Reproduziere jeden Fehler zweimal, bevor du ihn meldest, und belege ihn (Konsolenzeilen, ausgelesene Werte oder Screenshot).
+screen_capture ist schwarz, wenn Studio im Hintergrund ist: dann über Daten prüfen (Positionen, Attribute).
+Nie: Skripte ändern oder den Place dauerhaft verändern (execute_luau nur zum Auslesen und für vorhandene Test-Hooks; was du für einen Test
+anlegst, entfernst du wieder), Ton in Playtests, veröffentlichen, kaufen, DataStores eines Live-Spiels anfassen.
+Stoppe den Playtest immer, bevor du fertig bist.
+Antworte mit einem kurzen Abschlussbericht auf Deutsch: was funktioniert, was nicht, was der Kunde noch selbst prüfen sollte.
+Setze passed nur auf false, wenn etwas wirklich kaputt ist oder eine Anforderung fehlt, und beschreibe dann jedes Problem in problems
+so, dass ein Coder es ohne Rückfrage beheben kann (was, wo, wie man es nachprüft).`,
+        },
+      },
+      guidance: `Roblox-Spiel, Studio ist die Quelle der Wahrheit (kein git). Vertraue nie dem Client: jede RemoteEvent-Eingabe wird auf dem Server geprüft.
+Spiellogik und Daten gehören auf den Server, der Client macht Darstellung und Eingabe. Playtests ohne Ton. Nichts veröffentlichen.`,
+    },
+  },
   roblox: {
-    description: "Roblox/Luau-Spiele, mit Roblox-Profi im Planungs-Team",
+    description: "Roblox/Luau-Projekte als Dateien (z.B. Rojo + git), mit Roblox-Profi im Planungs-Team",
     config: {
       planners: ["architect", "roblox", "skeptic", "security"],
       roles: {
-        roblox: {
-          title: "Roblox-Profi",
-          effort: "high",
-          persona: `Du bist der Roblox-Profi im Planungs-Team. Du kennst Luau, die Roblox-Engine und ihre Services in- und auswendig.
-Achte auf saubere Client/Server-Trennung, Replikation, RemoteEvents/RemoteFunctions, DataStores (Limits, Retries, Session-Locking) und Performance.`,
-        },
+        roblox: ROBLOX_PROFI,
       },
       guidance: `Das ist ein Roblox-Projekt (Luau). Vertraue nie dem Client: jede RemoteEvent-Eingabe wird auf dem Server geprüft.
 Spiellogik und Daten gehören auf den Server, der Client macht Darstellung und Eingabe. Halte dich an die vorhandene Struktur (z.B. Rojo-Projekt,
@@ -228,15 +306,15 @@ export function listTeams(): Record<string, TeamPreset> {
   const dir = join(hivemindHome(), "teams");
   if (existsSync(dir)) {
     for (const file of readdirSync(dir).filter((f) => f.endsWith(".json"))) {
-      const preset = JSON.parse(readFileSync(join(dir, file), "utf8")) as Partial<TeamPreset> & Partial<Config>;
+      const preset = JSON.parse(readFileSync(join(dir, file), "utf8")) as Partial<TeamPreset> & ConfigOverride;
       const { description = "eigenes Team", config, ...rest } = preset;
-      teams[file.slice(0, -5)] = { description, config: config ?? (rest as Partial<Config>) };
+      teams[file.slice(0, -5)] = { description, config: config ?? (rest as ConfigOverride) };
     }
   }
   return teams;
 }
 
-function merge(config: Config, override: Partial<Config>): Config {
+function merge(config: Config, override: ConfigOverride): Config {
   const roles = { ...config.roles };
   for (const [key, role] of Object.entries(override.roles ?? {})) {
     roles[key] = { ...roles[key], ...role } as Role;
@@ -262,15 +340,19 @@ export function modelLabel(model: string): string {
  * each overriding what came before. Roles are merged field by field.
  */
 export function loadConfig(cwd: string, team?: string): Config {
+  const files = [join(hivemindHome(), "config.json"), join(cwd, "hivemind.config.json")]
+    .filter((path) => existsSync(path))
+    .map((path) => JSON.parse(readFileSync(path, "utf8")) as ConfigOverride);
+  // The team preset comes first, so your own files can still change single things of it.
+  const teamName = team ?? files.findLast((f) => f.team)?.team;
   let config: Config = { ...DEFAULT_CONFIG, roles: { ...DEFAULT_ROLES } };
-  for (const path of [join(hivemindHome(), "config.json"), join(cwd, "hivemind.config.json")]) {
-    if (existsSync(path)) config = merge(config, JSON.parse(readFileSync(path, "utf8")) as Partial<Config>);
-  }
-  if (team) {
-    const preset = listTeams()[team];
-    if (!preset) throw new Error(`Team "${team}" gibt es nicht. Siehe: hivemind teams`);
+  if (teamName) {
+    const preset = listTeams()[teamName];
+    if (!preset) throw new Error(`Team "${teamName}" gibt es nicht. Siehe: hivemind teams`);
     config = merge(config, preset.config);
   }
+  for (const file of files) config = merge(config, file);
+  config.team = teamName;
   for (const key of ["optimizer", "moderator", "coder", "reviewer", "integrator", "tester", "historian", ...config.planners]) {
     if (!config.roles[key]) throw new Error(`Rolle "${key}" ist in keiner Config definiert.`);
   }

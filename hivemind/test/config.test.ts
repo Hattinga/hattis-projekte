@@ -89,3 +89,32 @@ test("routing: a config can replace single tiers", () => {
   const config = loadConfig(other);
   assert.deepEqual(config.models, { easy: "claude-haiku-4-5", normal: "claude-sonnet-5-5", hard: "claude-opus-5-5" });
 });
+
+test("a project config can build on a team preset and change single things of it", () => {
+  const other = join(dir, "rakete");
+  mkdirSync(other);
+  writeFileSync(
+    join(other, "hivemind.config.json"),
+    JSON.stringify({ team: "roblox-studio", planners: ["designer", "roblox"], roles: { designer: { title: "Spieldesignerin", persona: "Spaß!" }, architect: { persona: "eigene" } } }),
+  );
+  const config = loadConfig(other);
+  assert.equal(config.team, "roblox-studio");
+  assert.equal(config.mode, "studio");
+  assert.equal(config.roles.roblox!.title, "Roblox-Profi", "from the preset");
+  assert.deepEqual(config.roles.coder!.mcp, ["Roblox_Studio"], "from the preset");
+  assert.equal(config.roles.architect!.title, "Architektin", "a partial role keeps the rest");
+  assert.equal(config.roles.architect!.persona, "eigene");
+  assert.equal(config.roles.designer!.title, "Spieldesignerin");
+  const plain = join(dir, "nur-team");
+  mkdirSync(plain);
+  writeFileSync(join(plain, "hivemind.config.json"), JSON.stringify({ team: "roblox-studio" }));
+  assert.equal(loadConfig(plain, "web").mode, "git", "--team on the command line wins over the file's team");
+});
+
+test("studio roles: readers and testers get an allow-list, coders get the whole server", () => {
+  const studio = loadConfig(join(dir, "rakete"));
+  assert.ok(studio.roles.reviewer!.mcpTools!.every((t) => /script_read|script_grep|script_search|search_game_tree|inspect_instance|get_console_output|get_studio_state|list_roblox_studios/.test(t)));
+  assert.ok(studio.roles.tester!.mcpTools!.includes("mcp__Roblox_Studio__start_stop_play"));
+  assert.ok(!studio.roles.tester!.mcpTools!.includes("mcp__Roblox_Studio__multi_edit"), "the tester can't edit scripts");
+  assert.equal(studio.roles.coder!.mcpTools, undefined);
+});

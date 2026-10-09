@@ -27,7 +27,8 @@ export interface CodingResult {
 export interface CodingOptions {
   brief: string;
   plan: Plan;
-  workspace: Workspace;
+  /** git mode: the run's worktrees and branch. Missing in studio mode, where tasks change the open Studio directly. */
+  workspace?: Workspace;
   /** The folder hivemind was started in; agents start in the same subfolder of their worktree. */
   cwd: string;
   config: Config;
@@ -37,8 +38,12 @@ export interface CodingOptions {
   onTaskDone?: (taskId: string) => void;
 }
 
+const STUDIO_NOTE = `Das Spiel liegt im laufenden Roblox Studio, und Studio ist die Quelle der Wahrheit: ändere Skripte und Instanzen
+dort über die Roblox-Studio-Tools (mcp__Roblox_Studio__...). Dateien auf der Festplatte sind höchstens Kopien. Es gibt kein git:
+nichts committen. Studio nicht speichern oder veröffentlichen, das macht der Kunde.`;
+
 /**
- * Runs every task of the plan in its own git worktree, up to config.coders at a time.
+ * git mode: runs every task of the plan in its own git worktree, up to config.coders at a time.
  * A task starts once the tasks it depends on are merged. Each task goes
  * coder → reviewer (→ coder → reviewer …) → merge into hivemind/<runId>.
  * Coders talk to each other on a shared board and can ask the architect.
@@ -47,8 +52,8 @@ export interface CodingOptions {
 export async function codingTeam(options: CodingOptions): Promise<CodingResult> {
   const { brief, plan, workspace, cwd, config, signal } = options;
   bus.emitEvent({ type: "phase", phase: "Umsetzung" });
-  const subdir = relative(workspace.repo, cwd);
-  const integrationCwd = join(workspace.integration, subdir);
+  // In studio mode there is only one Studio, so one coder at a time, right in your project folder.
+  const integrationCwd = workspace ? join(workspace.integration, relative(workspace.repo, cwd)) : cwd;
   const context = `Gesamtauftrag:\n\n${brief}\n\nAbgestimmter Plan:\n\n${formatPlan(plan)}`;
 
   const board = new TeamBoard();
@@ -61,7 +66,7 @@ export async function codingTeam(options: CodingOptions): Promise<CodingResult> 
       role: architect,
       model: modelFor(architect, "hard", config),
       config,
-      prompt: `${context}\n\nDas Team setzt den Plan gerade um. Der aktuell gemergte Stand liegt in deinem Arbeitsverzeichnis.\nTeam-Board bisher:\n${board.messages.map((m) => `- ${m.from}: ${m.text}`).join("\n") || "(leer)"}\n\n${from} fragt dich:\n\n${question}\n\nAntworte kurz und entscheide klar.`,
+      prompt: `${context}\n\nDas Team setzt den Plan gerade um. ${workspace ? "Der aktuell gemergte Stand liegt in deinem Arbeitsverzeichnis." : "Das Spiel liegt in Roblox Studio, das du nicht siehst: entscheide anhand von Plan und Projektdateien."}\nTeam-Board bisher:\n${board.messages.map((m) => `- ${m.from}: ${m.text}`).join("\n") || "(leer)"}\n\n${from} fragt dich:\n\n${question}\n\nAntworte kurz und entscheide klar.`,
       cwd: integrationCwd,
       access: "read",
       signal,
@@ -78,6 +83,7 @@ export async function codingTeam(options: CodingOptions): Promise<CodingResult> 
   };
 
   const mergeTask = async (task: Task, branch: string) => {
+    if (!workspace) return;
     if (!workspace.merge(branch, `hivemind: ${task.title}`)) {
       bus.emitEvent({ type: "info", text: `Merge-Konflikt bei [${task.id}], der Integrator übernimmt.` });
       await runAgent({
@@ -101,8 +107,8 @@ export async function codingTeam(options: CodingOptions): Promise<CodingResult> 
 
   const work = async (task: Task, slot: number) => {
     const coderName = `Coder ${slot}`;
-    const { dir, branch, base } = workspace.taskWorktree(task.id);
-    const taskCwd = join(dir, subdir);
+    const worktree = workspace?.taskWorktree(task.id);
+    const taskCwd = worktree && workspace ? join(worktree.dir, relative(workspace.repo, cwd)) : cwd;
     const tools = () => teamTools(board, coderName, askArchitect, questionBudget);
     const coderModel = modelFor(config.roles.coder!, task.difficulty, config);
     // The reviewer is never weaker than Sonnet: an easy task can still hide a bug.
@@ -116,7 +122,7 @@ export async function codingTeam(options: CodingOptions): Promise<CodingResult> 
         role: config.roles.coder!,
         model: coderModel,
         config,
-        prompt: `${context}\n\nDeine Task [${task.id}] ${task.title}:\n\n${task.description}\n\nVoraussichtlich betroffene Dateien: ${task.files.join(", ") || "(offen)"}\n\nAndere Coder arbeiten parallel an anderen Tasks. Bleib bei deiner.\n\n${TEAM_TOOLS_HINT}${news ? `\n\nBisher auf dem Team-Board:\n${news}` : ""}`,
+        prompt: `${context}\n\nDeine Task [${task.id}] ${task.title}:\n\n${task.description}\n\nVoraussichtlich betroffene Dateien: ${task.files.join(", ") || "(offen)"}\n\n${worktree ? "Andere Coder arbeiten parallel an anderen Tasks. Bleib bei deiner." : STUDIO_NOTE}\n\n${TEAM_TOOLS_HINT}${news ? `\n\nBisher auf dem Team-Board:\n${news}` : ""}`,
         cwd: taskCwd,
         access: "write",
         teamTools: tools(),
@@ -124,14 +130,14 @@ export async function codingTeam(options: CodingOptions): Promise<CodingResult> 
       });
 
       for (let loop = 0; ; loop++) {
-        workspace.commitLeftovers(dir, `hivemind: ${task.title}`);
+        if (worktree) workspace!.commitLeftovers(worktree.dir, `hivemind: ${task.title}`);
         const review = await runAgent({
           name: `Reviewer ${slot}`,
           team: "Umsetzung",
           role: config.roles.reviewer!,
           model: reviewerModel,
           config,
-          prompt: `Task [${task.id}] ${task.title}:\n\n${task.description}\n\nZusammenfassung des Coders:\n${coder.text}\n\nDie Änderungen siehst du mit: git diff ${base}..HEAD\n\nPrüfe sie.`,
+          prompt: `Task [${task.id}] ${task.title}:\n\n${task.description}\n\nZusammenfassung des Coders:\n${coder.text}\n\n${worktree ? `Die Änderungen siehst du mit: git diff ${worktree.base}..HEAD` : "Die Änderungen sind live im Roblox Studio. Lies die betroffenen Skripte und Instanzen mit den Studio-Tools."}\n\nPrüfe sie.`,
           cwd: taskCwd,
           access: "review",
           schema: Review,
@@ -152,7 +158,7 @@ export async function codingTeam(options: CodingOptions): Promise<CodingResult> 
           role: config.roles.coder!,
           model: coderModel,
           config,
-          prompt: `Der Reviewer hat deine Änderungen zurückgeschickt:\n\n${review.data.feedback}\n\nBehebe das und committe.`,
+          prompt: `Der Reviewer hat deine Änderungen zurückgeschickt:\n\n${review.data.feedback}\n\nBehebe das${worktree ? " und committe" : ""}.`,
           cwd: taskCwd,
           access: "write",
           resume: coder.sessionId,
@@ -161,10 +167,11 @@ export async function codingTeam(options: CodingOptions): Promise<CodingResult> 
         });
       }
 
-      await merge(task, branch);
+      if (worktree) await merge(task, worktree.branch);
+      else board.post("hivemind", `[${task.id}] ${task.title} ist fertig.`);
       options.onTaskDone?.(task.id);
     } finally {
-      workspace.removeTaskWorktree(dir, branch);
+      if (worktree) workspace!.removeTaskWorktree(worktree.dir, worktree.branch);
     }
   };
 
@@ -183,7 +190,7 @@ export async function codingTeam(options: CodingOptions): Promise<CodingResult> 
 
   const runTasks = async (tasks: Task[], alreadyDone?: string[]) => {
     let budgetUsedUp = false;
-    const result = await schedule(tasks, config.coders, work, {
+    const result = await schedule(tasks, workspace ? config.coders : 1, work, {
       alreadyDone,
       signal,
       clashes,
@@ -218,13 +225,14 @@ export async function codingTeam(options: CodingOptions): Promise<CodingResult> 
         config,
         prompt,
         cwd: integrationCwd,
-        access: "write",
+        // In Studio the tester only plays and reads (her role's Studio tools); fixes go back to a coder.
+        access: workspace ? "write" : "review",
         schema: TestReport,
         resume,
         signal,
       });
       resume = check.sessionId;
-      workspace.commitLeftovers(workspace.integration, "hivemind: Korrekturen der Testerin");
+      workspace?.commitLeftovers(workspace.integration, "hivemind: Korrekturen der Testerin");
       const { report, passed, problems } = check.data;
       if (!check.spoke) bus.emitEvent({ type: "say", agent: tester.title, text: report });
       if (passed || problems.length === 0) return { report, failed };

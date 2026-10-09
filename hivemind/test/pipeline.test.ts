@@ -224,3 +224,35 @@ test("an empty repo gets a start commit before anyone works", async () => {
   assert.equal(calls[0]?.name, "Optimizer", "the question came before the first agent");
   assert.equal(git(dir, "log", "--format=%s", "main").split("\n").at(-1), "Start");
 });
+
+test("studio mode: no git at all, one coder after the other, a tester who only plays and reads", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "hivemind-studio-"));
+  dirs.push(dir);
+  const calls: Call[] = [];
+  const accesses: Record<string, string[]> = {};
+  const fake = fakeTeam(calls);
+  setAgentImplementation(async (run) => {
+    (accesses[run.name] ??= []).push(run.access);
+    return fake(run);
+  });
+  const questions: { question: string; choices?: string[] }[] = [];
+  const stopAnswering = autoAnswer((question, choices) => {
+    questions.push({ question, choices });
+    return choices?.[0] ?? "x";
+  });
+  try {
+    await runHivemind({ request: "Studio", cwd: dir, config: { ...config(), mode: "studio" }, planOnly: false, signal: new AbortController().signal });
+  } finally {
+    stopAnswering();
+  }
+
+  const run = listRuns(runsRoot(dir))[0]!;
+  assert.equal(run.status, "done");
+  assert.equal(run.branch, undefined, "no branch, no worktrees");
+  assert.ok(questions.some((q) => /Roblox Studio direkt/.test(q.question)), "asks for a backup before coding");
+  assert.deepEqual(questions.at(-1)!.choices, ["fertig", "nachbessern"], "nothing to merge in studio mode");
+  assert.deepEqual(new Set(calls.filter((c) => c.name.startsWith("Coder")).map((c) => c.name)), new Set(["Coder 1"]), "only one coder at a time");
+  assert.deepEqual(accesses["Testerin"], ["review", "review"]);
+  // The coders worked right in the project folder (the fake writes <task>.txt there).
+  for (const file of ["t1.txt", "t2.txt", "t3.txt", "fix.txt"]) assert.ok(existsSync(join(dir, file)), file);
+});

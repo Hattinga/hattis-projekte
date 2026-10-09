@@ -100,10 +100,22 @@ hivemind memory            # was das Team über dieses Projekt weiß
 | Team | Für |
 |---|---|
 | `sparsam` | kleines Team, eine Runde, kein Opus bei den Codern: schont dein Limit |
-| `roblox` | Roblox/Luau-Spiele, mit Roblox-Profi im Planungs-Team und Roblox-Regeln für alle (nie dem Client trauen …) |
+| `roblox-studio` | Roblox-Spiele, die in Roblox Studio leben: Studio-Modus, siehe unten |
+| `roblox` | Roblox/Luau-Projekte als Dateien (z.B. Rojo + git), mit Roblox-Profi im Planungs-Team und Roblox-Regeln für alle (nie dem Client trauen …) |
 | `web` | Webseiten und Web-Apps, mit UX-Designerin und Regeln zu Barrierefreiheit und responsivem Layout |
 
-Eigene Teams legst du als `~/.hivemind/teams/<name>.json` an, im selben Aufbau wie `hivemind.config.json` plus `"description"`.
+Eigene Teams legst du als `~/.hivemind/teams/<name>.json` an, im selben Aufbau wie `hivemind.config.json` plus `"description"`. Eine Projekt-Config kann mit `"team": "<name>"` auf einer Vorlage aufbauen und einzelne Dinge daran ändern.
+
+### Studio-Modus (Roblox)
+
+Bei Roblox-Spielen, deren Skripte im Place leben statt in Dateien, arbeitet das Team direkt in deinem offenen Roblox Studio, über den Roblox-Studio-MCP aus deinem Claude Code:
+
+- **Wer Studio benutzt:** der Optimizer (nur lesen: Skripte, Spielbaum, Output), die Coder (alles), der Reviewer (nur lesen), die Testerin (lesen, Playtests, Screenshots, simulierte Eingaben, Zustand per Luau auslesen; keine Skripte ändern). Die Planer arbeiten mit dem Überblick des Optimizers und deinen Projektdateien.
+- **Immer nur einer:** Es gibt nur ein Studio, darum arbeiten die Coder nacheinander und nie zwei Agents gleichzeitig darin.
+- **Kein git:** Es gibt keinen Branch und keine Worktrees. Vor der Umsetzung fragt hivemind, ob der Place offen ist und du eine Sicherung gespeichert hast (Datei → Als Datei speichern). Am Ende: fertig oder nachbessern; speichern und veröffentlichen machst du.
+- **Studio nicht erreichbar?** Dann stoppt der betroffene Agent mit einer klaren Meldung, statt zu raten.
+
+Einschalten mit `--team roblox-studio` oder in der Projekt-Config mit `"team": "roblox-studio"`. Den MCP-Server sucht hivemind so, wie Claude Code ihn aus dem Projektordner sehen würde (lokaler/Projekt-Scope in `~/.claude.json`, dann User-Scope).
 
 ### Wer welches Modell bekommt
 
@@ -169,6 +181,7 @@ Lege `hivemind.config.json` ins Projekt (gilt nur dort) oder `~/.hivemind/config
   "architectQuestions": 4,
   "memory": true,
   "permissionMode": "bypassPermissions",
+  "team": "roblox-studio",
   "guidance": "Alle Texte im UI auf Deutsch.",
   "planners": ["architect", "skeptic", "security", "pragmatist", "perf"],
   "roles": {
@@ -182,7 +195,10 @@ Lege `hivemind.config.json` ins Projekt (gilt nur dort) oder `~/.hivemind/config
 }
 ```
 
-- **Rollen:** `optimizer`, `architect`, `skeptic`, `security`, `pragmatist`, `moderator`, `coder`, `reviewer`, `integrator`, `tester`, `historian`, plus beliebig viele eigene. Jede Rolle hat `title`, `persona` (Systemprompt), optional `model` und `effort` (`low` bis `max`).
+- **Rollen:** `optimizer`, `architect`, `skeptic`, `security`, `pragmatist`, `moderator`, `coder`, `reviewer`, `integrator`, `tester`, `historian`, plus beliebig viele eigene. Jede Rolle hat `title`, `persona` (Systemprompt), optional `model` und `effort` (`low` bis `max`), und optional `mcp` (Namen von MCP-Servern, die diese Rolle bekommt) und `mcpTools` (für lesende/testende Rollen: genau diese Tools sind erlaubt, alle anderen gesperrt).
+- **`team`:** Team-Vorlage, auf der diese Config aufbaut. `--team` gewinnt.
+- **`mode`:** `git` (Standard) oder `studio`, siehe Studio-Modus.
+- **`mcpServers`:** eigene MCP-Server-Definitionen, falls ein Server nicht in deinem Claude Code eingerichtet ist.
 - **`planners`:** wer im Planungs-Team mitdiskutiert, in dieser Reihenfolge. Die Moderatorin ist immer dabei. Bei kleinen Aufträgen (S) planen nur die ersten zwei.
 - **`guidance`:** Regeln, die jeder Agent bekommt.
 - **`routing` / `models`:** siehe „Wer welches Modell bekommt“. Mit `"routing": false` nutzen alle Agents `model` (Standard `claude-opus-5-5`).
@@ -224,6 +240,7 @@ Die Tests decken Scheduler, git-Workspace, Markdown und Config ab, und in `test/
 | `src/bus.ts` | Event-Bus zwischen Pipeline, UI und Protokoll, plus Fragen an dich |
 | `src/git.ts` | Worktrees, Branches, Merges, Aufräumen |
 | `src/pr.ts` | Pull Request über die GitHub CLI |
+| `src/mcp.ts` | MCP-Server einer Rolle finden (hivemind-Config, dann dein Claude-Code-Setup) |
 | `src/state.ts` | Lauf-Zustand für `runs` und `--resume` |
 | `src/pipeline/` | `optimize.ts`, `plan.ts`, `code.ts`, `schedule.ts`, `memory.ts`, `run.ts` |
 | `src/ui/` | Terminal-UI (Ink): `App.tsx`, `Markdown.tsx`, `TextInput.tsx`, `parseMarkdown.ts` |

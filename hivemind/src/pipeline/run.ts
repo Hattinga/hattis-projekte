@@ -91,6 +91,7 @@ export async function runHivemind({ request, resume, cwd, config, planOnly, sign
   });
   const cost = () => `Kosten (geschätzt): $${store.state.costUsd.toFixed(2)}${Number.isFinite(shared.budgetUsd) ? ` von $${shared.budgetUsd.toFixed(2)} Budget` : ""}`;
   const memory = config.memory ? readMemory(repo) : "";
+  const studio = config.mode === "studio";
   let workspace: Workspace | undefined;
 
   try {
@@ -98,7 +99,7 @@ export async function runHivemind({ request, resume, cwd, config, planOnly, sign
     if (memory) bus.emitEvent({ type: "info", text: "Das Team kennt dieses Projekt schon aus früheren Läufen." });
 
     // Worktrees need a commit to start from. Better to find out now than after the planning.
-    if (isGit && !planOnly && !hasCommits(repo)) {
+    if (isGit && !planOnly && !studio && !hasCommits(repo)) {
       const answer = await bus.ask("Dein Repo hat noch keinen Commit, ohne den können die Coder nicht starten.", ["leeren Start-Commit anlegen", "abbrechen"]);
       if (answer !== "leeren Start-Commit anlegen") throw new CancelledByUser();
       git(repo, "commit", "--allow-empty", "-m", "Start");
@@ -119,20 +120,30 @@ export async function runHivemind({ request, resume, cwd, config, planOnly, sign
       writeFileSync(join(runDir, "plan.json"), JSON.stringify({ brief, ...plan }, null, 2));
     }
 
-    if (planOnly || !isGit) {
+    if (planOnly || (!isGit && !studio)) {
       const why = isGit ? "" : "\n\nDas Coder-Team braucht ein Git-Repo (jeder Coder arbeitet in seinem eigenen Worktree). Führ `git init` aus, dann geht's mit `hivemind --resume` weiter.";
       store.update({ status: isGit ? "done" : "aborted" });
       bus.emitEvent({ type: "finished", summary: `${formatPlan(store.state.plans[0]!)}\n\nPlan gespeichert in ${join(runDir, "plan.json")}.${why}\n\n${cost()}` });
       return;
     }
 
-    if (hasUncommittedChanges(repo)) {
-      bus.emitEvent({ type: "info", text: "Achtung: Du hast uncommittete Änderungen. Die Coder starten vom letzten Commit und sehen sie nicht." });
+    let resultCwd = cwd;
+    if (studio) {
+      // No git safety net here: the coders change the open place directly.
+      const ready = await bus.ask(
+        "Die Coder ändern gleich dein offenes Roblox Studio direkt. Ist der Place offen und hast du eine Sicherung gespeichert (Datei → Als Datei speichern)?",
+        ["ja, los", "abbrechen"],
+      );
+      if (ready !== "ja, los") throw new CancelledByUser();
+    } else {
+      if (hasUncommittedChanges(repo)) {
+        bus.emitEvent({ type: "info", text: "Achtung: Du hast uncommittete Änderungen. Die Coder starten vom letzten Commit und sehen sie nicht." });
+      }
+      workspace = new Workspace(repo, id, runDir);
+      workspace.open();
+      store.update({ branch: workspace.branch });
+      resultCwd = join(workspace.integration, relative(repo, cwd));
     }
-    workspace = new Workspace(repo, id, runDir);
-    workspace.open();
-    store.update({ branch: workspace.branch });
-    const resultCwd = join(workspace.integration, relative(repo, cwd));
 
     let ending = "";
     let report = "";
@@ -151,16 +162,19 @@ export async function runHivemind({ request, resume, cwd, config, planOnly, sign
       report = result.report;
       if (result.failed.length) bus.emitEvent({ type: "error", text: `Nicht umgesetzt: ${result.failed.join(", ")}` });
 
-      const choices = ["fertig", "nachbessern", "in meinen Branch mergen"];
-      if (canOpenPullRequest(repo)) choices.push("Pull Request erstellen");
-      const next = await bus.ask(`Alles liegt auf ${workspace.branch}. Wie geht's weiter?`, choices);
+      const choices = workspace ? ["fertig", "nachbessern", "in meinen Branch mergen"] : ["fertig", "nachbessern"];
+      if (workspace && canOpenPullRequest(repo)) choices.push("Pull Request erstellen");
+      const where = workspace ? `Alles liegt auf ${workspace.branch}.` : "Alles ist in deinem Roblox Studio.";
+      const next = await bus.ask(`${where} Wie geht's weiter?`, choices);
       if (next === "nachbessern") {
         const feedback = await bus.ask("Was soll das Team nachbessern?");
         const followUp = await followUpPlan(brief, plan, feedback, resultCwd, config, signal);
         store.update({ plans: [...store.state.plans, prefixTasks(followUp, store.state.plans.length + 1)] });
         continue;
       }
-      if (next === "in meinen Branch mergen") {
+      if (!workspace) {
+        ending = "Die Änderungen sind live in deinem Roblox Studio. Probier sie aus, dann speichern und veröffentlichen, wenn alles passt. Rückgängig: deine Sicherung öffnen.";
+      } else if (next === "in meinen Branch mergen") {
         ending = workspace.mergeIntoCheckout().message;
       } else if (next === "Pull Request erstellen") {
         ending = pullRequest(repo, workspace.branch, store.state.request, store.state.plans, report);
