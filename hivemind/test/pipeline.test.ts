@@ -181,6 +181,27 @@ test("the budget stops the run cleanly and it can be resumed with more", async (
   assert.ok(run.brief, "what was done so far is kept for --resume");
 });
 
+test("a budget used up during coding stops the run once, without blaming the tasks", async () => {
+  const repo = newRepo();
+  const calls: Call[] = [];
+  // Optimizer, 4 + 4 planner turns and the moderator cost $10; t1's coder and reviewer bring it to $12.
+  setAgentImplementation(fakeTeam(calls, { costPerAgent: 1 }));
+  const { events, stop } = collect();
+  const stopAnswering = autoAnswer((question) => (question.startsWith("Plan") ? "freigeben" : "fertig"));
+  try {
+    await runHivemind({ request: "teuer", cwd: repo, config: { ...config(), budgetUsd: 11.5 }, planOnly: false, signal: new AbortController().signal });
+  } finally {
+    stop();
+    stopAnswering();
+  }
+  const run = listRuns(runsRoot(repo))[0]!;
+  assert.equal(run.status, "aborted");
+  assert.deepEqual(run.doneTasks, ["t1"], "what was merged stays merged for --resume");
+  const errors = events.filter((e) => e.type === "error").map((e) => (e as { text: string }).text);
+  assert.ok(errors.some((t) => /Budget/.test(t)), JSON.stringify(errors));
+  assert.ok(!errors.some((t) => /fehlgeschlagen/.test(t)), JSON.stringify(errors));
+});
+
 test("an empty repo gets a start commit before anyone works", async () => {
   const dir = mkdtempSync(join(tmpdir(), "hivemind-empty-"));
   dirs.push(dir);

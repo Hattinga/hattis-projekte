@@ -1,6 +1,6 @@
 import { join, relative } from "node:path";
 import { z } from "zod";
-import { errorText, runAgent } from "../agent.js";
+import { BudgetExceeded, errorText, runAgent } from "../agent.js";
 import { bus } from "../bus.js";
 import { modelFor, type Config } from "../config.js";
 import { Workspace } from "../git.js";
@@ -182,12 +182,18 @@ export async function codingTeam(options: CodingOptions): Promise<CodingResult> 
   };
 
   const runTasks = async (tasks: Task[], alreadyDone?: string[]) => {
+    let budgetUsedUp = false;
     const result = await schedule(tasks, config.coders, work, {
       alreadyDone,
       signal,
       clashes,
-      onFail: (task, error) => bus.emitEvent({ type: "error", text: `[${task.id}] fehlgeschlagen: ${errorText(error)}` }),
+      onFail: (task, error) => {
+        // An empty budget is not the task's fault; the run stops once and can be resumed.
+        if (error instanceof BudgetExceeded) budgetUsedUp = true;
+        else bus.emitEvent({ type: "error", text: `[${task.id}] fehlgeschlagen: ${errorText(error)}` });
+      },
     });
+    if (budgetUsedUp) throw new BudgetExceeded();
     for (const id of result.skipped) {
       bus.emitEvent({ type: "error", text: `[${id}] übersprungen, weil eine Abhängigkeit fehlgeschlagen ist.` });
     }
