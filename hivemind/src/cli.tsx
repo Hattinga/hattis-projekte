@@ -75,7 +75,7 @@ if (positionals[0] === "runs" && positionals.length === 1) {
 }
 
 if (positionals[0] === "teams" && positionals.length === 1) {
-  for (const [name, team] of Object.entries(listTeams())) console.log(`${name.padEnd(12)} ${team.description}`);
+  for (const [name, team] of Object.entries(listTeams())) console.log(`${name.padEnd(15)} ${team.description}`);
   console.log("\nEigene Teams: ~/.hivemind/teams/<name>.json (Aufbau wie hivemind.config.json, plus \"description\")");
   process.exit(0);
 }
