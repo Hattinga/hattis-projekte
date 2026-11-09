@@ -1,0 +1,9 @@
+# Lokale Werkzeuge, Testausgaben und Sicherungskopien
+/.local/
+/tmp/
+/.env
+/.env.local
+/docs/evidence/local/
+*.blend1
+*.blend2
+*.rbxl.lock

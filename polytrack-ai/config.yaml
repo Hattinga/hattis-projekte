@@ -1,0 +1,71 @@
+# PolyTrack RL – Konfiguration
+
+track: summer1                       # Name für Logs/Modelle; Linie in env.track_path
+
+train:
+  n_envs: 3                          # parallele Envs (je ~0.9 GB RAM inkl. Python); 4 bei >= 4.5 GB, 5 bei >= 5.5 GB frei
+  shared_browser: true               # unsichtbare Envs teilen sich einen Chromium (eigener Kontext je Env, ~10 % weniger RAM)
+  watch_first: true                  # Env 0 sichtbar, Rest headless mit kleinem Fenster
+  total_timesteps: 1000000           # Ziel für den ganzen Lauf (Resume rechnet den Rest aus); BC-Nachtraining
+  checkpoint_every: 10000            # Schritte (gesamt) zwischen Modell-Snapshots
+  run_name: null                     # null -> <track>_<datum-uhrzeit>
+  resume: null                       # Pfad zu .zip zum Weitertrainieren
+  seed: 0
+  ppo:
+    learning_rate: 0.0001            # 0.0003 -> 0.0001 am 22.10.: Nachtraining nach Behavior Cloning, Vorwissen schonen
+    n_steps: 1024                    # pro Env und Update (40 Hz: ~25 Sim-Sekunden)
+    batch_size: 512
+    n_epochs: 10
+    gamma: 0.995                     # 0.99 -> 0.995 mit 40 Hz: gleicher Horizont in Sekunden
+    gae_lambda: 0.95
+    clip_range: 0.2
+    ent_coef: 0.003                  # Ausprobier-Bonus (0.01 -> 0.003 am 16.10.: konstanter fahren). Live änderbar
+    vf_coef: 0.5
+    max_grad_norm: 0.5
+    policy_kwargs:
+      net_arch: [128, 128]
+  normalize_reward: true             # VecNormalize nur für den Reward (Beobachtung ist schon normiert)
+
+env:
+  track_path: tracks/summer1_wr.json  # Linie des Weltrekords (Monstrosity 22.123 s, per Replay der
+                                      # Leaderboard-Aufnahme, scripts/fetch_wr_line.py). Vorher: tracks/summer1.json (eigene Runde)
+  headless: false                    # Einzel-Env (Tests): sichtbar; im Training steuert train.watch_first
+  watch: false
+  headless_viewport: [320, 200]
+  headless_render_fps: 2             # unsichtbare Browser rendern nur 2 Bilder/s (CPU: ~12 Kerne -> <1 Kern)
+  control_mode: lockstep             # lockstep: Worker rechnet pro Schritt exakt 1000/control_hz Frames
+                                     # (frame-genau, reproduzierbar, nicht an Echtzeit gebunden).
+                                     # keyboard: alte Tastatur-Steuerung in Echtzeit (time_scale gilt nur hier)
+  action_space: keys16               # Aktion = Tasten-Bitmaske (1 W, 2 D, 4 S, 8 A), alle 16 Kombinationen
+                                     # inkl. Gas+Bremse wie die Top-Fahrer. Alte Läufe (summer1_20261015_*): 9 Aktionen
+  control_hz: 40                     # Entscheidungen pro Sim-Sekunde -> 25 Physik-Frames pro Schritt
+                                     # (20 -> 40 am 22.10.; Pro-Schritt-Belohnungen werden mit 20/control_hz skaliert)
+  time_scale: 2                      # Spieluhr-Beschleunigung (Physik bitgenau gleich). 3x war zu hektisch
+                                     # (Eingaben kommen in Spielzeit später an). Änderbar während des Trainings.
+  max_episode_s: 60                  # Timeout in Sim-Sekunden (truncated)
+  no_progress_s: 4                   # so lange ohne neuen Fortschritt -> Abbruch (truncated)
+  max_off_track_m: 35                # Abstand zur Referenzlinie -> "Absturz" (terminated); live änderbar
+                                     # (20 -> 35 am 22.10.: eigene Routen erlauben)
+  route_jump_m: 100                  # Fortschritt darf bis 100 m entlang der Linie vorspringen (Abkürzung),
+  route_jump_max_dist: 6             # wenn das Auto dort nah (< 6 m) an der Linie ist. Gedeckelt am nächsten
+                                     # nicht eingesammelten Checkpoint -> Checkpoints auslassen bringt nichts
+  lookahead_m: [10, 25, 50]          # Punkte auf der Linie voraus, relativ zum Auto in der Beobachtung
+  no_reverse: true                   # kein Rückwärtsfahren: Bremse wird unter brake_min_kmh ignoriert
+  brake_min_kmh: 10
+
+  reward:
+    progress_per_m: 0.1              # +0.1 pro Meter Fortschritt entlang der Linie (negativ bei Rückwärts)
+    time_per_step: -0.01             # kleine Zeitstrafe pro Schritt
+    standstill: -0.1                 # |v| < standstill_kmh
+    standstill_kmh: 5
+    reverse: -0.2                    # Geschwindigkeit < -1 km/h
+    checkpoint: 10.0                 # pro eingesammeltem Checkpoint (2 -> 10 am 22.10.: Checkpoints statt Linie)
+    crash: -30.0                     # von der Strecke / abgestürzt (-10 -> -30 am 16.10.: strenger)
+    finish_base: 20.0                # Ziel erreicht
+    finish_time_bonus: 150.0         # zusätzlich * (1 - Zeit / max_episode_s): schneller = mehr (80 -> 150 am 16.10.)
+    speed_bonus: 0.1                 # pro Schritt * (Tempo in Streckenrichtung / 300 km/h)
+    wall_hit_per_1000: -0.5          # Wandkontakt: pro 1000 Kollisionsstoß im Schritt (Anstreifen ~500, Einschlag 3000-10000)
+    wall_hit_cap: 10                 # max. 10 * -0.5 = -5 pro Schritt
+    steer_change: -0.06              # sauber fahren: jeder Wechsel links/gerade/rechts kostet etwas
+                                     # (-0.03 -> -0.06 am 15.10.: zappelte am Streckenende)
+  # Die reward-Werte werden einmal pro Episode neu aus dieser Datei gelesen -> während des Trainings änderbar.

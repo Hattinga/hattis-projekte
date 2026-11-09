@@ -1,0 +1,5 @@
+playwright
+gymnasium
+stable-baselines3
+tensorboard
+pyyaml

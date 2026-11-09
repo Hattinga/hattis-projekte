@@ -1,0 +1,104 @@
+{
+ "control_hz": 40,
+ "action_space": "keys16",
+ "stats": [
+  {
+   "nickname": "Monstrosity",
+   "orig_s": 22.123,
+   "replayed_s": 22.123,
+   "end": "finish",
+   "progress_m": 1318.3,
+   "steps": 885
+  },
+  {
+   "nickname": "ASB (bcn)",
+   "orig_s": 22.124,
+   "replayed_s": 22.124,
+   "end": "finish",
+   "progress_m": 1318.3,
+   "steps": 885
+  },
+  {
+   "nickname": "hwadz",
+   "orig_s": 22.223,
+   "replayed_s": 22.223,
+   "end": "finish",
+   "progress_m": 1318.3,
+   "steps": 889
+  },
+  {
+   "nickname": "youngfella",
+   "orig_s": 22.262,
+   "replayed_s": 22.262,
+   "end": "finish",
+   "progress_m": 1318.3,
+   "steps": 891
+  },
+  {
+   "nickname": "Neki",
+   "orig_s": 22.27,
+   "replayed_s": 22.27,
+   "end": "finish",
+   "progress_m": 1318.3,
+   "steps": 891
+  },
+  {
+   "nickname": "Tvirty",
+   "orig_s": 22.271,
+   "replayed_s": 22.271,
+   "end": "finish",
+   "progress_m": 1318.3,
+   "steps": 891
+  },
+  {
+   "nickname": "Martinaz",
+   "orig_s": 22.275,
+   "replayed_s": 22.275,
+   "end": "finish",
+   "progress_m": 1318.3,
+   "steps": 891
+  },
+  {
+   "nickname": "Neki on Mars",
+   "orig_s": 22.279,
+   "replayed_s": 22.279,
+   "end": "finish",
+   "progress_m": 1318.3,
+   "steps": 892
+  },
+  {
+   "nickname": "purplecomet",
+   "orig_s": 22.282,
+   "replayed_s": 22.282,
+   "end": "finish",
+   "progress_m": 1318.3,
+   "steps": 892
+  },
+  {
+   "nickname": "me",
+   "orig_s": 22.287,
+   "replayed_s": 22.287,
+   "end": "finish",
+   "progress_m": 1318.3,
+   "steps": 892
+  }
+ ],
+ "action_names": [
+  "none",
+  "up",
+  "right",
+  "up+right",
+  "down",
+  "up+down",
+  "right+down",
+  "up+right+down",
+  "left",
+  "up+left",
+  "right+left",
+  "up+right+left",
+  "down+left",
+  "up+down+left",
+  "right+down+left",
+  "up+right+down+left"
+ ]
+}

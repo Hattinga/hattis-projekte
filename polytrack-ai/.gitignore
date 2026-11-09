@@ -1,0 +1,6 @@
+.venv/
+__pycache__/
+models/*
+!models/.gitkeep
+logs/*
+!logs/.gitkeep
