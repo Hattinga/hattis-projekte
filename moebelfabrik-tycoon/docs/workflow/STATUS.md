@@ -1,6 +1,6 @@
 # Projektstatus
 
-Stand 13. November 2026. **Das beladene Quad-/Anhaenger-Gespann faehrt automatisch zu allen vier Orten der Stadt-Greybox und zurueck; Avatarplatz an den Uebergaben, Wendekreis und Tordurchfahrt sind gemessen. P02-04 und P02-05 sind abgenommen, Place-Version 17 gespeichert, nicht publiziert.**
+Stand 13. November 2026. **Das beladene Quad-/Anhaenger-Gespann faehrt automatisch zu allen vier Orten der Stadt-Greybox und zurueck; Avatarplatz an den Uebergaben, Wendekreis und Tordurchfahrt sind gemessen. P02-04 und P02-05 sind abgenommen, Place-Version 19 gespeichert (mit P02Overview), nicht publiziert.**
 
 | Feld | Aktuell |
 |---|---|
@@ -19,9 +19,16 @@ Stand 13. November 2026. **Das beladene Quad-/Anhaenger-Gespann faehrt automatis
 | Vergleichsobjekt | `Workspace.FableWorkshop`, Asset `106051543998570`; kein vorgesehenes Spielgebaeude |
 | Technikproben | `Workspace.P02Greybox` und `Workspace.P02Line`; Prueftraeger in `ServerStorage.P02CarryProbe`, nicht im Spielstart |
 | Arbeitsbranch | `work/p00-studio-import`, auf `origin` gepusht |
-| Speicherung | `save_place`: Saved zu TeamCreate, **Version 17**. Studio in Edit; nicht publiziert. Lokale `.rbxl` im Projektstamm ist der fruehere Ausgangsstand, nicht der aktuelle Place. |
-| Wiederherstellbare Staende | Version 14 = vor P02-04 (ohne Fahrzeug); Version 17 = mit Fahrzeug. Aeltere lokale Sicherungen unter `.local/backups/` (nicht im Repo). |
+| Speicherung | `save_place`: Saved zu TeamCreate, **Version 19**. Studio in Edit; nicht publiziert. Lokale `.rbxl` im Projektstamm ist der fruehere Ausgangsstand, nicht der aktuelle Place. |
+| Wiederherstellbare Staende | Version 14 = vor P02-04 (ohne Fahrzeug); Version 17 = mit Fahrzeug; Version 19 = zusaetzlich mit P02Overview. Aeltere lokale Sicherungen unter `.local/backups/` (nicht im Repo). |
 | Pruefbelege | [P02-05](../evidence/P02-05.md), [P02-04](../evidence/P02-04.md), [P02-03R](../evidence/P02-03R.md); Stadtentwurf [MAP](../design/MAP.md), Masse [DIMENSIONS](../design/DIMENSIONS.md) |
+
+## P02-06 angefangen, nicht abgenommen (Stand bei Sitzungsende 13.11.)
+
+- Gebaut und im Place gespeichert (Version 19): `Workspace.P02Overview`, Revision 1, nur nicht kollidierende Markierungen: fuenf farbige Routenstreifen der P02-05-Fahrt, Kehrkreise auf den vier Hoefen, von oben lesbare Schilder fuer die vier Orte, Legende mit Etappenlaengen, Tor- und Gespannhinweis sowie Stationsfolge 1-4, beide Lager und Band ueber `Workspace.P02Line`. Quelle: [build-p02-06-overview.luau](../../tools/studio/build-p02-06-overview.luau); die Datei entspricht dem Place, wurde in ihrer Endfassung aber nicht komplett neu ausgefuehrt (Schilder wurden im Place nachgedreht).
+- Aufnahmen liegen lokal (nicht im Repo) unter `.local/evidence/`: `P02-06-city-route.jpg` (Stadt von oben mit Route und Schildern), `P02-06-stations.jpg` (Stationsfeld von oben), `P02-06-drive.jpg` (Gespann faehrt mit sichtbarer Last, 4,4 m/s, automatische Fahrt, Kamera per Client-Skript nachgefuehrt).
+- **Fehlt noch:** Beleg `docs/evidence/P02-06.md` mit den raeumlichen Vorgaben fuer P03 und Integration (Werte stehen in den Belegen P02-04 und P02-05 sowie in DIMENSIONS/MAP), Checkbox P02-06 im Startplan, Pruefung, dass `P02Overview` im Spiel nicht stoert (Neon-Streifen leuchten im Play-Modus stark; ggf. Material aendern oder das Modell nach `ServerStorage` legen).
+- Eine handgesteuerte Tastaturfahrt in dieser Sitzung ist von der Strasse abgekommen und auf dem Rasen haengen geblieben; sie zaehlt nicht als Nachweis.
 
 ## Uebergabe an den naechsten Bearbeiter
 
