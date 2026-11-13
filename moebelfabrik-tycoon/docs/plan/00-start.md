@@ -35,7 +35,7 @@ Rezept und Stationsvertrag für P01-01/P01-02: [PRODUCTION](../design/PRODUCTION
 - [x] **P02-03** Lieferant, Fabrik, Händler und Privatkundenplatz über einen kurzen Rundkurs verbinden. Ladeplätze, Einfahrten und Wendeflächen an den jeweiligen Zielen markieren. Abgenommen, wenn jedes Ziel über eine zusammenhängende Straße erreichbar ist und ein Rückweg zur Fabrik besteht.
 - [x] **P02-03R** Den Kartenentwurf gemäß Nutzerklärung als organisch gewachsene Stadt ohne Spiegelung überarbeiten. Mehrere Tischlereien, Wohnviertel, Gewerbe, Läden und Lieferhöfe in einen glaubwürdigen Grundriss mit Haupt-/Nebenstraßen einordnen. Abgenommen, wenn die Stadtwirkung, verteilten Standorte und Warenwege im neuen Grundriss nachvollziehbar sind. Die vorhandene Ring-Greybox ist nur der frühere technische Nachweis; die Stadtüberarbeitung hat Vorrang vor P02-04.
 - [x] **P02-04** Quad und Anhänger für den Fahrtest durch einen lenkbaren Stellvertreter mit passenden Außenmaßen darstellen. Holzpaket und Hockerkarton auf der Ladefläche platzieren. Abgenommen, wenn Ladefläche, Anhängerkupplung, Fahrzeughülle und Last als räumliche Einheit geprüft werden können.
-- [ ] **P02-05** Die beladene Strecke abfahren. Engste Kurve, Tor, Ladehöhe und Wendemanöver beobachten und Blockaden beheben. Abgenommen, wenn der Stellvertreter alle vier Orte über die Straße erreicht und der Avatar an jeder Übergabe mit Ware Platz hat.
+- [x] **P02-05** Die beladene Strecke abfahren. Engste Kurve, Tor, Ladehöhe und Wendemanöver beobachten und Blockaden beheben. Abgenommen, wenn der Stellvertreter alle vier Orte über die Straße erreicht und der Avatar an jeder Übergabe mit Ware Platz hat.
 - [ ] **P02-06** Grundriss und Fahrnachweis sichern. Ein beschrifteter Übersichtsstand zeigt Stationsfolge, Lagerslots und Straßenroute. Eine Aufnahme dokumentiert die Fahrt mit sichtbarer Last. Abgenommen, wenn daraus die räumlichen Vorgaben für P03 und die spätere Integration hervorgehen.
 
 [P02-01-Beleg](../evidence/P02-01.md): Maßraster, Referenzhüllen und unabhängige Fußprobe bestanden; Test-Place als Version 7 gespeichert. Stationsfolge und Fahrprüfung bleiben offen. Der vorhandene Spawn schneidet die Sollanfahrt und muss vor der Fahrfreigabe berücksichtigt werden.
@@ -46,7 +46,7 @@ Rezept und Stationsvertrag für P01-01/P01-02: [PRODUCTION](../design/PRODUCTION
 
 [P02-04-Beleg](../evidence/P02-04.md): lenkbarer Quad-/Anhänger-Stellvertreter `Workspace.P02Vehicle` mit zwei Slots, Holzpaket und Hockerkarton; Hüllen, Deck, Kupplung und Last gemessen, kurze Fahrprobe mit und ohne Fahrer bestanden, Version 17 gespeichert. Stadtstrecke, Tor, Kurven und Wenden folgen in P02-05.
 
-[P02-05-Zwischenbeleg](../evidence/P02-05.md): automatische beladene Fahrt zu Lieferant, Händler, Privatkunden und zurück ohne Blockade; Tordurchfahrt mit Kehre in der Halle nur mit schrägem Anlauf. Avatarplatz an den Übergaben und handgefahrene Runde fehlen, daher noch offen.
+[P02-05-Beleg](../evidence/P02-05.md): automatische beladene Fahrt zu Lieferant, Händler, Privatkunden und zurück ohne Blockade; Avatar mit Ware hat an allen vier Orten Platz am Anhänger; Wendekreis 6,9–7,2 m Wand zu Wand. Tordurchfahrt mit Kehre in der Halle nur mit schrägem Anlauf. Handgefahrene Runde steht aus.
 
 ## P03 · Art-Muster im Test-Place
 
