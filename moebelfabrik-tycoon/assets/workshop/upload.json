@@ -1,0 +1,20 @@
+{
+  "task": "COMP-R2-IMPORT",
+  "date": "2026-11-12",
+  "creatorUserId": "3493645144",
+  "placeId": "79033653140107",
+  "universeId": "10776116608",
+  "baselinePlaceVersion": 2,
+  "uploads": 1,
+  "operationId": "8ac1f81b-0ed1-4582-92e2-1dfeda2b8788",
+  "source": "fable/workshop-import.glb",
+  "bytes": 690728,
+  "sourceMeshObjects": 45,
+  "sourceMaterialPrimitives": 153,
+  "sourceTriangles": 13080,
+  "consent": "User confirmed permanent workshop upload to signed-in Studio account and upload folder.",
+  "assetId": "106051543998570",
+  "revisionId": "1",
+  "moderation": "Approved",
+  "status": "Upload complete; reuse asset ID for insertion."
+}

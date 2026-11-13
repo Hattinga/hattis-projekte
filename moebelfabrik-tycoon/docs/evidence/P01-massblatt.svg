@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="1010" viewBox="0 0 1280 1010">
+  <rect x="0" y="0" width="1280" height="1010" fill="#f5f2eb"/>
+  <text x="36" y="40" font-size="25" font-family="Segoe UI" fill="#24312c">Hocker01 · gemeinsames Maßblatt</text>
+  <text x="36" y="65" font-size="14" font-family="Segoe UI" fill="#4c5851">P01-03 / P01-05 · 12.11.2026 · Sollzeichnung, keine Studioaufnahme · 1 m = 25/7 Studs</text>
+  <rect x="28" y="86" width="1224" height="296" fill="#ffffff" stroke="#c9cec7"/>
+  <text x="44" y="111" font-size="16" font-family="Segoe UI" fill="#24312c">Gemeinsame Vorderansicht · alle Hüllen 80 Pixel / m · gleiche Aufstandsebene</text>
+  <line x1="44" y1="300" x2="1236" y2="300" stroke="#47574b" stroke-width="2"/>
+  <line x1="44" y1="220" x2="1236" y2="220" stroke="#e1e6df"/>
+  <text x="45" y="213" font-size="11" font-family="Segoe UI" fill="#69766b">1 m</text>
+  <circle cx="102" cy="189.2" r="14" fill="#748b80"/>
+  <rect x="78" y="206" width="48" height="53" fill="#748b80"/>
+  <rect x="80" y="259" width="17" height="41" fill="#748b80"/>
+  <rect x="107" y="259" width="17" height="41" fill="#748b80"/>
+  <text x="102" y="162" text-anchor="middle" font-size="12" font-family="Segoe UI" fill="#24312c">1,56 m</text>
+  <text x="102" y="326" text-anchor="middle" font-size="13" font-family="Segoe UI" fill="#24312c">Avatar</text>
+  <rect x="165" y="264" width="32" height="2" fill="#b98b58" stroke="#725334"/>
+  <rect x="166.6" y="266" width="2.8" height="34" fill="#b98b58"/>
+  <rect x="192.6" y="266" width="2.8" height="34" fill="#b98b58"/>
+  <rect x="169.4" y="271.2" width="23.2" height="4.8" fill="#b98b58"/>
+  <text x="181" y="250" text-anchor="middle" font-size="12" font-family="Segoe UI" fill="#24312c">0,45 m</text>
+  <text x="181" y="326" text-anchor="middle" font-size="13" font-family="Segoe UI" fill="#24312c">Hocker</text>
+  <rect x="236" y="297.6" width="48" height="2.4" fill="#c59664" stroke="#725334"/>
+  <rect x="236" y="285.6" width="2" height="14.4" fill="#c59664"/>
+  <rect x="282" y="285.6" width="2" height="14.4" fill="#c59664"/>
+  <text x="260" y="272" text-anchor="middle" font-size="12" font-family="Segoe UI" fill="#24312c">0,18 m</text>
+  <text x="260" y="326" text-anchor="middle" font-size="13" font-family="Segoe UI" fill="#24312c">Träger</text>
+  <rect x="314" y="288" width="48" height="12" fill="#c59664" stroke="#725334"/>
+  <line x1="327" y1="288" x2="327" y2="300" stroke="#38453c" stroke-width="2"/>
+  <line x1="349" y1="288" x2="349" y2="300" stroke="#38453c" stroke-width="2"/>
+  <text x="338" y="272" text-anchor="middle" font-size="12" font-family="Segoe UI" fill="#24312c">0,15 m</text>
+  <text x="338" y="326" text-anchor="middle" font-size="13" font-family="Segoe UI" fill="#24312c">Holzpaket</text>
+  <rect x="396" y="259.2" width="36.8" height="40.8" fill="#d9bc90" stroke="#725334"/>
+  <line x1="414.4" y1="259.2" x2="414.4" y2="300" stroke="#a38256"/>
+  <text x="414" y="245" text-anchor="middle" font-size="12" font-family="Segoe UI" fill="#24312c">0,51 m</text>
+  <text x="414" y="326" text-anchor="middle" font-size="13" font-family="Segoe UI" fill="#24312c">Karton</text>
+  <rect x="480" y="184" width="192" height="116" fill="none" stroke="#788678"/>
+  <rect x="484" y="228" width="56" height="5" fill="#788678"/>
+  <rect x="548" y="228" width="56" height="5" fill="#788678"/>
+  <rect x="612" y="228" width="56" height="5" fill="#788678"/>
+  <text x="576" y="172" text-anchor="middle" font-size="12" font-family="Segoe UI" fill="#24312c">2,40 m breit · Hülle 1,45 m</text>
+  <text x="576" y="253" text-anchor="middle" font-size="12" font-family="Segoe UI" fill="#24312c">Auflage 0,90 m</text>
+  <text x="576" y="326" text-anchor="middle" font-size="13" font-family="Segoe UI" fill="#24312c">Jede der 4 Stationen</text>
+  <rect x="730" y="204" width="88" height="96" fill="none" stroke="#38453c" stroke-width="2"/>
+  <rect x="750" y="148" width="48" height="152" fill="none" stroke="#788678"/>
+  <line x1="730" y1="204" x2="818" y2="204" stroke="#38453c" stroke-width="3"/>
+  <text x="774" y="136" text-anchor="middle" font-size="12" font-family="Segoe UI" fill="#24312c">mit Fahrer 1,90 m</text>
+  <text x="774" y="326" text-anchor="middle" font-size="13" font-family="Segoe UI" fill="#24312c">Quad · 1,10 m breit</text>
+  <rect x="872" y="208" width="96" height="92" fill="none" stroke="#38453c"/>
+  <line x1="892" y1="256" x2="948" y2="256" stroke="#38453c" stroke-width="4"/>
+  <rect x="901.6" y="215.2" width="36.8" height="40.8" fill="#d9bc90" stroke="#725334"/>
+  <text x="920" y="194" text-anchor="middle" font-size="12" font-family="Segoe UI" fill="#24312c">Deck 0,55 · Hülle 1,15 m</text>
+  <text x="920" y="326" text-anchor="middle" font-size="13" font-family="Segoe UI" fill="#24312c">Anhänger · 1,20 m</text>
+  <rect x="1050" y="112" width="168" height="188" fill="none" stroke="#d88b3d" stroke-width="3"/>
+  <text x="1134" y="205" text-anchor="middle" font-size="15" font-family="Segoe UI" fill="#875029">2,10 × 2,35 m</text>
+  <text x="1134" y="326" text-anchor="middle" font-size="13" font-family="Segoe UI" fill="#24312c">Tor · Quellenwert</text>
+  <text x="44" y="362" font-size="12" font-family="Segoe UI" fill="#59675d">Neue Hüllen = Soll. Torhöhe ab Innenboden; Sockel und Schwelle müssen bei der Fahrprobe zusätzlich überwunden werden.</text>
+  <rect x="28" y="402" width="390" height="356" fill="#ffffff" stroke="#c9cec7"/>
+  <text x="44" y="430" font-size="17" font-family="Segoe UI" fill="#24312c">Bausatz · Draufsicht 450 Pixel / m</text>
+  <rect x="88" y="463" width="270" height="225" fill="#eddfca" stroke="#725334" stroke-width="2"/>
+  <rect x="92.5" y="467.5" width="261" height="216" fill="#f9f5ec" stroke="#b9a080"/>
+  <rect x="94.75" y="485.5" width="180" height="180" fill="#c59664" stroke="#725334"/>
+  <rect x="281.5" y="479.875" width="15.75" height="191.25" fill="#c59664" stroke="#725334"/>
+  <rect x="299.5" y="479.875" width="15.75" height="191.25" fill="#c59664" stroke="#725334"/>
+  <rect x="317.5" y="479.875" width="15.75" height="191.25" fill="#c59664" stroke="#725334"/>
+  <rect x="335.5" y="479.875" width="15.75" height="191.25" fill="#c59664" stroke="#725334"/>
+  <rect x="121.75" y="514.75" width="130.5" height="27" fill="#b27b49" stroke="#725334"/>
+  <rect x="121.75" y="546.25" width="130.5" height="27" fill="#b27b49" stroke="#725334"/>
+  <rect x="121.75" y="577.75" width="130.5" height="27" fill="#b27b49" stroke="#725334"/>
+  <rect x="121.75" y="609.25" width="130.5" height="27" fill="#b27b49" stroke="#725334"/>
+  <text x="44" y="715" font-size="13" font-family="Segoe UI" fill="#24312c">1 Sitz + 4 Beine + 4 Zargen = 9 Teile</text>
+  <text x="44" y="738" font-size="12" font-family="Segoe UI" fill="#59675d">Belegt 0,57 × 0,425 m · innen 0,58 × 0,48 m</text>
+  <rect x="436" y="402" width="370" height="356" fill="#ffffff" stroke="#c9cec7"/>
+  <text x="452" y="430" font-size="17" font-family="Segoe UI" fill="#24312c">Deck · Draufsicht 200 Pixel / m</text>
+  <rect x="466" y="466" width="140" height="240" fill="#e7e9e2" stroke="#38453c" stroke-width="2"/>
+  <rect x="471" y="471" width="130" height="110" fill="none" stroke="#788678"/>
+  <rect x="471" y="591" width="130" height="110" fill="none" stroke="#788678"/>
+  <rect x="476" y="481" width="120" height="90" fill="#c59664" stroke="#725334"/>
+  <rect x="490" y="600" width="92" height="92" fill="#d9bc90" stroke="#725334"/>
+  <text x="626" y="509" font-size="13" font-family="Segoe UI" fill="#24312c">A · Holzpaket</text>
+  <text x="626" y="533" font-size="12" font-family="Segoe UI" fill="#59675d">0,60 × 0,45</text>
+  <text x="626" y="629" font-size="13" font-family="Segoe UI" fill="#24312c">B · Karton</text>
+  <text x="626" y="653" font-size="12" font-family="Segoe UI" fill="#59675d">0,46 × 0,46</text>
+  <text x="452" y="738" font-size="12" font-family="Segoe UI" fill="#59675d">Deck 0,70 × 1,20 m · Slots je 0,65 × 0,55 m</text>
+  <rect x="824" y="402" width="428" height="356" fill="#ffffff" stroke="#c9cec7"/>
+  <text x="840" y="430" font-size="17" font-family="Segoe UI" fill="#24312c">Dachauflager · Detail 500 Pixel / m</text>
+  <rect x="910" y="658" width="100" height="26" fill="#e8e0d1" stroke="#788678"/>
+  <polygon points="900,658 1020,658 1020,599.53125 900,545.15625" fill="#c59664" stroke="#725334"/>
+  <polygon points="850,445.5 1085,551.984375 1085,628.984375 850,522.5" fill="#dfba8f" stroke="#725334"/>
+  <line x1="850" y1="445.5" x2="1085" y2="551.984375" stroke="#34383c" stroke-width="4"/>
+  <text x="840" y="702" font-size="13" font-family="Segoe UI" fill="#24312c">Sparrenunterkante = Auflageroberkante</text>
+  <text x="840" y="726" font-size="12" font-family="Segoe UI" fill="#59675d">bei Wand-X 3,20: 3,046 m · Wandkopf 2,92 m</text>
+  <text x="840" y="747" font-size="12" font-family="Segoe UI" fill="#59675d">Auflager 0,126 m · Kontaktlinie aus build.py</text>
+  <rect x="28" y="778" width="1224" height="195" fill="#ffffff" stroke="#c9cec7"/>
+  <text x="44" y="807" font-size="17" font-family="Segoe UI" fill="#24312c">Fahrkorridor · Querschnitt 160 Pixel / m</text>
+  <line x1="64" y1="835" x2="64" y2="934" stroke="#788678" stroke-width="3"/>
+  <line x1="544" y1="835" x2="544" y2="934" stroke="#788678" stroke-width="3"/>
+  <rect x="208" y="848" width="192" height="74" fill="#e7e9e2" stroke="#38453c" stroke-width="2"/>
+  <text x="304" y="880" text-anchor="middle" font-size="13" font-family="Segoe UI" fill="#24312c">Gespann 1,20 m</text>
+  <text x="304" y="908" text-anchor="middle" font-size="12" font-family="Segoe UI" fill="#59675d">hier nur Breitenvergleich</text>
+  <text x="610" y="851" font-size="14" font-family="Segoe UI" fill="#24312c">3,00 m Korridor → 0,90 m Reserve je Seite</text>
+  <text x="610" y="881" font-size="14" font-family="Segoe UI" fill="#24312c">2,10 m Tor → 0,45 m Reserve je Seite</text>
+  <text x="610" y="911" font-size="13" font-family="Segoe UI" fill="#59675d">Kurven, Toranfahrt, Kollision und Schwelle: P02-Fahrprobe offen</text>
+  <text x="36" y="996" font-size="12" font-family="Segoe UI" fill="#59675d">Führende Zahlen und Bezugspunkte: docs/design/DIMENSIONS.md · Spiel- und Art-Abnahme bleiben separat.</text>
+</svg>

@@ -1,0 +1,52 @@
+{
+  "date": "2026-11-13",
+  "task": "P02-04",
+  "placeId": 79033653140107,
+  "universeId": 10776116608,
+  "studioId": "fd3455fc-e99a-4501-b259-dae75005af5d",
+  "baselineVersion": 14,
+  "savedVersion": 17,
+  "model": "Workspace.P02Vehicle",
+  "revision": 2,
+  "descendants": 109,
+  "check": {
+    "quadM": { "min": "-0.550;0.000;-1.000", "max": "0.550;1.200;1.000", "size": "1.100;1.200;2.000" },
+    "trailerM": { "min": "-0.600;-0.000;-1.000", "max": "0.600;1.070;0.850", "size": "1.200;1.070;1.850" },
+    "rigM": { "min": "-0.600;0.000;-1.000", "max": "0.600;1.900;3.000", "size": "1.200;1.900;4.000" },
+    "deckM": { "size": "0.700;0.060;1.200", "topM": 0.55, "centerZ": 0.25 },
+    "hitchM": { "heightM": 0.4, "behindQuadCentreM": 1.075, "gapM": 0.15 },
+    "seatTopM": 0.76,
+    "load": [
+      { "slot": "SlotA", "ware": "Holzpaket", "sizeM": "0.600;0.150;0.450", "topM": 0.7, "sideAirM": 0.025, "endAirM": 0.05 },
+      { "slot": "SlotB", "ware": "Hockerkarton", "sizeM": "0.460;0.510;0.460", "topM": 1.06, "sideAirM": 0.095, "endAirM": 0.045 }
+    ],
+    "wheels": 6,
+    "steeredHinges": 2,
+    "drivenHinges": 2
+  },
+  "driveProbeRevision1": {
+    "forward2sM": 10.42,
+    "forward2sSideM": -0.03,
+    "topSpeedStudsPerS": 30.06,
+    "reverseStudsPerS": 9.77,
+    "steerRight2sAt30pct": { "rightTurnDeg": 106, "rightM": 3.57 },
+    "steerLeft2sAt30pct": { "rightTurnDeg": -66, "rightM": -1.98 },
+    "maxArticulationDeg": 45,
+    "maxHitchGapStuds": 0.009,
+    "minUpY": 0.992,
+    "cartonDriftOnDeckM": 0,
+    "massQuadWithDriver": 20.3,
+    "massTrailer": 6.3,
+    "fullLockCircleExtentM": { "x": 8.72, "z": 4.96, "note": "not a clean circle; turning circle undetermined" },
+    "keyboardDriveM": 12.33,
+    "driverTopM": 1.97
+  },
+  "driverProbeRevision2": {
+    "driverTopInclAccessoriesM": 1.878,
+    "driverBodyTopM": 1.731,
+    "keyboardDriveM": 8.7,
+    "loadOffsetUnchanged": true,
+    "upY": 1.0
+  },
+  "notTested": ["city route", "tightest curve", "gate", "turning manoeuvre", "avatar space at handovers", "other avatars"]
+}

@@ -1,0 +1,111 @@
+{
+  "date": "2026-11-12",
+  "task": "P02-01",
+  "placeId": 79033653140107,
+  "universeId": 10776116608,
+  "studioId": "991e71ed-7e08-4f5f-ad91-7e909df8fdf6",
+  "build": {
+    "existingWorkshopUntouched": true,
+    "driveTestPassed": false,
+    "fieldCenter": "-42.857139587402344, 0.5, -27.388334274291992",
+    "metersToStuds": 3.5714285714285716,
+    "root": "Workspace.P02Greybox",
+    "floorTop": 0.5,
+    "task": "P02-01",
+    "parts": 46
+  },
+  "checks": {
+    "workshopMeshes": 153,
+    "placeId": 79033653140107,
+    "knownDriveBlocker": "Spawn intersects 5m approach; driving not accepted",
+    "gateMeters": {
+      "1": 2.100001835823059,
+      "2": 2.349999964237213
+    },
+    "originalSnapshotIdentical": true,
+    "clearRayChecks": 6,
+    "metersToStuds": 3.5714285714285716,
+    "originalColliders": 21,
+    "newColliders": 1,
+    "task": "P02-01",
+    "parts": 46
+  },
+  "duplicateGuard": {
+    "duplicateRejected": true,
+    "rootCount": 1,
+    "reason": "AssistantCommand:10: P02Greybox already exists; inspect before changing it"
+  },
+  "beforeSave": {
+    "location": "TeamCreate",
+    "status": "NotNeeded",
+    "message": "The place has no unsaved changes."
+  },
+  "afterSave": {
+    "location": "TeamCreate",
+    "status": "Saved",
+    "version": 7,
+    "message": "Saved to Roblox."
+  },
+  "snapshot": {
+    "path": ".local/backups/2026-11-12-p02-01/before-p02-01.rbxm",
+    "bytes": 160632,
+    "sha256": "6F42D75133802AEB3780F112E9F1E5302F875F38BAC4FCD74E4831876E1571C3",
+    "roots": [
+      "FableWorkshop",
+      "Baseplate",
+      "SpawnLocation"
+    ],
+    "roundtripMeshes": 153,
+    "roundtripColliders": 21
+  },
+  "footQa": {
+    "agent": "p02_walk_qa",
+    "navigationTargets": 12,
+    "allReached": true,
+    "horizontalErrorStuds": {
+      "min": 0.578,
+      "max": 0.924
+    },
+    "healthMin": 100,
+    "groundSamples": {
+      "total": 392,
+      "Baseplate": 362,
+      "MeasureField": 11,
+      "Spawn": 9,
+      "WorkshopFloor": 10,
+      "missing": 0
+    },
+    "measureFieldPosition": [
+      -42.8564,
+      3.1982,
+      -26.4218
+    ],
+    "workshopPosition": [
+      -0.0021,
+      3.1982,
+      -30.0356
+    ],
+    "newRuntimeErrors": 0,
+    "preexistingWarnings": {
+      "count": 3,
+      "contentId": 203785492
+    },
+    "temporaryObserverDisconnected": true,
+    "avatarSoundVolumesChangedInDiscardedPlayCopyOnly": true,
+    "finalMode": "Edit"
+  },
+  "rawImages": [
+    ".local/evidence/P02-01-overview.jpg",
+    ".local/evidence/P02-01-interior.jpg"
+  ],
+  "stillOpen": [
+    "P00-03 weaker device",
+    "P02-02 stations",
+    "P02-03 route and spawn obstruction",
+    "P02-04 vehicle",
+    "P02-05 driving",
+    "P02-06 full map and drive evidence",
+    "full QA-P02-01",
+    "P03 art acceptance"
+  ]
+}

@@ -1,0 +1,83 @@
+{
+  "date": "2026-11-12",
+  "task": "P02-03R",
+  "placeId": 79033653140107,
+  "universeId": 10776116608,
+  "studioId": "291dd5c8-dcc9-4b2c-ac65-ed2525d09343",
+  "savedVersion": 12,
+  "build": {
+    "roadSegments": 87,
+    "oldRingArchived": true,
+    "workshops": 4,
+    "parts": 921,
+    "streets": 19,
+    "trees": 41,
+    "landmarkBuildings": 47,
+    "additionalStreetHouses": 33,
+    "task": "P02-03R",
+    "mirrorLayout": false
+  },
+  "checks": {
+    "connectedNodes": 80,
+    "pedestrianConflicts": 0,
+    "oldRingArchived": true,
+    "workshops": 4,
+    "clearCorridors": 261,
+    "pedestrianRectangleChecks": 6768,
+    "deadEnds": 9,
+    "roadSegments": 87,
+    "buildings": 47,
+    "pavedSamples": 4344,
+    "connectedDestinations": 7,
+    "vehicleTestPassed": false,
+    "task": "P02-03R",
+    "junctions": 18
+  },
+  "entry": {
+    "reached": {
+      "1": {
+        "health": 100,
+        "distance": 0.8905356526374817,
+        "name": "Fussweg",
+        "position": "126.38492584228516, 2.906294345855713, 416.9676818847656"
+      },
+      "2": {
+        "health": 100,
+        "distance": 1.250163197517395,
+        "name": "Ladehof",
+        "position": "171.6247100830078, 2.9844205379486084, 424.79022216796875"
+      },
+      "3": {
+        "health": 100,
+        "distance": 1.0521191358566284,
+        "name": "Tor",
+        "position": "169.4019012451172, 2.905348300933838, 401.0456848144531"
+      },
+      "4": {
+        "health": 100,
+        "distance": 0.5584753751754761,
+        "name": "Tischlerei",
+        "position": "169.28367614746094, 3.4141147136688232, 375.5584716796875"
+      },
+      "5": {
+        "health": 100,
+        "distance": 1.2660863399505615,
+        "name": "Rueckweg",
+        "position": "172.7633056640625, 2.9844205379486084, 423.7373962402344"
+      }
+    },
+    "start": "124.18746185302734, 3.9584877490997314, 372.7289733886719",
+    "done": true,
+    "passed": true,
+    "debugToolAbsent": true
+  },
+  "finalMode": "Edit",
+  "backup": {
+    "path": ".local/backups/2026-11-12-p02-03r/before-city.rbxm",
+    "bytes": 179918,
+    "roots": 7,
+    "sha256": "24D88F1BAC057E85DFD13CEB43405028E111C3EE7E19C6429A75DF76BCA09E02"
+  },
+  "correctedSidewalkConflicts": 3,
+  "published": false
+}

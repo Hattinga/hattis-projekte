@@ -1,0 +1,81 @@
+{
+  "date": "2026-11-12",
+  "task": "P02-03",
+  "userCorrection": "FableWorkshop is an AI comparison object only, never the intended game building",
+  "placeId": 79033653140107,
+  "universeId": 10776116608,
+  "studioId": "020dd7b1-81f3-4735-b986-95eb86183aa8",
+  "build": {
+    "destinations": 4,
+    "activeFactoryPlots": 1,
+    "root": "Workspace.MapGreybox",
+    "comparisonAssetUsedAsBuilding": false,
+    "roadWidthMeters": 7,
+    "plots": 4,
+    "ringSegments": 36,
+    "cornerRadiusMeters": 14,
+    "task": "P02-03",
+    "parts": 162
+  },
+  "checks": {
+    "ringSegments": 36,
+    "groundSamples": 1899,
+    "oldTestAreaByteIdentical": true,
+    "spawnOutsideRoads": true,
+    "spawnOnFactoryPlot": true,
+    "connectedDestinations": 4,
+    "testToolInServerStorage": true,
+    "vehicleTestPassed": false,
+    "task": "P02-03",
+    "clearCorridors": 120
+  },
+  "savedVersion": 10,
+  "baselineSavedVersion": 9,
+  "snapshot": {
+    "path": ".local/backups/2026-11-12-p02-03/before-map.rbxm",
+    "bytes": 175371,
+    "roots": 6,
+    "sha256": "489E6400D9624E0E08F7E0B0F04DFCEA9205315CEF20B225C8DE7F6C8734E4F8"
+  },
+  "playEntryCheck": {
+    "reached": {
+      "1": {
+        "health": 100,
+        "distance": 0.6783213019371033,
+        "name": "Sidewalk",
+        "position": "302.89532470703125, 2.8047304153442383, 316.4656066894531"
+      },
+      "2": {
+        "health": 100,
+        "distance": 1.024225115776062,
+        "name": "FactoryYard",
+        "position": "246.72915649414062, 2.8594186305999756, 324.14764404296875"
+      },
+      "3": {
+        "health": 100,
+        "distance": 0.7587141394615173,
+        "name": "Gate",
+        "position": "245.7303009033203, 2.8047304153442383, 296.47283935546875"
+      },
+      "4": {
+        "health": 100,
+        "distance": 0.6479493379592896,
+        "name": "HallInterior",
+        "position": "245.71461486816406, 3.4141147136688232, 271.36224365234375"
+      },
+      "5": {
+        "health": 100,
+        "distance": 1.3622742891311646,
+        "name": "ReturnYard",
+        "position": "245.71469116210938, 2.8594186305999756, 322.9234313964844"
+      }
+    },
+    "start": "306.62969970703125, 3.9584877490997314, 245.35964965820312",
+    "done": true,
+    "passed": true,
+    "debugToolAbsent": true
+  },
+  "pendingP0202CarryAcceptance": true,
+  "published": false,
+  "finalMode": "Edit"
+}

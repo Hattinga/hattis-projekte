@@ -8,6 +8,8 @@ Helles Holz, gestrichene Wandflächen und dunkler Maschinenstahl bilden eine ruh
 
 Vor dem Modellieren werden Referenzansicht, wesentliche Abmessungen und entscheidende Verbindungen festgehalten. Das Maßblatt aus P01 bestimmt Raster, Einheiten, Bauteilstärken, Drehpunkte und Anschlüsse. Ein gemeinsamer Vergleich zeigt Avatar, Hocker, Maschine, Träger, Karton, Quad, Anhänger und Tor. Die Angaben werden nach dem Import nachgemessen.
 
+Der [Waren- und Maßvertrag P01-03/P01-05](DIMENSIONS.md) enthält die ersten Sollmaße, Einzelteile und Packlagen sowie die gezielt abgeleiteten Tor- und Dachmaße der vorhandenen Werkstatt. Er ersetzt keine Modell- oder Art-Abnahme im Spiel.
+
 ## Gebäude und Dach
 
 Die Außenprobe umfasst eine kleine Gebäudeecke mit Wand, Fenster und Dach. Wand und Fensterrahmen besitzen erkennbare Tiefe. Dachneigung, Auflager, First und Überstand folgen dem Referenzblatt. Traufe und Ortgang bilden durchgehende Kanten. Die Dachfläche endet kontrolliert am Anschluss und schließt am First. Wandabschluss, Dachunterseite und Fensterlaibung werden auch seitlich geprüft.
@@ -46,3 +48,12 @@ Die Vorlagen dienen einer geschlossenen Hockerlinie mit Fahrzeugroute. Ein zweit
 Die [Blender-Rolle](../roles/BLENDER.md) liefert bemaßte Quelldateien, Exporte und Ansichten. Die Studio-Integration prüft importierte Maße, Drehpunkte, Materialzuordnung, Normalen, Kollision und bewegliche Teile. Die finale Evidenz enthält Spielkamera, Außenansicht, Detailaufnahme und eine kleine Bildschirmansicht nach [TESTS](../qa/TESTS.md).
 
 Freigegeben wird die importierte Probe anhand der dokumentierten Passungen, Lesbarkeit und gemeinsamen Wirkung. Größensprünge, Texturverzerrungen, kollidierende Werkstücke und unlesbare Ladungszustände erfordern eine Korrektur am Muster. Leistungsgrenzen ergeben sich aus Messungen am festgelegten Testgerät.
+
+
+## Modellierungsvergleich
+
+Die kleine importierte Werkstatt ist ausschließlich ein KI-Vergleichs- und Importtestobjekt. Jonas hat am 12. November 2026 ausdrücklich klargestellt, dass sie nicht als Gebäude der Spielkarte vorgesehen ist. Eine Bevorzugung des Testentwurfs gibt weder dieses Gebäude für das Spiel frei noch bindet sie das Mapdesign an seine Größe. Die eigentliche Fabrik und weitere Kartenassets erhalten eigene Entwürfe.
+
+Jonas hat in beiden Werkstattproben Fables Entwurf bevorzugt, zuletzt am 11. November 2026 mit dem Urteil "A eindeutig besser". Fable 5.2 ist damit die bevorzugte Modellierungsunterstuetzung fuer die wichtigen Assets dieses Projekts. Codex uebernimmt Briefings, technische Pruefung, Spielcode und Studio-Integration. Dies beschreibt die Projektentscheidung aus den konkreten Proben und ist keine allgemeine Modellrangliste.
+
+Die gewaehlte Werkstatt hat 13.080 Dreiecke. Quellen, Zuordnung, Messungen und der noch offene Studio-Import sind im [Setup-Beleg](../evidence/P00-STUDIO-SETUP.md) auffindbar. Die Gestaltungsauswahl ersetzt die Abnahme im Spiel nicht.

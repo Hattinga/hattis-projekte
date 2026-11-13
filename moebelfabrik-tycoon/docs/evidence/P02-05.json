@@ -1,0 +1,26 @@
+{
+  "date": "2026-11-13",
+  "task": "P02-05",
+  "accepted": false,
+  "placeId": 79033653140107,
+  "universeId": 10776116608,
+  "studioId": "fd3455fc-e99a-4501-b259-dae75005af5d",
+  "placeVersion": 17,
+  "vehicle": "Workspace.P02Vehicle revision 2",
+  "driver": "server path follower via TestThrottle/TestSteer, no occupant",
+  "legs": [
+    { "from": "Tischlerei_West", "to": "Holzlieferant", "roadM": 106.64, "pathM": 110.92, "seconds": 22.51, "maxSpeedMs": 6.98, "maxArticulationDeg": 42.61, "samples": 358, "offPavedQuad": 0, "offPavedTrailer": 0, "onSidewalk": 0, "obstacleSamples": 0, "minUpY": 1, "maxDevM": 5.76, "rigCentreToTargetM": 1.65, "cartonDriftM": 0, "hitchGapStuds": 0.01, "progress": 0.99 },
+    { "from": "Holzlieferant", "to": "Tischlerei_West", "roadM": 106.64, "pathM": 110.94, "seconds": 26.53, "maxSpeedMs": 6.65, "maxArticulationDeg": 47.46, "samples": 424, "offPavedQuad": 0, "offPavedTrailer": 0, "onSidewalk": 0, "obstacleSamples": 0, "minUpY": 1, "maxDevM": 8.32, "rigCentreToTargetM": 2.21, "cartonDriftM": 0, "hitchGapStuds": 0.01, "progress": 0.99 },
+    { "from": "Tischlerei_West", "to": "Moebelhandel", "roadM": 220.74, "pathM": 225.03, "seconds": 51.58, "maxSpeedMs": 6.44, "maxArticulationDeg": 41.43, "samples": 826, "offPavedQuad": 0, "offPavedTrailer": 0, "onSidewalk": 0, "obstacleSamples": 0, "minUpY": 1, "maxDevM": 7.89, "rigCentreToTargetM": 1.95, "cartonDriftM": 0, "hitchGapStuds": 0.01, "progress": 1 },
+    { "from": "Moebelhandel", "to": "Privatkunden", "roadM": 114.83, "pathM": 119.23, "seconds": 29.47, "maxSpeedMs": 6.08, "maxArticulationDeg": 47.09, "samples": 470, "offPavedQuad": 0, "offPavedTrailer": 0, "onSidewalk": 11, "obstacleSamples": 0, "minUpY": 1, "maxDevM": 7.8, "rigCentreToTargetM": 1.62, "cartonDriftM": 0, "hitchGapStuds": 0.01, "progress": 0.99 },
+    { "from": "Privatkunden", "to": "Tischlerei_West", "roadM": 180.36, "pathM": 184.81, "seconds": 41.55, "maxSpeedMs": 6.72, "maxArticulationDeg": 46.36, "samples": 664, "offPavedQuad": 0, "offPavedTrailer": 0, "onSidewalk": 14, "obstacleSamples": 0, "minUpY": 0.99, "maxDevM": 7.51, "rigCentreToTargetM": 1.93, "cartonDriftM": 0, "hitchGapStuds": 0.01, "progress": 1 }
+  ],
+  "gate": {
+    "openingWidthM": 4.0,
+    "headerClearM": 4.0,
+    "floorStepM": 0.13,
+    "straight": { "passed": false, "gateCrossings": 2, "minGateSideM": -0.32, "obstacleSamples": 18, "obstacles": ["Tischlerei_West.FrontPier"], "maxArticulationDeg": 48.78, "seconds": 20.02, "pathM": 54.06, "maxDevM": 1.07, "offPaved": 0, "minUpY": 0.99 },
+    "diagonal": { "passed": true, "gateCrossings": 2, "minGateSideM": 0.31, "minWallM": 1.01, "obstacleSamples": 0, "obstacles": [], "maxArticulationDeg": 50.26, "seconds": 17.51, "pathM": 51.52, "maxDevM": 1.12, "offPaved": 0, "minUpY": 0.98 }
+  },
+  "notTested": ["avatar space with ware at each handover", "hand-driven lap with occupant and camera", "turning circle", "lane keeping on the road", "location of sidewalk contacts", "weaker device"]
+}
