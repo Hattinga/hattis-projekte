@@ -66,4 +66,25 @@ function Recipe.bind(stationRoot: Instance): (Binding?, string?)
 	return binding, nil
 end
 
+-- P05-07: binds a workshop store's marked slots (Slot1..Capacity, each Capacity 1) as one location kind.
+function Recipe.bindStore(storeRoot: Instance, kind: string, stage: State.Stage): (Binding?, string?)
+	local binding: Binding = {locations = {}, points = {}}
+	local count = storeRoot:GetAttribute("Capacity")
+	if storeRoot:GetAttribute("AcceptedStage") ~= stage or type(count) ~= "number" or count < 1 or count % 1 ~= 0 then
+		return nil, "INVALID_STORE"
+	end
+	for index = 1, count do
+		local id = kind .. ".Slot" .. index
+		local pad = uniqueChild(storeRoot, "Slot" .. index)
+		local point = if pad then uniqueChild(pad, "Transfer") else nil
+		if not pad or not pad:IsA("BasePart") or pad:GetAttribute("Capacity") ~= 1
+			or not point or not point:IsA("Attachment") then
+			return nil, "INVALID_POINT:" .. id
+		end
+		binding.locations[id] = State.newLocation(id, kind, 1, {stage})
+		binding.points[id] = point
+	end
+	return binding, nil
+end
+
 return table.freeze(Recipe)

@@ -1,5 +1,6 @@
 --!strict
 -- Measured greybox representation of one Hocker01 kit, pending the imported art.
+local Labels = require(script.Parent.Labels)
 local KitView = {}
 local SCALE = 25 / 7
 local wood = Color3.fromRGB(205, 157, 106)
@@ -56,7 +57,7 @@ function KitView.create(parent: Instance, support: CFrame, batchId: string): Mod
 	text.TextColor3 = Color3.fromRGB(255, 249, 220)
 	text.TextStrokeTransparency = 0
 	text.TextScaled = true
-	text.Text = "Bausatz · 9 Teile"
+	text.Text = Labels.text("kit.name")
 	text.Parent = sign
 	model.Parent = parent
 	return model

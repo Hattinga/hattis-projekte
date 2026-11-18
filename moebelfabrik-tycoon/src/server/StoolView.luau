@@ -1,10 +1,12 @@
 --!strict
 -- Measured greybox of one assembled Hocker01 (DIMENSIONS H1-H4), pending the imported art.
+local Labels = require(script.Parent.Labels)
 local StoolView = {}
 local SCALE = 25 / 7
+-- Raw: light matte wood. Finish: same stool in a warmer, calmer tone (P03 HJ3); final shading follows the art import.
 local LOOKS = {
-	Rohhocker = {wood = Color3.fromRGB(226, 196, 156), label = "Rohhocker"},
-	Fertig = {wood = Color3.fromRGB(168, 106, 62), label = "Fertiger Hocker"},
+	Rohhocker = {wood = Color3.fromRGB(226, 196, 156), label = "stool.raw.name"},
+	Fertig = {wood = Color3.fromRGB(168, 106, 62), label = "stool.finished.name"},
 }
 local screw = Color3.fromRGB(70, 66, 60)
 
@@ -66,7 +68,7 @@ function StoolView.create(parent: Instance, support: CFrame, batchId: string, st
 	text.TextColor3 = Color3.fromRGB(255, 249, 220)
 	text.TextStrokeTransparency = 0
 	text.TextScaled = true
-	text.Text = look.label
+	text.Text = Labels.text(look.label)
 	text.Parent = sign
 	model.Parent = parent
 	return model

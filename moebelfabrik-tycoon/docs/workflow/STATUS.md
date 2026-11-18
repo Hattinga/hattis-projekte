@@ -1,12 +1,12 @@
 # Projektstatus
 
-Stand 18. November 2026. **P02, P04 und P05-01 bis P05-05 sind abgenommen. Der Montagelauf bestand die Serverprobe mit echtem Test-Save auf privater Version 47. Als Nächstes folgt der Finishplatz.**
+Stand 18. November 2026. **P02, P04 und P05-01 bis P05-07 sind abgenommen. Alle vier Stationsläufe und die Einlagerung bestanden Serverproben mit echtem Test-Save, private Version 48. Als Nächstes folgt der fortlaufende Stationsbetrieb.**
 
 | Feld | Aktuell |
 |---|---|
-| Letzter abgeschlossener Schritt | **P05-05** – Montagelauf über das gemeinsame Modul `Stations`, vermessener Rohhocker ([Beleg](../evidence/P05-05.md)) |
-| Davor | **P05-04** – Sägelauf mit Ausgangsreservierung und sichtbarem Bausatz aus neun Teilen ([Beleg](../evidence/P05-04.md)) |
-| Naechster Umsetzungsschritt | **P05-06** – Finishlauf (6 s) prüfen; `Stations` und `StoolView` ("Fertig") sind vorhanden, es fehlen Serverprobe und Beleg. Oberfläche = einzige Finish-Oberfläche des Rezepts Hocker01 v1 (ART: 2 Oberflächenzustände) |
+| Letzter abgeschlossener Schritt | **P05-06/P05-07** – Finish- und Packlauf, Kartondarstellung, Einlagerung ins Fertiglager, zweisprachige Schilder ([P05-06](../evidence/P05-06.md), [P05-07](../evidence/P05-07.md)) |
+| Davor | **P05-05** – Montagelauf über das gemeinsame Modul `Stations`, vermessener Rohhocker ([Beleg](../evidence/P05-05.md)) |
+| Naechster Umsetzungsschritt | **P05-08** – Linienbetrieb: fällige Läufe beenden, mögliche Läufe selbstständig starten, Warenansichten aus dem Bestand darstellen, Stationsstatus und sichtbarer Rückstau bei vollem Lager |
 | Paralleles Paket | **P03-03** – Gebäude-Außenprobe von Claude Opus 5.5 mit 141 Geometrieprüfungen, zwei FBX-Rückimporten und 13 Ansichten lokal übernommen ([Beleg](../evidence/P03-03.md)). Abnahme und Roblox-Import stehen aus. Für die separate P03-05-Importkopie fehlt die Exportordnerfreigabe. |
 | Noch offene Umgebungsvoraussetzung | **P00-03** - reales schwaecheres Testgeraet bestimmen (braucht den Nutzer) |
 | Offene Entwurfsfrage (Nutzer) | Hallentor 4 m / Halle 10 m tief: Kehre in der Halle passt nur mit schraegem Anlauf (0,31 m Reserve); gerader Anlauf streift den Torpfeiler um 0,32 m. Tor breiter, Halle tiefer oder rueckwaerts ausfahren? Nichts geaendert. |
@@ -20,9 +20,15 @@ Stand 18. November 2026. **P02, P04 und P05-01 bis P05-05 sind abgenommen. Der M
 | Vergleichsobjekt | `Workspace.FableWorkshop`, Asset `106051543998570`; kein vorgesehenes Spielgebaeude |
 | Technikproben | `Workspace.P02Greybox` und `Workspace.P02Line`; Prueftraeger in `ServerStorage.P02CarryProbe`, nicht im Spielstart |
 | Arbeitsbranch | `work/p00-studio-import`; Abschlüsse bis P05-04 als `18ff2f8` gepusht, Nutzerauftrag vom 18.11.: fortlaufend committen und pushen |
-| Speicherung | TeamCreate **Version 47**, privater Stand, Studio im Edit-Modus. |
-| Wiederherstellbare Staende | Version 42 = geprüfter Spielgeldkauf, Version 44 = zusätzlich Handübergabemodul, Version 46 = zusätzlich Sawmill/KitView, Version 47 = zusätzlich Stations/StoolView. |
+| Speicherung | TeamCreate **Version 48**, privater Stand, Studio im Edit-Modus. |
+| Wiederherstellbare Staende | Version 44 = Handübergabemodul, Version 46 = zusätzlich Sawmill/KitView, Version 47 = zusätzlich Stations/StoolView, Version 48 = zusätzlich Labels/CartonView/`FactoryLabels`. |
 | Pruefbelege | [P02-06](../evidence/P02-06.md), [P02-05](../evidence/P02-05.md), [P02-04](../evidence/P02-04.md), [P02-03R](../evidence/P02-03R.md); Stadtentwurf [MAP](../design/MAP.md), Masse [DIMENSIONS](../design/DIMENSIONS.md) |
+
+## P05-06 und P05-07 abgenommen (18.11.)
+
+- Der Finishlauf (6 s) zeigt die eine Finish-Oberfläche von Hocker01 v1 (ART: roh/Finish). Wählbare Varianten sind nicht Teil von v1. Der Packlauf (4 s) liefert [CartonView](../../src/server/CartonView.luau). `Recipe.bindStore` bindet `Fertiglager` als `FinishedStore.Slot1–4`.
+- [Labels.luau](../../src/server/Labels.luau) und die gespeicherte `LocalizationService.FactoryLabels` machen die Warenschilder zweisprachig (EN-Quelle, DE-Übersetzung, Client `de-de` geprüft).
+- Die gemeinsame [Serverprobe](../../tools/studio/test-p05-06-07-finish-pack.luau) bestand vier Gruppen, die Stationssuite 14/14 einschließlich der vollständigen Kette bis ins Fertiglager. Belege: [P05-06](../evidence/P05-06.md), [P05-07](../evidence/P05-07.md)
 
 ## P05-05 abgenommen (18.11.)
 
@@ -159,7 +165,7 @@ Stand 18. November 2026. **P02, P04 und P05-01 bis P05-05 sind abgenommen. Der M
 
 **Naechste Schritte in Reihenfolge.**
 
-1. **P05-06/P05-07**: Finishlauf und Packlauf über `Stations` prüfen. Für P05-07 fehlen eine Kartondarstellung und die Bindung der Fertiglagerplätze.
+1. **P05-08**: Linienbetrieb auf `Stations` aufsetzen: Takt für fällige und startbare Läufe, Warenansichten aus dem bestätigten Bestand, Stationsstatus aus PRODUCTION, Rückstau bei vollem Fertiglager. Danach P05-09 (Prüfmatrix, komplette Handkette).
 2. **P03-02/P03-05**: Nach ausstehender Exportordnerfreigabe die neutrale Kopie unter `assets/p03-models/p03-05-import/` einmalig hochladen/importieren; `label-p03-05-probe.luau` mit deren `labels.json` ausfuehren. 1-m-Koerper, Material/Normalen/Marker/Kollision und beide Sprachen pruefen. Aktive Saegeprozessdarstellung/Art bleiben offen, kein paralleler Studio-Schreiber. Fable 5.2 nicht als kostenlosen Dienst einplanen; Art-Vertrag beachten.
 3. Nutzerentscheidungen einholen: Hallentor (oben), schwaecheres Testgeraet (P00-03), handgefahrene Runde mit dem Gespann als Gegenprobe zur automatischen Fahrt.
 

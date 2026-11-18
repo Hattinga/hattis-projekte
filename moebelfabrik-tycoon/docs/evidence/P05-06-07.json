@@ -1,0 +1,42 @@
+{
+  "date": "2026-11-18",
+  "tasks": ["P05-06", "P05-07"],
+  "status": "accepted",
+  "placeId": 79033653140107,
+  "baselineVersion": 47,
+  "savedVersion": 48,
+  "local": {
+    "suite": "tools/tests/p05-05-stations.luau",
+    "stations": "14/14",
+    "newCases": ["13 one batch passes all four stations and is stored as one carton",
+      "14 a full finished store keeps the carton carried and the pack output blocked until it is placed"],
+    "strictAnalysis": {"exit": 0},
+    "compiled": ["Labels", "KitView", "StoolView", "CartonView", "Recipe", "HandMoves", "Purchases"]
+  },
+  "integration": {
+    "changed": ["KitView", "StoolView", "Recipe"],
+    "added": ["Labels", "CartonView", "LocalizationService.FactoryLabels (6 Einträge, en-us/de/de-de)"],
+    "verified": "16 Factory-Module per Prüfsumme gleich src/server"
+  },
+  "server": {
+    "status": "passed",
+    "probe": "tools/studio/test-p05-06-07-finish-pack.luau",
+    "store": "FactoryP0506_Test",
+    "scope": "P0506_2972a88530f64ebe8f3f8b4c4f4676ab",
+    "checks": [
+      "P05-06: an uncertain finish start reconciles to one stored 6 s run that survives a reload",
+      "P05-06: after 6 s one finished stool shows the recipe surface, EN/DE stage label and blocks the next stool",
+      "P05-07: after 4 s the same batch is one labelled carton; only the carton is accepted and stored in the finished store",
+      "P05-07: with all four store slots full the carton stays carried, returns to the pack output and nothing is lost"
+    ],
+    "finish": {"sizeMeters": [0.40, 0.45, 0.40], "lumaRaw": 0.782, "lumaFinished": 0.455},
+    "carton": {"sizeMeters": [0.46, 0.51, 0.46], "shelfClear": true},
+    "final": {"storageRevision": 18, "stateRevision": 28, "money": 17, "stored": 4, "waitingAtPackOutput": "b"}
+  },
+  "client": {"labelTable": true, "entries": 6, "playerLocale": "de-de", "sample": "STOOL CARTON -> HOCKERKARTON", "serverModules": false},
+  "surfaceDecision": "Hocker01 v1 hat genau eine Finish-Oberfläche (ART: 2 Oberflächenzustände roh/Finish); keine wählbaren Varianten",
+  "image": null,
+  "imageNote": "Studio-Viewport lieferte schwarze Aufnahmen; Maße, Standflächen und Freiraum per Skript geprüft",
+  "playerTrigger": false,
+  "published": false
+}

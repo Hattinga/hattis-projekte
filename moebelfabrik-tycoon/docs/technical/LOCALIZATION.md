@@ -21,6 +21,19 @@ Die [Importkopie](../../assets/p03-models/p03-05-import/handoff.md) enthält fü
 
 Text nutzt die physische Schildfläche mit `TextScaled`; Farbe wird aus dem linearen Blender-Material nach sRGB umgerechnet. Anker sind unsichtbar, verankert, ohne Kollision/Touch/Query und zählen nicht als neue Warenplätze. Meter-/Achsenzuordnung wie bei den Modellen. Die Locale- und Textlayer-Prüfung auf acht künstlichen Modellwurzeln bestand in Studio Edit, inklusive der realen nativen Translator-Ausgaben für beide Sprachen. Die tatsächliche Lesbarkeit und automatische Clientanzeige auf den importierten Modellen muss nach dem Upload geprüft werden; sie ist damit noch nicht abgenommen.
 
+## Greybox-Warenbeschriftung (P05-07)
+
+[Labels.luau](../../src/server/Labels.luau) ist die Quelle für die Schilder der Greybox-Waren. Die Tabelle `LocalizationService.FactoryLabels` ist seit Version 48 im Place gespeichert (`SourceLocaleId` `en-us`, Werte für `en-us`, `de`, `de-de`). KitView, StoolView und CartonView setzen den englischen Quelltext mit `AutoLocalize`. Chargenkennungen bleiben unübersetzt. Auf dem Studio-Client (`de-de`) wurde „STOOL CARTON“ zu „HOCKERKARTON“ übersetzt. Neue Waren- oder Stationsschilder erhalten zuerst einen Eintrag in `Labels`. Die P03-05-Schlüssel kommen beim Modellimport in dieselbe Tabelle.
+
+| Schlüssel | English | Deutsch |
+| --- | --- | --- |
+| `kit.name` | PARTS KIT · 9 PARTS | BAUSATZ · 9 TEILE |
+| `stool.raw.name` | RAW STOOL | ROHHOCKER |
+| `stool.finished.name` | FINISHED STOOL | FERTIGER HOCKER |
+| `carton.name` | STOOL CARTON | HOCKERKARTON |
+| `carton.count` | 1 STOOL | 1 HOCKER |
+| `carton.batch` | BATCH | CHARGE |
+
 ## Weitere Spielertexte
 
 Spätere Bedienoberflächen, Rückmeldungen und Maschinenzustände verwenden ebenfalls semantische Schlüssel. Die vorhandenen Servermodule liefern stabile Aktionscodes und interne deutsche Fallbackmeldungen. Diese Fallbacktexte sind keine fertige mehrsprachige Spieleroberfläche; ein zukünftiger Client darf sie nicht als alleinige UI-Übersetzung verwenden. Noch keine weltweite/Cloud-Übersetzungstabelle oder neue Spieloberfläche veröffentlicht.

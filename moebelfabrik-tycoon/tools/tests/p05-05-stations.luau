@@ -295,5 +295,55 @@ return function(State: any, Transfers: any, Persistence: any, Stations: any, Saw
 		assert(h.state().batches.wood.stage == "Bausatz")
 	end)
 
+	test("13 one batch passes all four stations and is stored as one carton", function()
+		local p = profile()
+		p.locations["FinishedStore.Slot1"] = State.newLocation("FinishedStore.Slot1", "FinishedStore", 1, {"Karton"})
+		p.batches.lot = State.newBatch("lot", 101, "Holzpaket", "Saege.Input")
+		local h = harness(p)
+		for i, rule in State.STATIONS do
+			local started = Stations.start(h.c, rule.id, h.now, 600)
+			assert(started.ok and started.batchId == "lot", rule.id .. " " .. started.code)
+			h.now += rule.durationSeconds
+			assert(Stations.finish(h.c, rule.id, "lot", h.now, 600).ok)
+			assert(h.state().batches.lot.stage == STAGES[i + 1] and h.state().batches.lot.locationId == rule.output)
+			local target = if State.STATIONS[i + 1] then State.STATIONS[i + 1].input else "FinishedStore.Slot1"
+			local store = h.store()
+			h.move(store, "lot", rule.output, "hand", "take-" .. rule.id)
+			if rule.id == "Finish" then
+				local wrong = h.reserve(store, "lot", "hand", "FinishedStore.Slot1", "finished-to-store")
+				assert(wrong.code == "WRONG_STAGE" and store.profile.batches.lot.locationId == "hand", wrong.code)
+			end
+			h.move(store, "lot", "hand", target, "place-" .. rule.id)
+			h.save(store)
+		end
+		local final = h.state()
+		local lot = final.batches.lot
+		assert(lot.locationId == "FinishedStore.Slot1" and lot.stage == "Karton" and lot.quantity == 1)
+		assert(lot.recipeId == "Hocker01" and lot.recipeVersion == 1 and final.money == 17)
+		assert(next(final.reservations) == nil and State.validate(final))
+	end)
+
+	test("14 a full finished store keeps the carton carried and the pack output blocked until it is placed", function()
+		local p = profile()
+		p.locations["FinishedStore.Slot1"] = State.newLocation("FinishedStore.Slot1", "FinishedStore", 1, {"Karton"})
+		p.batches.old = State.newBatch("old", 101, "Karton", "FinishedStore.Slot1")
+		p.batches.box = State.newBatch("box", 101, "Karton", "Packen.Output")
+		p.batches.next = State.newBatch("next", 101, "Fertig", "Packen.Input")
+		local h = harness(p)
+		local store = h.store()
+		h.move(store, "box", "Packen.Output", "hand", "take-box")
+		local full = h.reserve(store, "box", "hand", "FinishedStore.Slot1", "store-box")
+		assert(full.code == "TARGET_FULL" and store.profile.batches.box.locationId == "hand", full.code)
+		h.save(store)
+		unchanged(h, "OUTPUT_BLOCKED", Stations.start(h.c, "Packen", h.now, 600))
+		store = h.store()
+		h.move(store, "box", "hand", "Packen.Output", "return-box")
+		h.save(store)
+		unchanged(h, "OUTPUT_BLOCKED", Stations.start(h.c, "Packen", h.now, 600))
+		local state = h.state()
+		assert(state.batches.box.locationId == "Packen.Output" and state.batches.next.locationId == "Packen.Input"
+			and state.batches.old.locationId == "FinishedStore.Slot1" and State.validate(state))
+	end)
+
 	return {total = #passed + #failures, passed = passed, failures = failures}
 end
