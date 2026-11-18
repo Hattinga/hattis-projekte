@@ -1,12 +1,12 @@
 # Projektstatus
 
-Stand 18. November 2026. **P02, P04 und P05-01 bis P05-04 sind abgenommen. Der Sägelauf bestand die Serverprobe mit echtem Test-Save auf privater Version 46. Als Nächstes folgt die Montagebank.**
+Stand 18. November 2026. **P02, P04 und P05-01 bis P05-05 sind abgenommen. Der Montagelauf bestand die Serverprobe mit echtem Test-Save auf privater Version 47. Als Nächstes folgt der Finishplatz.**
 
 | Feld | Aktuell |
 |---|---|
-| Letzter abgeschlossener Schritt | **P05-04** – Sägelauf mit Ausgangsreservierung und sichtbarem Bausatz aus neun Teilen ([Beleg](../evidence/P05-04.md)) |
-| Davor | **P05-03** – Handübergaben am Lager und an den Stationsauflagen ([Beleg](../evidence/P05-03.md)) |
-| Naechster Umsetzungsschritt | **P05-05** – Bausatz an der Montagebank zum erkennbaren Rohhocker verarbeiten; Sawmill-Muster (Lauf + Ausgangsreservierung in einem Save) auf Montage übertragen |
+| Letzter abgeschlossener Schritt | **P05-05** – Montagelauf über das gemeinsame Modul `Stations`, vermessener Rohhocker ([Beleg](../evidence/P05-05.md)) |
+| Davor | **P05-04** – Sägelauf mit Ausgangsreservierung und sichtbarem Bausatz aus neun Teilen ([Beleg](../evidence/P05-04.md)) |
+| Naechster Umsetzungsschritt | **P05-06** – Finishlauf (6 s) prüfen; `Stations` und `StoolView` ("Fertig") sind vorhanden, es fehlen Serverprobe und Beleg. Oberfläche = einzige Finish-Oberfläche des Rezepts Hocker01 v1 (ART: 2 Oberflächenzustände) |
 | Paralleles Paket | **P03-03** – Gebäude-Außenprobe von Claude Opus 5.5 mit 141 Geometrieprüfungen, zwei FBX-Rückimporten und 13 Ansichten lokal übernommen ([Beleg](../evidence/P03-03.md)). Abnahme und Roblox-Import stehen aus. Für die separate P03-05-Importkopie fehlt die Exportordnerfreigabe. |
 | Noch offene Umgebungsvoraussetzung | **P00-03** - reales schwaecheres Testgeraet bestimmen (braucht den Nutzer) |
 | Offene Entwurfsfrage (Nutzer) | Hallentor 4 m / Halle 10 m tief: Kehre in der Halle passt nur mit schraegem Anlauf (0,31 m Reserve); gerader Anlauf streift den Torpfeiler um 0,32 m. Tor breiter, Halle tiefer oder rueckwaerts ausfahren? Nichts geaendert. |
@@ -19,10 +19,16 @@ Stand 18. November 2026. **P02, P04 und P05-01 bis P05-04 sind abgenommen. Der S
 | Archivierte Uebersicht | `ServerStorage.P02Overview`, Revision 2; nur fuer Edit-Aufnahmen voruebergehend nach Workspace verschieben, vor Play und Speicherung zuruecklegen |
 | Vergleichsobjekt | `Workspace.FableWorkshop`, Asset `106051543998570`; kein vorgesehenes Spielgebaeude |
 | Technikproben | `Workspace.P02Greybox` und `Workspace.P02Line`; Prueftraeger in `ServerStorage.P02CarryProbe`, nicht im Spielstart |
-| Arbeitsbranch | `work/p00-studio-import`; Ausgangscommit `c73788e` war gepusht, P02- und P04-Abschluesse weiterhin lokal uncommitted |
-| Speicherung | TeamCreate **Version 46**, privater Stand, Studio im Edit-Modus. |
-| Wiederherstellbare Staende | Version 42 = geprüfter Spielgeldkauf, Version 44 = zusätzlich Handübergabemodul, Version 46 = zusätzlich Sawmill/KitView. |
+| Arbeitsbranch | `work/p00-studio-import`; Abschlüsse bis P05-04 als `18ff2f8` gepusht, Nutzerauftrag vom 18.11.: fortlaufend committen und pushen |
+| Speicherung | TeamCreate **Version 47**, privater Stand, Studio im Edit-Modus. |
+| Wiederherstellbare Staende | Version 42 = geprüfter Spielgeldkauf, Version 44 = zusätzlich Handübergabemodul, Version 46 = zusätzlich Sawmill/KitView, Version 47 = zusätzlich Stations/StoolView. |
 | Pruefbelege | [P02-06](../evidence/P02-06.md), [P02-05](../evidence/P02-05.md), [P02-04](../evidence/P02-04.md), [P02-03R](../evidence/P02-03R.md); Stadtentwurf [MAP](../design/MAP.md), Masse [DIMENSIONS](../design/DIMENSIONS.md) |
+
+## P05-05 abgenommen (18.11.)
+
+- `State.STATIONS` ist die einzige Quelle für die vier Stationsregeln. [Stations.luau](../../src/server/Stations.luau) führt Start und Ende jeder Station aus, Sawmill ruft es nur noch für die Säge auf. [StoolView.luau](../../src/server/StoolView.luau) stellt den Hocker als vermessene Greybox dar ("Rohhocker"/"Fertig").
+- Die lokale [Stationssuite](../../tools/tests/p05-05-stations.luau) bestand 12/12 Fälle (`node tools/tests/run-p05-05.mjs`). Die [Serverprobe](../../tools/studio/test-p05-05-assembly.luau) bestand vier Gruppen, die P05-04-Probe lief unverändert, ebenso die Edit-Regressionen. [Beleg](../evidence/P05-05.md)
+- Kein Bild: Der Viewport lieferte nach dem Play-Stopp schwarze Aufnahmen. Maße und Standfläche wurden per Skript geprüft.
 
 ## P05-04 abgenommen (18.11.)
 
@@ -132,7 +138,9 @@ Stand 18. November 2026. **P02, P04 und P05-01 bis P05-04 sind abgenommen. Der S
 
 | Datei | Zweck | Stand |
 |---|---|---|
-| [src/server/Sawmill.luau](../../src/server/Sawmill.luau) | Sägelauf: Start mit Ausgangsreservierung, Abschluss nach 6 s | 4 Servergruppen mit echtem Test-Save, Version 46 |
+| [src/server/Stations.luau](../../src/server/Stations.luau) | Stationslauf für alle vier Stationen: Start mit Ausgangsreservierung, einmaliger Abschluss | 12 lokale Fälle, 4 Servergruppen (Montage), Version 47 |
+| [src/server/StoolView.luau](../../src/server/StoolView.luau) | Greybox-Hocker, roh oder fertig | Hülle 0,40 × 0,45 × 0,40 m auf der Montageauflage gemessen, Version 47 |
+| [src/server/Sawmill.luau](../../src/server/Sawmill.luau) | Säge als dünner Wrapper um Stations | P05-04-Probe erneut bestanden, Version 47 |
 | [src/server/KitView.luau](../../src/server/KitView.luau) | Greybox-Bausatz mit neun Holzteilen | Hülle 0,60 × 0,18 × 0,50 m in Edit/Server gemessen, Version 46 |
 | [src/server/Persistence.luau](../../src/server/Persistence.luau) | Backend-Adapter, bestätigter Stand und unklarer Ausgang | 35 lokal, je 38 + 171 Edit/Server, 7 echte DataStore-Prüfungen auf Version 38 |
 | [src/server/Sessions.luau](../../src/server/Sessions.luau) | Sitzungsbesitz, Speicherrevision und lokale Versuchssperre | 41 Fälle lokal sowie je in Edit und Server, Version 36; Backend-Nachweis P04-06 bestanden |
@@ -151,7 +159,7 @@ Stand 18. November 2026. **P02, P04 und P05-01 bis P05-04 sind abgenommen. Der S
 
 **Naechste Schritte in Reihenfolge.**
 
-1. **P05-05**: Bausatz am Montageeingang zu einem erkennbaren Rohhocker verarbeiten (8 s). Sawmill/KitView als Muster nutzen; State.validate kennt Production-Reservierungen bisher nur für die Säge.
+1. **P05-06/P05-07**: Finishlauf und Packlauf über `Stations` prüfen. Für P05-07 fehlen eine Kartondarstellung und die Bindung der Fertiglagerplätze.
 2. **P03-02/P03-05**: Nach ausstehender Exportordnerfreigabe die neutrale Kopie unter `assets/p03-models/p03-05-import/` einmalig hochladen/importieren; `label-p03-05-probe.luau` mit deren `labels.json` ausfuehren. 1-m-Koerper, Material/Normalen/Marker/Kollision und beide Sprachen pruefen. Aktive Saegeprozessdarstellung/Art bleiben offen, kein paralleler Studio-Schreiber. Fable 5.2 nicht als kostenlosen Dienst einplanen; Art-Vertrag beachten.
 3. Nutzerentscheidungen einholen: Hallentor (oben), schwaecheres Testgeraet (P00-03), handgefahrene Runde mit dem Gespann als Gegenprobe zur automatischen Fahrt.
 

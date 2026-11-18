@@ -1,0 +1,47 @@
+{
+  "date": "2026-11-18",
+  "task": "P05-05",
+  "status": "accepted",
+  "placeId": 79033653140107,
+  "baselineVersion": 46,
+  "savedVersion": 47,
+  "local": {
+    "runtime": "Official Luau CLI 0.747 Windows",
+    "suite": "tools/tests/p05-05-stations.luau",
+    "runner": "tools/tests/run-p05-05.mjs",
+    "stations": "12/12",
+    "strictAnalysis": {"modules": ["State", "Actions", "Transfers", "Profiles", "Sessions", "Persistence", "Recovery", "Stations", "Sawmill"], "exit": 0},
+    "compiled": ["KitView", "StoolView", "Recipe", "HandMoves", "Purchases"],
+    "regressions": {"P04-05": "41/41", "P04-06": "35/35"}
+  },
+  "integration": {
+    "changed": ["State", "Recipe", "Sawmill"],
+    "added": ["Stations", "StoolView"],
+    "verified": "14 Factory-Module per Prüfsumme gleich src/server"
+  },
+  "edit": {
+    "P04-01": {"status": "passed", "checks": 35},
+    "P04-02": {"status": "passed", "checks": 35},
+    "P05-01": {"status": "passed", "checks": 9, "mode": "frische Modulkopie"},
+    "stoolMeasure": {"woodPieces": 9, "joints": 8, "extentsMeters": [0.400, 0.450, 0.400], "bottomGapMeters": 0, "minimumPartStuds": 0.05}
+  },
+  "server": {
+    "status": "passed",
+    "store": "FactoryP0505_Test",
+    "scope": "P0505_008348aebbe448c58a8c6e350f475ad8",
+    "checks": [
+      "an uncertain assembly start reconciles to exactly one stored run beside an independent saw run",
+      "reload keeps both work pieces on their process points and the 8 s assembly timer",
+      "after 8 s the same batch is one measured raw stool standing on its own output pad",
+      "a waiting stool blocks the next kit unconsumed; after delivery the second kit becomes a raw stool"
+    ],
+    "stool": {"wood": 9, "joints": 8, "sizeMeters": [0.40, 0.45, 0.40], "padMeters": [0.70, 0.60]},
+    "final": {"storageRevision": 13, "stateRevision": 14, "money": 17, "first": "Finish.Input", "second": "Montage.Output"},
+    "regressions": {"P05-04": "4 Gruppen bestanden, Scope P0504_09ca7df603df435c8e2ca940b0c2dba1"}
+  },
+  "client": {"serverModules": false, "viewLeftInWorkspace": false},
+  "image": null,
+  "imageNote": "Studio-Viewport lieferte nach Play-Stopp nur schwarze Aufnahmen; Maße und Standfläche per Skript geprüft",
+  "playerTrigger": false,
+  "published": false
+}

@@ -43,7 +43,7 @@
 - [x] **P05-02** Einen Materialkauf mit Spielgeld abwickeln. Der Einkauf belastet das Profil und stellt die Charge am Lieferantenabholplatz bereit.
 - [x] **P05-03** Aufnehmen und Ablegen eines Arbeitsloses an den richtigen Übergabepunkten ermöglichen. Trageanzeige und Rückmeldung erklären Inhalt, Ziel und Ablehnungsgrund.
 - [x] **P05-04** Das Holzpaket an der Säge in einen sichtbaren Bausatz umwandeln.
-- [ ] **P05-05** Den Bausatz an der Montagebank zu einem erkennbaren Rohhocker verarbeiten.
+- [x] **P05-05** Den Bausatz an der Montagebank zu einem erkennbaren Rohhocker verarbeiten.
 - [ ] **P05-06** Den Rohhocker am Finishplatz bearbeiten und die gewählte Oberfläche sichtbar anwenden.
 - [ ] **P05-07** Den fertigen Hocker am Packtisch in einen passenden Karton umwandeln und den Karton im Fertigwarenlager einlagern.
 - [ ] **P05-08** Die versorgten Stationen mit dem aktiven Rezept fortlaufend arbeiten lassen. Ein Maschinenlauf reserviert Platz für sein Ergebnis. Bei vollem Lager entsteht sichtbarer Rückstau, bevor weiterer Input verbraucht wird.
@@ -60,6 +60,8 @@
 [P05-03-Beleg](../evidence/P05-03.md): Fünf Serverprüfgruppen zu Aufnahme, Rückgabe, physischer Nähe, falscher Stufe und vollem Eingang bestanden. Der Nutzer hat den Tastaturdurchlauf auf privater Version 44 bestätigt.
 
 [P05-04-Beleg](../evidence/P05-04.md): Der Sägelauf speichert den Arbeitsbereich und die Ausgangsreservierung gemeinsam. Nach 6 s entsteht ein Bausatz mit neun Teilen, Hülle 0,60 × 0,18 × 0,50 m. Vier Serverprüfgruppen mit echtem Test-Save und die Regressionen bestanden, private Version 46. Ein Spielerauslöser fehlt noch und folgt mit P05-08.
+
+[P05-05-Beleg](../evidence/P05-05.md): `Stations` führt Start und Ende für alle vier Stationsregeln aus `State.STATIONS` aus. Der Montagelauf macht nach 8 s aus dem Bausatz einen vermessenen Rohhocker (0,40 × 0,45 × 0,40 m). Die Stationssuite (12 Fälle) und vier Serverprüfgruppen mit echtem Test-Save bestanden, private Version 47.
 
 ## P06 · Quad, Ladung und echte Fahrten
 

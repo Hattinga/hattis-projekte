@@ -3,10 +3,10 @@
 local State = require(script.Parent.State)
 
 export type Station = {
-	id: string,
-	inputStage: State.Stage,
-	outputStage: State.Stage,
-	durationSeconds: number,
+	read id: string,
+	read inputStage: State.Stage,
+	read outputStage: State.Stage,
+	read durationSeconds: number,
 }
 export type Binding = {
 	locations: {[string]: State.Location},
@@ -24,16 +24,12 @@ Recipe.stageNames = table.freeze({
 	Karton = "Hockerkarton",
 })
 
-local function station(id: string, inputStage: State.Stage, outputStage: State.Stage, duration: number): Station
-	return table.freeze({id = id, inputStage = inputStage, outputStage = outputStage, durationSeconds = duration})
+local stations: {Station} = {}
+for _, rule in State.STATIONS do
+	table.insert(stations, table.freeze({id = rule.id, inputStage = rule.inputStage,
+		outputStage = rule.outputStage, durationSeconds = rule.durationSeconds}))
 end
-
-Recipe.stations = table.freeze({
-	station(State.SAW.id, State.SAW.inputStage, State.SAW.outputStage, State.SAW.durationSeconds),
-	station("Montage", "Bausatz", "Rohhocker", 8),
-	station("Finish", "Rohhocker", "Fertig", 6),
-	station("Packen", "Fertig", "Karton", 4),
-})
+Recipe.stations = table.freeze(stations)
 
 local function uniqueChild(parent: Instance, name: string): Instance?
 	local match: Instance? = nil

@@ -21,10 +21,30 @@ export type Profile = {schemaVersion: number, ownerUserId: number, revision: num
 	locations: {[string]: Location}, batches: {[string]: Batch}, claims: {[string]: Claim},
 	reservations: {[string]: Reservation}, receipts: {[string]: Receipt}}
 
+export type StationRule = {read id: string, read input: string, read process: string, read output: string,
+	read inputStage: Stage, read outputStage: Stage, read durationSeconds: number}
+
 local State = {}
 State.SCHEMA_VERSION = 2
-State.SAW = table.freeze({id="Saege", input="Saege.Input", process="Saege.Process", output="Saege.Output",
-	inputStage="Holzpaket" :: Stage, outputStage="Bausatz" :: Stage, durationSeconds=6})
+local function stationRule(id: string, inputStage: Stage, outputStage: Stage, durationSeconds: number): StationRule
+	return table.freeze({id=id, input=id..".Input", process=id..".Process", output=id..".Output",
+		inputStage=inputStage, outputStage=outputStage, durationSeconds=durationSeconds})
+end
+-- Hocker01 v1: one run per station, one batch in, the same batch out at the next stage.
+State.STATIONS = table.freeze({
+	stationRule("Saege", "Holzpaket", "Bausatz", 6),
+	stationRule("Montage", "Bausatz", "Rohhocker", 8),
+	stationRule("Finish", "Rohhocker", "Fertig", 6),
+	stationRule("Packen", "Fertig", "Karton", 4),
+})
+local stationById: {[string]: StationRule} = {}
+local stationByOutput: {[string]: StationRule} = {}
+for _, rule in State.STATIONS do
+	stationById[rule.id] = rule
+	stationByOutput[rule.output] = rule
+end
+State.STATION_BY_ID = table.freeze(stationById)
+State.SAW = State.STATIONS[1]
 local MAX_INTEGER = 9007199254740991
 local STAGES: {[string]: boolean} = {Holzpaket=true,Bausatz=true,Rohhocker=true,Fertig=true,Karton=true}
 local KINDS: {[string]: boolean} = {Supplier=true,RawStore=true,FinishedStore=true,Carrier=true,
@@ -190,22 +210,25 @@ function State.validate(profile: any): (boolean, string?)
 			if deliveriesByOperation[reservation.purchaseOperationId] then return false,"INVALID_DELIVERY_RESERVATION" end
 			deliveriesByOperation[reservation.purchaseOperationId]=locationId
 		elseif reservation.kind=="Production" then
-			local saw=State.SAW
-			local input,process=profile.locations[saw.input],profile.locations[saw.process]
-			if not record(reservation,PRODUCTION_FIELDS) or not integer(reservation.finishAt,saw.durationSeconds)
-				or locationId~=saw.output or location.kind~="StationOutput"
-				or not input or input.kind~="StationInput" or not table.find(input.acceptedStages,saw.inputStage)
-				or not process or process.kind~="StationProcess" or batch.locationId~=saw.process
-				or batch.stage~=saw.inputStage or not table.find(location.acceptedStages,saw.outputStage) then
+			local rule=stationByOutput[locationId]
+			if not rule then return false,"INVALID_PRODUCTION_RESERVATION" end
+			local input,process=profile.locations[rule.input],profile.locations[rule.process]
+			if not record(reservation,PRODUCTION_FIELDS) or not integer(reservation.finishAt,rule.durationSeconds)
+				or location.kind~="StationOutput"
+				or not input or input.kind~="StationInput" or not table.find(input.acceptedStages,rule.inputStage)
+				or not process or process.kind~="StationProcess" or batch.locationId~=rule.process
+				or batch.stage~=rule.inputStage or not table.find(location.acceptedStages,rule.outputStage) then
 				return false,"INVALID_PRODUCTION_RESERVATION"
 			end
 		else
 			return false,"INVALID_RESERVATION_KIND"
 		end
 	end
-	local sawReservation=profile.reservations[State.SAW.output]
-	if counts[State.SAW.process]==1 and (not sawReservation or sawReservation.kind~="Production") then
-		return false,"MISSING_PRODUCTION_RESERVATION"
+	for _,rule in State.STATIONS do
+		local running=profile.reservations[rule.output]
+		if counts[rule.process]==1 and (not running or running.kind~="Production") then
+			return false,"MISSING_PRODUCTION_RESERVATION"
+		end
 	end
 	local receiptRevisions: {[number]: boolean} = {}
 	local purchasesByBatch: {[string]: any} = {}

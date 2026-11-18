@@ -2,6 +2,8 @@
 
 Stand 18. November 2026. Entwurfsvertrag für **P01-01**, **P01-02** und **P01-06**, Rezept `Hocker01`, Version 1. Die Mengen, Zeiten und Kapazitäten sind vorläufige Prüfwerte. Das Rezept und die zwölf Stationsplätze sind seit P05-01 serverseitig hinterlegt und an der Greybox geprüft. Der aktive Produktionsablauf folgt in P05. [Beleg](../evidence/P05-01.md)
 
+Umsetzung: `State.STATIONS` ist die einzige Quelle für Plätze, Stufen und Zeiten der vier Stationen. `Stations.start` belegt den Arbeitsbereich und reserviert den Ausgang im selben bestätigten Save. `Stations.finish` ersetzt die Reservierung genau einmal durch das Ergebnis. Säge und Montage sind seit [P05-04](../evidence/P05-04.md) und [P05-05](../evidence/P05-05.md) serverseitig geprüft.
+
 [Spielkern](CORE.md) · [Wirtschaft](ECONOMY.md) · [Zustandsregeln](../technical/STATE.md) · [Prüfbeleg](../evidence/P01-01-02.md)
 
 [Waren und Maßblatt P01-03/P01-05](DIMENSIONS.md) · [Verladekette P01-04](LOGISTICS.md) · [Ergänzende Papierabnahme P01-03 bis P01-06](../evidence/P01-03-06.md)
