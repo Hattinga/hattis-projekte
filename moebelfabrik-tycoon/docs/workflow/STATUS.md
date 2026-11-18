@@ -1,16 +1,15 @@
 # Projektstatus
 
-Stand 18. November 2026. **P02, P04 und P05-01 bis P05-08 sind abgenommen. Für P05-09 stehen die spielbare Linien-Demo und die automatische Kette (zwei Kartons in 34 s). Es fehlt nur noch der manuelle Tastaturdurchlauf durch den Nutzer.**
+Stand 18. November 2026. **P02, P04 und P05 sind abgenommen.** Die komplette Handkette lief automatisch und per Tastatur mit echten E-Prompts. Der Nutzer hat die offenen Entwurfsentscheidungen an Claude delegiert, sie sind in den Fachdateien festgehalten. **Als Nächstes folgt P06 (Quad, Ladung und echte Fahrten).**
 
 | Feld | Aktuell |
 |---|---|
-| Letzter abgeschlossener Schritt | **P05-08** – `Line`-Takt, `WareView`/`LineView`, Stations- und Lagerschilder, Rückstau ohne Verbrauch ([Beleg](../evidence/P05-08.md)) |
-| In Arbeit | **P05-09** – Demo [start-p05-09-line-demo.luau](../../tools/studio/start-p05-09-line-demo.luau), automatische Kette [test-p05-09-chain.luau](../../tools/studio/test-p05-09-chain.luau) bestanden ([Zwischenstand](../evidence/P05-09.md)) |
-| Naechster Umsetzungsschritt | **Nutzer**: Tastaturdurchlauf der P05-09-Demo (Play starten, Claude startet die Demo). Danach P05-09 abhaken und die P05-Phasenabnahme vornehmen. |
-| Paralleles Paket | **P03-03** – Gebäude-Außenprobe von Claude Opus 5.5 mit 141 Geometrieprüfungen, zwei FBX-Rückimporten und 13 Ansichten lokal übernommen ([Beleg](../evidence/P03-03.md)). Abnahme und Roblox-Import stehen aus. Für die separate P03-05-Importkopie fehlt die Exportordnerfreigabe. |
-| Noch offene Umgebungsvoraussetzung | **P00-03** - reales schwaecheres Testgeraet bestimmen (braucht den Nutzer) |
-| Offene Entwurfsfrage (Nutzer) | Hallentor 4 m / Halle 10 m tief: Kehre in der Halle passt nur mit schraegem Anlauf (0,31 m Reserve); gerader Anlauf streift den Torpfeiler um 0,32 m. Tor breiter, Halle tiefer oder rueckwaerts ausfahren? Nichts geaendert. |
-| Planabschnitt | [Handbetrieb, P05](../plan/01-handbetrieb.md#p05--einkauf-und-manuelle-dauerproduktion) |
+| Letzter abgeschlossener Schritt | **P05-09** – Linien-Demo, automatische Kette und Tastaturdurchlauf; Befund „Prompts nur in Blickrichtung“ korrigiert ([Beleg](../evidence/P05-09.md)) |
+| Davor | **P05-08** – `Line`-Takt, `WareView`/`LineView`, Stations- und Lagerschilder, Rückstau ohne Verbrauch ([Beleg](../evidence/P05-08.md)) |
+| Naechster Umsetzungsschritt | **P06-01** – kurze Teststrecke Lieferant → Werkstatt → Händler → Privatkunde auf der vorhandenen `CityGreybox` abstecken. Ladezonen auf den Höfen, keine Hallenzufahrt (Entscheidung in [MAP](../design/MAP.md)) |
+| Entscheidungen 18.11. (delegiert) | Hallentor: Laden nur auf dem Hof, Halle wird nicht befahren, Tor bleibt 4 m ([MAP](../design/MAP.md)). Oberfläche: eine Finish-Oberfläche in Hocker01 v1 ([PRODUCTION](../design/PRODUCTION.md)). P00-03: Zielprofil schwächeres Android-Phone 1600×720, Touch, Grafikstufe 1; bis zum echten Gerät Studio-Emulator als Stellvertreter, Checkbox bleibt offen ([P00](../plan/00-start.md)) |
+| Paralleles Paket | **P03-03** – Gebäude-Außenprobe lokal übernommen ([Beleg](../evidence/P03-03.md)), Abnahme und Roblox-Import stehen aus. **P03-05-Upload blockiert:** Der Nutzer muss unter `Assistant Settings > MCP Permissions` den Ordner `assets\p03-models\p03-05-import\exports` freigeben, das kann Claude nicht selbst tun. |
+| Planabschnitt | [Handbetrieb, P06](../plan/01-handbetrieb.md#p06--quad-ladung-und-echte-fahrten) |
 | Zustaendigkeit | Lead integriert gemeinsame Dateien/Studio; Blender-Agent lieferte getrenntes P03-02-Paket, Lead hat Quelle/Exporte/Ansichten uebernommen. Kein paralleler Studio-Schreiber |
 | Aktueller Test-Place | Furniture Factory Tycoon, Place `79033653140107`, Universe `10776116608`, privat |
 | Spielkarte | `Workspace.CityGreybox`, Revision 1; Ursprung (430;0;450) Studs, 19 Strassen/Zufahrten, 4 Tischlereien |
@@ -23,6 +22,12 @@ Stand 18. November 2026. **P02, P04 und P05-01 bis P05-08 sind abgenommen. Für 
 | Speicherung | TeamCreate **Version 49**, privater Stand, Studio im Edit-Modus. |
 | Wiederherstellbare Staende | Version 46 = Sawmill/KitView, Version 47 = zusätzlich Stations/StoolView, Version 48 = zusätzlich Labels/CartonView/`FactoryLabels`, Version 49 = zusätzlich Line/WareView/LineView. |
 | Pruefbelege | [P02-06](../evidence/P02-06.md), [P02-05](../evidence/P02-05.md), [P02-04](../evidence/P02-04.md), [P02-03R](../evidence/P02-03R.md); Stadtentwurf [MAP](../design/MAP.md), Masse [DIMENSIONS](../design/DIMENSIONS.md) |
+
+## P05-09 und Phase P05 abgenommen (18.11.)
+
+- Die [Linien-Demo](../../tools/studio/start-p05-09-line-demo.luau) wird im Server eines frischen Play-Starts per `execute_luau` gestartet. Sie bietet 16 E-Prompts, Echtzeittakt, Warenansichten, HUD und zwei markierte Testpakete und läuft ohne DataStore. Die [automatische Kette](../../tools/studio/test-p05-09-chain.luau) läuft auf der gestarteten Demo.
+- Der Tastaturdurchlauf erfolgte per `character_navigation` und `user_keyboard_input` (Taste E). Er brachte zwei Kartons ins Fertiglager, falsche Ablagen blieben in der Hand, Rückstau an der Säge war sichtbar.
+- Befund: Gegenüberliegende Stationen teilen den Bedienplatz im Gang, E traf deshalb die falsche Auflage. Korrektur: Prompts werden nur in Blickrichtung angeboten (Regel in [PRODUCTION](../design/PRODUCTION.md)). Eine kürzere Reichweite half nicht, weil der Stationskörper den Avatar auf etwa 4 Studs hält. [Beleg](../evidence/P05-09.md)
 
 ## P05-08 abgenommen (18.11.)
 
@@ -170,9 +175,9 @@ Stand 18. November 2026. **P02, P04 und P05-01 bis P05-08 sind abgenommen. Für 
 
 **Naechste Schritte in Reihenfolge.**
 
-1. **P05-09 manuell**: Der Nutzer spielt die Demo per Tastatur durch (Anleitung im [Zwischenstand](../evidence/P05-09.md)). Danach Checkbox P05-09 und P05-Abnahme.
+1. **P06**: Teststrecke und Ladezonen auf den Höfen (P06-01), Gespann mit festen Ladeplätzen A/B (P06-02/03), Beladen und Entladen über die gemeinsamen Umbuchungen (P06-04/05), danach Fahrtnachweis und Wiederbeitritt. Spieler-Kaufbedienung am Lieferantenhof gehört zu P06-04.
 2. **P03-02/P03-05**: Nach ausstehender Exportordnerfreigabe die neutrale Kopie unter `assets/p03-models/p03-05-import/` einmalig hochladen/importieren; `label-p03-05-probe.luau` mit deren `labels.json` ausfuehren. 1-m-Koerper, Material/Normalen/Marker/Kollision und beide Sprachen pruefen. Aktive Saegeprozessdarstellung/Art bleiben offen, kein paralleler Studio-Schreiber. Fable 5.2 nicht als kostenlosen Dienst einplanen; Art-Vertrag beachten.
-3. Nutzerentscheidungen einholen: Hallentor (oben), schwaecheres Testgeraet (P00-03), handgefahrene Runde mit dem Gespann als Gegenprobe zur automatischen Fahrt.
+3. Handgefahrene Runde mit dem Gespann als Gegenprobe zur automatischen Fahrt (in P06-08 per simulierter Eingabe möglich). P00-03 auf einem echten Gerät, sobald verfügbar.
 
 **Bekannte Grenzen.** Gefahren hat bisher nur ein Serverskript plus zwei kurze Tastaturlaeufe; Fahrgefuehl, Federung und Kamera sind nicht abgestimmt. Fahrerhoehe 1,88 m gilt fuer einen R15-Testavatar. Auf zwei Etappen lag kurz ein Rad ueber einem Gehwegstreifen; die Stelle ist nicht lokalisiert. An den Zielen gibt es noch keine festen Uebergabepunkte. Gebaeude und Fahrzeug sind Platzhalter, keine Art-Freigabe.
 

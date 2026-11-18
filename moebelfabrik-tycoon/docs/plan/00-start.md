@@ -13,6 +13,8 @@ Dieser Abschnitt führt von der Projektumgebung bis zur abgenommenen Musterprobe
 
 Beleg fuer P00-01, P00-02 und P00-04: [Studio-Einrichtung](../evidence/P00-STUDIO-SETUP.md). P00-03 bleibt offen.
 
+**Entscheidung P00-03 (18.11.2026, vom Nutzer an Claude delegiert):** Zielprofil ist ein schwächeres Android-Smartphone im Querformat. Eingabe per Touch, Auflösung 1600 × 720, Roblox-Grafikstufe 1 (manuell). Bis ein reales Gerät verfügbar ist, dient der Studio-Geräteemulator mit diesem Profil und Grafikstufe 1 als reproduzierbarer Stellvertreter für Lesbarkeit und Bedienung. Leistungsaussagen gelten damit nicht als belegt. Die Checkbox wird erst nach einem Durchlauf auf einem echten Gerät dieser Klasse gesetzt (spätestens QA-P11-03).
+
 ## P01 · Rezept, Übergaben und Maßvertrag
 
 **Abhängigkeit.** P00.

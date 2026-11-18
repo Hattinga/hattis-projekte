@@ -47,7 +47,7 @@
 - [x] **P05-06** Den Rohhocker am Finishplatz bearbeiten und die gewählte Oberfläche sichtbar anwenden.
 - [x] **P05-07** Den fertigen Hocker am Packtisch in einen passenden Karton umwandeln und den Karton im Fertigwarenlager einlagern.
 - [x] **P05-08** Die versorgten Stationen mit dem aktiven Rezept fortlaufend arbeiten lassen. Ein Maschinenlauf reserviert Platz für sein Ergebnis. Bei vollem Lager entsteht sichtbarer Rückstau, bevor weiterer Input verbraucht wird.
-- [ ] **P05-09** Einkauf und komplette Handkette mit der [Prüfmatrix](../qa/TESTS.md) prüfen. Für den isolierten Stationstest gekennzeichneten Testbestand verwenden. Die reguläre Beschaffungsfahrt folgt in P06.
+- [x] **P05-09** Einkauf und komplette Handkette mit der [Prüfmatrix](../qa/TESTS.md) prüfen. Für den isolierten Stationstest gekennzeichneten Testbestand verwenden. Die reguläre Beschaffungsfahrt folgt in P06.
 
 **Abnahme** Ein Spieler kann Holz kaufen, Zwischenprodukte tragen und ohne vorherigen Kundenauftrag mehrere Hocker herstellen und lagern. Falsche Ablagen erhalten die Ware. Ein volles Lager stoppt die Linie verständlich. Der Kauf allein liefert kein Holz in die Fabrik.
 
@@ -67,7 +67,7 @@
 
 [P05-08-Beleg](../evidence/P05-08.md): `Line.tick` beendet fällige Läufe und startet bereite Stationen ohne automatische Weitergabe. `LineView` zeigt jede Charge an ihrem bestätigten Ort sowie zweisprachige Stations- und Lagerschilder. Bei vollen Ausgängen und vollem Lager wird kein Input verbraucht und nichts gespeichert, ein freigegebener Platz setzt die Linie fort. Stationssuite 18/18 und vier Serverprüfgruppen nach QA-P05-03 bestanden, private Version 49.
 
-[P05-09-Zwischenstand](../evidence/P05-09.md): Die spielbare Linien-Demo mit 16 Prompts, Echtzeittakt, Warenansichten und HUD steht. Die automatische Kette nach QA-P05-02 bestand in 34 s (zwei Kartons ohne Auftrag eingelagert), QA-P05-01 und QA-P05-03 sind durch die P05-02- und P05-08-Proben belegt. Offen ist der manuelle Tastaturdurchlauf durch den Nutzer.
+[P05-09-Beleg](../evidence/P05-09.md): Spielbare Linien-Demo mit 16 Prompts, Echtzeittakt, Warenansichten und HUD. Automatische Kette (34 s) und Tastaturdurchlauf mit echten E-Prompts bestanden, jeweils zwei Kartons ohne Auftrag eingelagert. Befund: Gegenüberliegende Stationen teilen den Bedienplatz, deshalb werden Prompts nur in Blickrichtung angeboten. **P05 ist abgenommen.** Die Kaufbedienung für Spieler folgt mit dem Beladen am Lieferanten (P06-04).
 
 ## P06 · Quad, Ladung und echte Fahrten
 

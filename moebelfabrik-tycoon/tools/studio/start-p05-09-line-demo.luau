@@ -164,6 +164,37 @@ for id, endpoint in endpoints do
 	end)
 end
 
+-- Facing station rows share one aisle stand marker (e.g. Montage.Output / Finish.Input, both 4.3 studs away).
+-- The client offers only prompts in front of the avatar, so E always means the station the player faces.
+local facing = Instance.new("LocalScript")
+facing.Name = "P0509Facing"
+facing.Source = [[
+local player = game:GetService("Players").LocalPlayer
+local prompts = {}
+local refreshed = -math.huge
+game:GetService("RunService").RenderStepped:Connect(function()
+	if os.clock() - refreshed > 2 then
+		refreshed = os.clock()
+		prompts = {}
+		for _, item in workspace.P02Line:GetDescendants() do
+			if item:IsA("ProximityPrompt") and item.Name == "P0509Line" then table.insert(prompts, item) end
+		end
+	end
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not root then return end
+	local look = (root.CFrame.LookVector * Vector3.new(1, 0, 1)).Unit
+	for _, prompt in prompts do
+		local point = prompt.Parent
+		if point and point:IsA("Attachment") then
+			local toward = (point.WorldPosition - root.Position) * Vector3.new(1, 0, 1)
+			prompt.Enabled = toward.Magnitude < 0.01 or look:Dot(toward.Unit) > 0.35
+		end
+	end
+end)
+]]
+facing.Parent = playerGui
+
 -- Real-time line: finish due runs, start ready stations, refresh signs; keep the session alive.
 local accumulated = 0
 local ticks = 0

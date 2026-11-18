@@ -4,6 +4,8 @@ Stand 18. November 2026. Entwurfsvertrag für **P01-01**, **P01-02** und **P01-0
 
 Umsetzung: `State.STATIONS` ist die einzige Quelle für Plätze, Stufen und Zeiten der vier Stationen. `Stations.start` belegt den Arbeitsbereich und reserviert den Ausgang im selben bestätigten Save. `Stations.finish` ersetzt die Reservierung genau einmal durch das Ergebnis. Säge und Montage sind seit [P05-04](../evidence/P05-04.md) und [P05-05](../evidence/P05-05.md) serverseitig geprüft.
 
+**Entscheidung Oberfläche (18.11.2026, vom Nutzer an Claude delegiert):** Hocker01 v1 hat genau eine Finish-Oberfläche (warmer, ruhiger Holzton gemäß P03 HJ3). Eine Oberflächenwahl mit eigenem Preis gibt es in v1 nicht. Varianten kommen frühestens nach dem funktionierenden Grundkreislauf als neue Rezeptversion mit eigenem Chargenfeld und Wirtschaftswert (vgl. ECONOMY). Begonnene Chargen behalten dabei ihre gespeicherte Rezeptversion.
+
 [Spielkern](CORE.md) · [Wirtschaft](ECONOMY.md) · [Zustandsregeln](../technical/STATE.md) · [Prüfbeleg](../evidence/P01-01-02.md)
 
 [Waren und Maßblatt P01-03/P01-05](DIMENSIONS.md) · [Verladekette P01-04](LOGISTICS.md) · [Ergänzende Papierabnahme P01-03 bis P01-06](../evidence/P01-03-06.md)
@@ -63,6 +65,8 @@ Die Auflagen müssen die gesamte Grundfläche der jeweiligen Ware tragen; Ein- u
 ## Gemeinsame Handgriffe und Rückmeldungen
 
 Die zulässige Handfolge ist Rohstoffablage → Hand → `Saege.Input`, anschließend jeweils Stationsausgang → Hand → nächster Stationseingang und zuletzt `Packen.Output` → Hand → Fertiglager. Pro Handtransport wird genau eine vollständige Charge getragen. Das Rohstoff- und Fertiglager sind eigene Orte mit separat festzulegender Slotzahl; sie sind keine zusätzlichen Stationsausgänge. Die genaue Lager- und Verladekette folgt in P01-04.
+
+**Auswahl der Auflage (P05-09-Befund):** Gegenüberliegende Stationsreihen teilen sich im Gang einen Bedienplatz. Montage-Ausgang und Finish-Eingang, Finish-Ausgang und Montage-Eingang, Packtisch-Eingang und Säge-Ausgang sowie Packtisch-Ausgang und Säge-Eingang sind dort jeweils 4,3 Studs entfernt. Eine Interaktion bietet deshalb nur Auflagen in Blickrichtung des Avatars an (horizontaler Winkel unter etwa 70°). Eine kleinere Reichweite allein hilft nicht, weil der Stationskörper den Avatar auf etwa 4 Studs Abstand hält. Die serverseitige Prüfung von Reichweite, Bedienseite und Sicht bleibt unverändert.
 
 Spätere Mitarbeiter verwenden dieselbe Folge mit einem sichtbaren Träger. Ein Förderband verbindet einen bestehenden Ausgang mit dem nächsten Eingang über einen sichtbaren Bandabschnitt. Diese Transportarten ändern weder Rezept, akzeptierte Warenzustände noch Stationskapazität. Aufnahme und Ablage verwenden für alle Akteure die gemeinsamen Reservierungen und Umbuchungen aus STATE.
 
