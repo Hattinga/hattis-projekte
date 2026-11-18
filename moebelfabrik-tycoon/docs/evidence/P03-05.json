@@ -1,0 +1,74 @@
+{
+  "task": "P03-05",
+  "date": "2026-11-16",
+  "status": "prepared-upload-directory-approval-pending",
+  "accountUserId": 3493645144,
+  "permanentAssetConsent": true,
+  "exportFolder": "C:/Claudeprojecte/repo/hattis-projekte/moebelfabrik-tycoon/assets/p03-models/p03-05-import/exports",
+  "prep": {
+    "checks": 297,
+    "passed": 297,
+    "meshes": 140,
+    "roundtrips": 5,
+    "wordMeshes": 0,
+    "filesCopiedSha256Verified": 16
+  },
+  "localization": {
+    "translations": {
+      "stool.finished": {
+        "de": "FERTIG",
+        "en": "FINISHED"
+      },
+      "saw.input": {
+        "de": "EIN",
+        "en": "IN"
+      },
+      "saw.process": {
+        "de": "PROZESS",
+        "en": "PROCESS"
+      },
+      "saw.name": {
+        "de": "SÄGE 01",
+        "en": "SAW 01"
+      },
+      "saw.output": {
+        "de": "AUS",
+        "en": "OUT"
+      },
+      "saw.status": {
+        "de": "FREI",
+        "en": "CLEAR"
+      },
+      "stool.raw": {
+        "de": "ROH",
+        "en": "RAW"
+      },
+      "kit.parts": {
+        "de": "BAUSATZ",
+        "en": "PARTS KIT"
+      }
+    },
+    "labels": 8
+  },
+  "upload": {
+    "attemptedRequests": 1,
+    "assetsCreated": 0,
+    "operationsCreated": 0,
+    "scopeProbe200": [
+      "asset:read",
+      "asset:write"
+    ],
+    "error": "not inside a directory approved for uploads",
+    "file": "ControlCube_1m.fbx",
+    "retried": false,
+    "movedToCircumvent": false
+  },
+  "place": {
+    "placeId": 79033653140107,
+    "universeId": 10776116608,
+    "rollbackVersion": 33,
+    "imported": false,
+    "published": false
+  },
+  "artApproved": false
+}

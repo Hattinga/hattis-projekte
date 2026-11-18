@@ -1,0 +1,397 @@
+{
+  "task": "P03-01",
+  "packageVersion": "0.1",
+  "date": "2026-11-13",
+  "status": "local-reference-proposal-ready-for-lead-review",
+  "approval": "No final art, model, Blender, Studio, import or P03-07 approval claimed.",
+  "ownership": [
+    ".local/p03-01/reference.md",
+    ".local/p03-01/reference.svg",
+    ".local/p03-01/checks.json",
+    ".local/p03-01/preview.png"
+  ],
+  "previewAuthorization": "Lead explicitly added preview.png to local write scope during this task.",
+  "sources": [
+    "docs/design/DIMENSIONS.md",
+    "docs/design/ART.md",
+    "docs/evidence/P02-06.md",
+    "docs/plan/00-start.md",
+    "docs/roles/BLENDER.md",
+    "docs/workflow/STATUS.md",
+    "docs/workflow/WORKFLOW.md"
+  ],
+  "units": {
+    "linear": "m",
+    "order": "X,Y,Z = width,height,depth",
+    "studsPerMeter": 3.5714285714285716,
+    "axisMap": "Blender (X,Y,Z) -> Roblox (X,Z,-Y)"
+  },
+  "positiveChecks": [
+    {
+      "id": "H-01",
+      "status": "pass",
+      "detail": "Neun Holzteile, davon vier Beine.",
+      "values": {
+        "woodParts": 9,
+        "legs": 4
+      }
+    },
+    {
+      "id": "H-02",
+      "status": "pass",
+      "detail": "Alle Holzteile innerhalb unveränderter Hockerhülle 0,40 × 0,45 × 0,40.",
+      "values": {}
+    },
+    {
+      "id": "H-03",
+      "status": "pass",
+      "detail": "Gestell 0,36 und Sitzüberstand 0,02 je Seite.",
+      "values": {}
+    },
+    {
+      "id": "H-04",
+      "status": "pass",
+      "detail": "Zargenstirnflächen berühren Beininnenseiten bei ±0,145.",
+      "values": {}
+    },
+    {
+      "id": "H-05",
+      "status": "pass",
+      "detail": "Beinköpfe liegen ohne Luft unter Sitz.",
+      "values": {}
+    },
+    {
+      "id": "H-06",
+      "status": "pass",
+      "detail": "Schraubfamilien räumlich versetzt; Sitzschrauben enden über den Zargen.",
+      "values": {
+        "horizontalOffset": 0.03,
+        "seatScrewEndY": 0.39
+      }
+    },
+    {
+      "id": "H-07",
+      "status": "pass",
+      "detail": "Kartoninnenluft seitlich, unten und oben je 0,02.",
+      "values": {}
+    },
+    {
+      "id": "H-08",
+      "status": "pass",
+      "detail": "Holzpacklage passt in nutzbaren Träger, unverändert.",
+      "values": {}
+    },
+    {
+      "id": "H-09",
+      "status": "pass",
+      "detail": "Knappste Paketluft bleibt 0,005 X / 0,0025 Z je Seite.",
+      "values": {}
+    },
+    {
+      "id": "H-10",
+      "status": "pass",
+      "detail": "Abtragende Fasen expandieren keine Hülle; Roh/Finish identische Nenngeometrie.",
+      "values": {}
+    },
+    {
+      "id": "S-01",
+      "status": "pass",
+      "detail": "Drei Auflagen, zwei Zwischenräume und zwei Außenränder füllen Stationsbreite.",
+      "values": {}
+    },
+    {
+      "id": "S-02",
+      "status": "pass",
+      "detail": "Vorgeschlagene feste Teile bleiben in Stationshülle.",
+      "values": {}
+    },
+    {
+      "id": "S-03",
+      "status": "pass",
+      "detail": "Alle drei freien Warenprismen ohne volumetrische Überschneidung mit festen Teilen.",
+      "values": {
+        "freeBoxes": [
+          [
+            [
+              -1.15,
+              -0.45000000000000007
+            ],
+            [
+              0.9,
+              1.45
+            ],
+            [
+              -0.3,
+              0.3
+            ]
+          ],
+          [
+            [
+              -0.35,
+              0.35
+            ],
+            [
+              0.9,
+              1.45
+            ],
+            [
+              -0.3,
+              0.3
+            ]
+          ],
+          [
+            [
+              0.45000000000000007,
+              1.15
+            ],
+            [
+              0.9,
+              1.45
+            ],
+            [
+              -0.3,
+              0.3
+            ]
+          ]
+        ],
+        "hardBoxCount": 13
+      }
+    },
+    {
+      "id": "S-04",
+      "status": "pass",
+      "detail": "Alle fünf Warenzustände passen auf jede Auflage.",
+      "values": {}
+    },
+    {
+      "id": "S-05",
+      "status": "pass",
+      "detail": "Größter Träger erhält rundum 0,05 Auflagerand.",
+      "values": {}
+    },
+    {
+      "id": "S-06",
+      "status": "pass",
+      "detail": "Alle Warenhöhen passen; Karton hat 0,04 Reserve.",
+      "values": {}
+    },
+    {
+      "id": "S-07",
+      "status": "pass",
+      "detail": "Geparktes Blatt endet 0,03 unter tragendem Tisch.",
+      "values": {}
+    },
+    {
+      "id": "S-08",
+      "status": "pass",
+      "detail": "Geparkte Haube und hintere Teile haben 0,01 Abstand in Z zum Warenraum.",
+      "values": {}
+    },
+    {
+      "id": "S-09",
+      "status": "pass",
+      "detail": "Füße/Tisch/Platten liegen an Kontaktflächen Y=0,80/0,88/0,90 an.",
+      "values": {}
+    },
+    {
+      "id": "G-01",
+      "status": "pass",
+      "detail": "0,24-m-Wand und 0,10-m-Ringplatte bilden geschlossene Auflage.",
+      "values": {}
+    },
+    {
+      "id": "G-02",
+      "status": "pass",
+      "detail": "Keil vollständig passend zwischen Platte und Sparrenunterkante.",
+      "values": {
+        "outerKeil": 0.06,
+        "innerKeil": 0.18
+      }
+    },
+    {
+      "id": "G-03",
+      "status": "pass",
+      "detail": "Gegenseitiges Dachauflager ist symmetrisch und vorhanden.",
+      "values": {}
+    },
+    {
+      "id": "G-04",
+      "status": "pass",
+      "detail": "Dachsteigung 1:2, 26,565 Grad.",
+      "values": {
+        "pitchDeg": 26.56505117707799
+      }
+    },
+    {
+      "id": "G-05",
+      "status": "pass",
+      "detail": "Schalung/Metallhaut schließen auf Sparrenprofil an.",
+      "values": {}
+    },
+    {
+      "id": "G-06",
+      "status": "pass",
+      "detail": "Traufblende schließt exakt an Dachkante an, 0,20 hoch.",
+      "values": {}
+    },
+    {
+      "id": "G-07",
+      "status": "pass",
+      "detail": "Dachüberstand ist neu bemaßt: 0,30 Traufe / 0,25 Ortgang.",
+      "values": {}
+    },
+    {
+      "id": "G-08",
+      "status": "pass",
+      "detail": "Firstkappenfüße berühren Dach; äußere Spitze 4,500.",
+      "values": {}
+    },
+    {
+      "id": "G-09",
+      "status": "pass",
+      "detail": "Fensteröffnung, Anschlussfuge, Rahmen und Glaslichtmaß passen.",
+      "values": {}
+    },
+    {
+      "id": "G-10",
+      "status": "pass",
+      "detail": "Rahmentiefe und Glas liegen vollständig in 0,24-m-Laibung.",
+      "values": {}
+    },
+    {
+      "id": "G-11",
+      "status": "pass",
+      "detail": "Fensterbank/Öffnungsunterkante/Rahmen mit 0,01 Dichtung; 0,04 vorderer Vorsprung.",
+      "values": {}
+    },
+    {
+      "id": "G-12",
+      "status": "pass",
+      "detail": "Vier Sparrenpaare befinden sich über beiden Seitenwänden.",
+      "values": {}
+    },
+    {
+      "id": "U-01",
+      "status": "pass",
+      "detail": "Einheit genau einmal: 1 m = 25/7 Studs.",
+      "values": {}
+    },
+    {
+      "id": "U-02",
+      "status": "pass",
+      "detail": "Achsenbeispiel Blender (1,2,3) → Roblox (1,3,-2).",
+      "values": {}
+    }
+  ],
+  "negativeChecks": [
+    {
+      "id": "N-01",
+      "status": "pass",
+      "expected": "reject",
+      "detail": "Ein Bein fehlt: acht Holzteile / drei Beine verletzt den Vertrag."
+    },
+    {
+      "id": "N-02",
+      "status": "pass",
+      "expected": "reject",
+      "detail": "1-mm-expandierte Sitzkante überschreitet 0,40-m-Hülle."
+    },
+    {
+      "id": "N-03",
+      "status": "pass",
+      "expected": "reject",
+      "detail": "Angehobenes Blatt verletzt freien Prozessraum im Übergabemodus."
+    },
+    {
+      "id": "N-04",
+      "status": "pass",
+      "expected": "reject",
+      "detail": "Haube bei Z=0,29 schneidet Warenraum; Mindestlage 0,31 erforderlich."
+    },
+    {
+      "id": "N-05",
+      "status": "pass",
+      "expected": "reject",
+      "detail": "Veränderte Slotmitte 0,75 statt 0,80 verletzt gemeinsamen Transferpunkt."
+    },
+    {
+      "id": "N-06",
+      "status": "pass",
+      "expected": "reject",
+      "detail": "Um 0,01 m angehobener Keil erzeugt Kontaktfehler."
+    },
+    {
+      "id": "N-07",
+      "status": "pass",
+      "expected": "reject",
+      "detail": "Doppelte Importskalierung liefert falsches Metermaß."
+    }
+  ],
+  "fileChecks": [
+    {
+      "id": "F-01",
+      "status": "pass",
+      "method": "PowerShell System.Xml.XmlDocument.Load",
+      "detail": "SVG is valid XML, root svg, 1800 x 3300, 96 text nodes, zero external href links."
+    },
+    {
+      "id": "F-02",
+      "status": "pass",
+      "method": "Installed sharp/libvips SVG renderer; no installation",
+      "detail": "SVG rasterized successfully entirely locally.",
+      "width": 1440,
+      "height": 2640
+    },
+    {
+      "id": "F-03",
+      "status": "pass",
+      "method": "Visual inspection of complete render plus building crop",
+      "detail": "Corrected overflowing stool callouts, roof projection, side-view dimension and detail footnotes; final image reviewed."
+    },
+    {
+      "id": "F-04",
+      "status": "pass",
+      "method": "Artifact manifest",
+      "detail": "Three deliverables are hashed below; checks.json is this report."
+    }
+  ],
+  "summary": {
+    "positivePassed": 33,
+    "positiveTotal": 33,
+    "negativePassed": 7,
+    "negativeTotal": 7,
+    "fileChecksPassed": 4,
+    "failed": 0
+  },
+  "artifacts": [
+    {
+      "file": "reference.md",
+      "bytes": 20240,
+      "sha256": "a5363f3e16356cba896a0338905640fea1f7635e723de81d78a6782dd96054a8"
+    },
+    {
+      "file": "reference.svg",
+      "bytes": 24801,
+      "sha256": "fae353a852d052124ed3615da54b707df9980085cbdeee28dd88e438329f80f6"
+    },
+    {
+      "file": "preview.png",
+      "bytes": 399963,
+      "sha256": "55407f7a2d2f9f527620780cf85c84edbab978aa0ab8d81ad4cecbb90877d3bf"
+    }
+  ],
+  "limits": [
+    "Analytical box and contact checks only; no actual model exists in this package.",
+    "SVG detail and axonometric views are explicitly schematic.",
+    "No Studio or Blender tests, no material/performance measurement, no final art approval.",
+    "No Git command, tracked-file edit, status update, commit, push, merge or publication."
+  ],
+  "pending": [
+    "Lead/Art adoption of D-H, D-S and D-G decisions.",
+    "P03-02/03 actual Fable modeling and inspection.",
+    "Active saw cutting/guard animation and clearance decision beyond transfer mode.",
+    "P03-05/06 import, actual mesh/collision/pivot/material and camera checks.",
+    "P03-07 final art acceptance.",
+    "Existing hall/gate decision and weaker real test device remain unchanged."
+  ]
+}

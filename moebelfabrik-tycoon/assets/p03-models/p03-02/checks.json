@@ -1,0 +1,1628 @@
+{
+  "task": "P03-02",
+  "date": "2026-11-16",
+  "status": "local-technical-model-prototype",
+  "artApproved": false,
+  "studioImported": false,
+  "scene": "P03_02_Models_v01.004",
+  "blender": "5.1.1",
+  "unit": "metres",
+  "robloxAxes": "X,Z,-Y",
+  "scaleOnImport": 3.5714285714285716,
+  "checks": [
+    {
+      "name": "Hocker01_Raw dimensions",
+      "passed": true,
+      "detail": [
+        0.4000000059604645,
+        0.4000000059604645,
+        0.44999998807907104
+      ]
+    },
+    {
+      "name": "Hocker01_Raw bottom pivot",
+      "passed": true,
+      "detail": [
+        -0.20000000298023224,
+        -0.20000000298023224,
+        0.0
+      ]
+    },
+    {
+      "name": "Leg_1__WoodRaw.009 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.0005196961424420554
+      }
+    },
+    {
+      "name": "Leg_2__WoodRaw.008 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.0005196987440643668
+      }
+    },
+    {
+      "name": "Leg_3__WoodRaw.008 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.0005196987387886732
+      }
+    },
+    {
+      "name": "Leg_4__WoodRaw.008 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.0005196961471902029
+      }
+    },
+    {
+      "name": "RailX_1__WoodRaw.004 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.0003477236629654492
+      }
+    },
+    {
+      "name": "RailX_2__WoodRaw.004 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.0003477236629654492
+      }
+    },
+    {
+      "name": "RailXScrew__MachineSteel.032 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 7.653668227652336e-08
+      }
+    },
+    {
+      "name": "RailXScrew__MachineSteel.033 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 7.653668227652336e-08
+      }
+    },
+    {
+      "name": "RailXScrew__MachineSteel.034 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 7.653668227652336e-08
+      }
+    },
+    {
+      "name": "RailXScrew__MachineSteel.035 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 7.653668227652336e-08
+      }
+    },
+    {
+      "name": "RailY_1__WoodRaw.004 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.0003477236629654492
+      }
+    },
+    {
+      "name": "RailY_2__WoodRaw.004 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.0003477236629654492
+      }
+    },
+    {
+      "name": "RailYScrew__MachineSteel.032 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 7.653668227652336e-08
+      }
+    },
+    {
+      "name": "RailYScrew__MachineSteel.033 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 7.653668227652336e-08
+      }
+    },
+    {
+      "name": "RailYScrew__MachineSteel.034 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 7.653668227652336e-08
+      }
+    },
+    {
+      "name": "RailYScrew__MachineSteel.035 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 7.653668227652336e-08
+      }
+    },
+    {
+      "name": "ScrewSlot_1__Black.008 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 1.0800001119822296e-09
+      }
+    },
+    {
+      "name": "ScrewSlot_2__Black.008 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 1.0800001119822296e-09
+      }
+    },
+    {
+      "name": "ScrewSlot_3__Black.008 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 1.0800001119822296e-09
+      }
+    },
+    {
+      "name": "ScrewSlot_4__Black.008 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 1.0800001119822296e-09
+      }
+    },
+    {
+      "name": "Seat__WoodRaw.009 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.003998273122486457
+      }
+    },
+    {
+      "name": "SeatScrew_1__MachineSteel.008 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 1.2815554341581063e-07
+      }
+    },
+    {
+      "name": "SeatScrew_2__MachineSteel.008 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 1.2815554341581063e-07
+      }
+    },
+    {
+      "name": "SeatScrew_3__MachineSteel.008 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 1.2815554341581063e-07
+      }
+    },
+    {
+      "name": "SeatScrew_4__MachineSteel.008 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 1.2815554341581063e-07
+      }
+    },
+    {
+      "name": "StagePlaque__Label.008 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 3.723410020136153e-06
+      }
+    },
+    {
+      "name": "Hocker01_Raw nine wood parts",
+      "passed": true,
+      "detail": [
+        "Leg_1",
+        "Leg_2",
+        "Leg_3",
+        "Leg_4",
+        "RailX_1",
+        "RailX_2",
+        "RailY_1",
+        "RailY_2",
+        "Seat"
+      ]
+    },
+    {
+      "name": "Hocker01_Raw seat contact",
+      "passed": true,
+      "detail": 0.425
+    },
+    {
+      "name": "Hocker01_Raw rail length",
+      "passed": true,
+      "detail": 0.29
+    },
+    {
+      "name": "RailXScrew__MachineSteel.032 cap flush with leg",
+      "passed": true,
+      "detail": [
+        -0.17999997735023499,
+        -0.17899999022483826
+      ]
+    },
+    {
+      "name": "RailXScrew__MachineSteel.033 cap flush with leg",
+      "passed": true,
+      "detail": [
+        -0.17999997735023499,
+        -0.17899999022483826
+      ]
+    },
+    {
+      "name": "RailXScrew__MachineSteel.034 cap flush with leg",
+      "passed": true,
+      "detail": [
+        0.17899999022483826,
+        0.17999997735023499
+      ]
+    },
+    {
+      "name": "RailXScrew__MachineSteel.035 cap flush with leg",
+      "passed": true,
+      "detail": [
+        0.17899999022483826,
+        0.17999997735023499
+      ]
+    },
+    {
+      "name": "RailYScrew__MachineSteel.032 cap flush with leg",
+      "passed": true,
+      "detail": [
+        -0.17999997735023499,
+        -0.17899999022483826
+      ]
+    },
+    {
+      "name": "RailYScrew__MachineSteel.033 cap flush with leg",
+      "passed": true,
+      "detail": [
+        -0.17999997735023499,
+        -0.17899999022483826
+      ]
+    },
+    {
+      "name": "RailYScrew__MachineSteel.034 cap flush with leg",
+      "passed": true,
+      "detail": [
+        0.17899999022483826,
+        0.17999997735023499
+      ]
+    },
+    {
+      "name": "RailYScrew__MachineSteel.035 cap flush with leg",
+      "passed": true,
+      "detail": [
+        0.17899999022483826,
+        0.17999997735023499
+      ]
+    },
+    {
+      "name": "Hocker01_Finish dimensions",
+      "passed": true,
+      "detail": [
+        0.4000000059604645,
+        0.4000000059604645,
+        0.44999998807907104
+      ]
+    },
+    {
+      "name": "Hocker01_Finish bottom pivot",
+      "passed": true,
+      "detail": [
+        -0.20000000298023224,
+        -0.20000000298023224,
+        0.0
+      ]
+    },
+    {
+      "name": "Leg_1__WoodFinish.004 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.0005196972447707063
+      }
+    },
+    {
+      "name": "Leg_2__WoodFinish.004 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.0005196973957892506
+      }
+    },
+    {
+      "name": "Leg_3__WoodFinish.004 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.0005196987363188721
+      }
+    },
+    {
+      "name": "Leg_4__WoodFinish.004 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.0005196961447204017
+      }
+    },
+    {
+      "name": "RailX_1__WoodFinish.004 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.0003477236629654492
+      }
+    },
+    {
+      "name": "RailX_2__WoodFinish.004 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.0003477236629654492
+      }
+    },
+    {
+      "name": "RailXScrew__MachineSteel.036 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 7.653668227652336e-08
+      }
+    },
+    {
+      "name": "RailXScrew__MachineSteel.037 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 7.653668227652336e-08
+      }
+    },
+    {
+      "name": "RailXScrew__MachineSteel.038 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 7.653668227652336e-08
+      }
+    },
+    {
+      "name": "RailXScrew__MachineSteel.039 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 7.653668227652336e-08
+      }
+    },
+    {
+      "name": "RailY_1__WoodFinish.004 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.0003477236629654492
+      }
+    },
+    {
+      "name": "RailY_2__WoodFinish.004 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.0003477236629654492
+      }
+    },
+    {
+      "name": "RailYScrew__MachineSteel.036 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 7.653668227652336e-08
+      }
+    },
+    {
+      "name": "RailYScrew__MachineSteel.037 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 7.653668227652336e-08
+      }
+    },
+    {
+      "name": "RailYScrew__MachineSteel.038 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 7.653668227652336e-08
+      }
+    },
+    {
+      "name": "RailYScrew__MachineSteel.039 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 7.653668227652336e-08
+      }
+    },
+    {
+      "name": "ScrewSlot_1__Black.009 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 1.0800001119822296e-09
+      }
+    },
+    {
+      "name": "ScrewSlot_2__Black.009 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 1.0800001119822296e-09
+      }
+    },
+    {
+      "name": "ScrewSlot_3__Black.009 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 1.0800001119822296e-09
+      }
+    },
+    {
+      "name": "ScrewSlot_4__Black.009 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 1.0800001119822296e-09
+      }
+    },
+    {
+      "name": "Seat__WoodFinish.004 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.003998273122438824
+      }
+    },
+    {
+      "name": "SeatScrew_1__MachineSteel.009 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 1.2815554341581063e-07
+      }
+    },
+    {
+      "name": "SeatScrew_2__MachineSteel.009 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 1.2815554341581063e-07
+      }
+    },
+    {
+      "name": "SeatScrew_3__MachineSteel.009 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 1.2815554341581063e-07
+      }
+    },
+    {
+      "name": "SeatScrew_4__MachineSteel.009 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 1.2815554341581063e-07
+      }
+    },
+    {
+      "name": "StagePlaque__Label.009 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 3.723410020136153e-06
+      }
+    },
+    {
+      "name": "Hocker01_Finish nine wood parts",
+      "passed": true,
+      "detail": [
+        "Leg_1",
+        "Leg_2",
+        "Leg_3",
+        "Leg_4",
+        "RailX_1",
+        "RailX_2",
+        "RailY_1",
+        "RailY_2",
+        "Seat"
+      ]
+    },
+    {
+      "name": "Hocker01_Finish seat contact",
+      "passed": true,
+      "detail": 0.425
+    },
+    {
+      "name": "Hocker01_Finish rail length",
+      "passed": true,
+      "detail": 0.29
+    },
+    {
+      "name": "RailXScrew__MachineSteel.036 cap flush with leg",
+      "passed": true,
+      "detail": [
+        -0.17999999225139618,
+        -0.17900000512599945
+      ]
+    },
+    {
+      "name": "RailXScrew__MachineSteel.037 cap flush with leg",
+      "passed": true,
+      "detail": [
+        -0.17999999225139618,
+        -0.17900000512599945
+      ]
+    },
+    {
+      "name": "RailXScrew__MachineSteel.038 cap flush with leg",
+      "passed": true,
+      "detail": [
+        0.17900000512599945,
+        0.17999999225139618
+      ]
+    },
+    {
+      "name": "RailXScrew__MachineSteel.039 cap flush with leg",
+      "passed": true,
+      "detail": [
+        0.17900000512599945,
+        0.17999999225139618
+      ]
+    },
+    {
+      "name": "RailYScrew__MachineSteel.036 cap flush with leg",
+      "passed": true,
+      "detail": [
+        -0.17999997735023499,
+        -0.17899999022483826
+      ]
+    },
+    {
+      "name": "RailYScrew__MachineSteel.037 cap flush with leg",
+      "passed": true,
+      "detail": [
+        -0.17999997735023499,
+        -0.17899999022483826
+      ]
+    },
+    {
+      "name": "RailYScrew__MachineSteel.038 cap flush with leg",
+      "passed": true,
+      "detail": [
+        0.17899999022483826,
+        0.17999997735023499
+      ]
+    },
+    {
+      "name": "RailYScrew__MachineSteel.039 cap flush with leg",
+      "passed": true,
+      "detail": [
+        0.17899999022483826,
+        0.17999997735023499
+      ]
+    },
+    {
+      "name": "Hocker01_Kit dimensions",
+      "passed": true,
+      "detail": [
+        0.6000000238418579,
+        0.5000000298023224,
+        0.18000000715255737
+      ]
+    },
+    {
+      "name": "Hocker01_Kit bottom pivot",
+      "passed": true,
+      "detail": [
+        -0.30000001192092896,
+        -0.25,
+        0.0
+      ]
+    },
+    {
+      "name": "CarrierFloor__Carrier.004 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.0029948157016850244
+      }
+    },
+    {
+      "name": "CarrierRimX__Carrier.008 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.00011528751762955141
+      }
+    },
+    {
+      "name": "CarrierRimX__Carrier.009 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.00011528751762955141
+      }
+    },
+    {
+      "name": "CarrierRimY__Carrier.008 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 9.938124643564797e-05
+      }
+    },
+    {
+      "name": "CarrierRimY__Carrier.009 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 9.938124643564797e-05
+      }
+    },
+    {
+      "name": "HandleTop__Carrier.008 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 6.124604773325552e-05
+      }
+    },
+    {
+      "name": "HandleTop__Carrier.009 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 6.124604773325552e-05
+      }
+    },
+    {
+      "name": "HandleUpright__Carrier.016 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 2.6183312680700284e-05
+      }
+    },
+    {
+      "name": "HandleUpright__Carrier.017 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 2.6183312680700284e-05
+      }
+    },
+    {
+      "name": "HandleUpright__Carrier.018 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 2.6183312680700284e-05
+      }
+    },
+    {
+      "name": "HandleUpright__Carrier.019 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 2.6183312680700284e-05
+      }
+    },
+    {
+      "name": "KitBadge__Label.004 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 2.7299999927263656e-06
+      }
+    },
+    {
+      "name": "Leg_1__WoodRaw.010 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.0005202549812969565
+      }
+    },
+    {
+      "name": "Leg_2__WoodRaw.009 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.0005202549812969565
+      }
+    },
+    {
+      "name": "Leg_3__WoodRaw.009 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.0005202549812969565
+      }
+    },
+    {
+      "name": "Leg_4__WoodRaw.009 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.0005202549812969565
+      }
+    },
+    {
+      "name": "Rail_1__WoodRaw.004 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.00034772366178814266
+      }
+    },
+    {
+      "name": "Rail_2__WoodRaw.004 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.00034772366178814266
+      }
+    },
+    {
+      "name": "Rail_3__WoodRaw.004 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.00034772366178814266
+      }
+    },
+    {
+      "name": "Rail_4__WoodRaw.004 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.00034772366178814266
+      }
+    },
+    {
+      "name": "Seat__WoodRaw.010 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.003999382699358531
+      }
+    },
+    {
+      "name": "Hocker01_Kit nine wood parts",
+      "passed": true,
+      "detail": [
+        "Leg_1",
+        "Leg_2",
+        "Leg_3",
+        "Leg_4",
+        "Rail_1",
+        "Rail_2",
+        "Rail_3",
+        "Rail_4",
+        "Seat"
+      ]
+    },
+    {
+      "name": "Saege01 dimensions",
+      "passed": true,
+      "detail": [
+        2.4000000953674316,
+        0.800000011920929,
+        1.4500000476837158
+      ]
+    },
+    {
+      "name": "Saege01 bottom pivot",
+      "passed": true,
+      "detail": [
+        -1.2000000476837158,
+        -0.4000000059604645,
+        0.0
+      ]
+    },
+    {
+      "name": "Arrow_0.004 upward face",
+      "passed": true,
+      "detail": [
+        [
+          0.0,
+          0.0,
+          1.0
+        ]
+      ]
+    },
+    {
+      "name": "Arrow_1.004 upward face",
+      "passed": true,
+      "detail": [
+        [
+          0.0,
+          0.0,
+          1.0
+        ]
+      ]
+    },
+    {
+      "name": "Arrow_2.004 upward face",
+      "passed": true,
+      "detail": [
+        [
+          0.0,
+          0.0,
+          1.0
+        ]
+      ]
+    },
+    {
+      "name": "Base_BladeSpindle__MachineSteel closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.00036043739907484914
+      }
+    },
+    {
+      "name": "BladeBearing__BrushedSteel closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.00012472543546705479
+      }
+    },
+    {
+      "name": "BladeBearing__BrushedSteel.001 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.00012472543546705479
+      }
+    },
+    {
+      "name": "BladeBearingSupport__MachineSteel closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.0004695012036568698
+      }
+    },
+    {
+      "name": "BladeBearingSupport__MachineSteel.001 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.0004695012036568698
+      }
+    },
+    {
+      "name": "EndBrace__MachineSteel.008 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.0021524671524639806
+      }
+    },
+    {
+      "name": "EndBrace__MachineSteel.009 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.0021524671524639806
+      }
+    },
+    {
+      "name": "FootPad__Black.016 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.0002974756558657746
+      }
+    },
+    {
+      "name": "FootPad__Black.017 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.0002974756558657746
+      }
+    },
+    {
+      "name": "FootPad__Black.018 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.0002974756558657746
+      }
+    },
+    {
+      "name": "FootPad__Black.019 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.0002974756558657746
+      }
+    },
+    {
+      "name": "GuardGuide__MachineSteel.008 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 7.815826043062325e-05
+      }
+    },
+    {
+      "name": "GuardGuide__MachineSteel.009 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 7.815826043062325e-05
+      }
+    },
+    {
+      "name": "GuardStripe__Black.004 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 1.572619334513295e-05
+      }
+    },
+    {
+      "name": "Leg__MutedGreen.016 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.00797098411096322
+      }
+    },
+    {
+      "name": "Leg__MutedGreen.017 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.00797098411096322
+      }
+    },
+    {
+      "name": "Leg__MutedGreen.018 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.00797098411096322
+      }
+    },
+    {
+      "name": "Leg__MutedGreen.019 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.00797098411096322
+      }
+    },
+    {
+      "name": "LongBrace__MachineSteel.008 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.007536650221013869
+      }
+    },
+    {
+      "name": "LongBrace__MachineSteel.009 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.007536650221013869
+      }
+    },
+    {
+      "name": "MainTable__MachineSteel.004 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.1534621370141078
+      }
+    },
+    {
+      "name": "MotorHousing__MutedGreen.004 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.08977601992067692
+      }
+    },
+    {
+      "name": "MotorMount__MachineSteel.008 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.001074734214560814
+      }
+    },
+    {
+      "name": "MotorMount__MachineSteel.009 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.001074734214560814
+      }
+    },
+    {
+      "name": "Moving_Blade__BrushedSteel.004 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.000352420728206772
+      }
+    },
+    {
+      "name": "Moving_ParkedGuard__SafetyOrange.004 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.013530250516541657
+      }
+    },
+    {
+      "name": "Platen_0__BrushedSteel.004 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.008393831523649014
+      }
+    },
+    {
+      "name": "Platen_1__BrushedSteel.004 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.008393831523649014
+      }
+    },
+    {
+      "name": "Platen_2__BrushedSteel.004 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.008393831523649014
+      }
+    },
+    {
+      "name": "PlatenBolt__MachineSteel.048 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 1.0800000258151473e-07
+      }
+    },
+    {
+      "name": "PlatenBolt__MachineSteel.049 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 1.0800000258151473e-07
+      }
+    },
+    {
+      "name": "PlatenBolt__MachineSteel.050 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 1.0800000258151473e-07
+      }
+    },
+    {
+      "name": "PlatenBolt__MachineSteel.051 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 1.0800000258151473e-07
+      }
+    },
+    {
+      "name": "PlatenBolt__MachineSteel.052 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 1.0800000258151473e-07
+      }
+    },
+    {
+      "name": "PlatenBolt__MachineSteel.053 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 1.0800000258151473e-07
+      }
+    },
+    {
+      "name": "PlatenBolt__MachineSteel.054 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 1.0800000258151473e-07
+      }
+    },
+    {
+      "name": "PlatenBolt__MachineSteel.055 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 1.0800000258151473e-07
+      }
+    },
+    {
+      "name": "PlatenBolt__MachineSteel.056 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 1.0800000258151473e-07
+      }
+    },
+    {
+      "name": "PlatenBolt__MachineSteel.057 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 1.0800000258151473e-07
+      }
+    },
+    {
+      "name": "PlatenBolt__MachineSteel.058 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 1.0800000258151473e-07
+      }
+    },
+    {
+      "name": "PlatenBolt__MachineSteel.059 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 1.0800000258151473e-07
+      }
+    },
+    {
+      "name": "RearRail__MachineSteel.004 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.007015596418084068
+      }
+    },
+    {
+      "name": "StartButton__SafetyOrange.004 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 8.748601765244714e-06
+      }
+    },
+    {
+      "name": "StatusBadge__Label.004 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 6.069607129340036e-05
+      }
+    },
+    {
+      "name": "StatusFastener__BrushedSteel.016 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 2.9400002860229734e-07
+      }
+    },
+    {
+      "name": "StatusFastener__BrushedSteel.017 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 2.9400002860229734e-07
+      }
+    },
+    {
+      "name": "StatusFastener__BrushedSteel.018 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 2.9400002860229734e-07
+      }
+    },
+    {
+      "name": "StatusFastener__BrushedSteel.019 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 2.9400002860229734e-07
+      }
+    },
+    {
+      "name": "StatusPlate__MutedGreen.004 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.006338134533515094
+      }
+    },
+    {
+      "name": "StatusSupport__MachineSteel.004 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.00033497569062726306
+      }
+    },
+    {
+      "name": "StatusSymbol__SafetyOrange.004 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 2.992761998049983e-06
+      }
+    },
+    {
+      "name": "StopButton__Red.004 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 6.056733789947247e-05
+      }
+    },
+    {
+      "name": "SwitchBox__MachineSteel.004 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.001030314610510332
+      }
+    },
+    {
+      "name": "Vent__Black.040 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 2.9534775430407606e-06
+      }
+    },
+    {
+      "name": "Vent__Black.041 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 2.9534775430407606e-06
+      }
+    },
+    {
+      "name": "Vent__Black.042 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 2.9534775430407606e-06
+      }
+    },
+    {
+      "name": "Vent__Black.043 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 2.9534775430407606e-06
+      }
+    },
+    {
+      "name": "Vent__Black.044 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 2.9534775430407606e-06
+      }
+    },
+    {
+      "name": "Vent__Black.045 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 2.9534775430407606e-06
+      }
+    },
+    {
+      "name": "Vent__Black.046 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 2.9534775430407606e-06
+      }
+    },
+    {
+      "name": "Vent__Black.047 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 2.9534775430407606e-06
+      }
+    },
+    {
+      "name": "Vent__Black.048 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 2.9534775430407606e-06
+      }
+    },
+    {
+      "name": "Vent__Black.049 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 2.9534775430407606e-06
+      }
+    },
+    {
+      "name": "ControlCube_1m dimensions",
+      "passed": true,
+      "detail": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "ControlCube_1m bottom pivot",
+      "passed": true,
+      "detail": [
+        -0.5,
+        -0.5,
+        0.0
+      ]
+    },
+    {
+      "name": "ControlCube__Label.004 closed outward normals",
+      "passed": true,
+      "detail": {
+        "closed": true,
+        "signedVolume": 0.9999999999999999
+      }
+    },
+    {
+      "name": "Three transfer prisms empty",
+      "passed": true,
+      "detail": []
+    },
+    {
+      "name": "Att_Input position",
+      "passed": true,
+      "detail": [
+        -0.800000011920929,
+        0.0,
+        0.8999999761581421
+      ]
+    },
+    {
+      "name": "Att_Process position",
+      "passed": true,
+      "detail": [
+        0.0,
+        0.0,
+        0.8999999761581421
+      ]
+    },
+    {
+      "name": "Att_Output position",
+      "passed": true,
+      "detail": [
+        0.800000011920929,
+        0.0,
+        0.8999999761581421
+      ]
+    },
+    {
+      "name": "Parked blade below tabletop",
+      "passed": true,
+      "detail": [
+        0.15000000596046448,
+        0.002500006463378668,
+        0.7700000405311584
+      ]
+    },
+    {
+      "name": "Guard behind all cargo volumes",
+      "passed": true,
+      "detail": [
+        [
+          -0.1899999976158142,
+          -0.38999995589256287,
+          0.9499999284744263
+        ],
+        [
+          0.1899999976158142,
+          -0.3099999725818634,
+          1.399999976158142
+        ]
+      ]
+    }
+  ],
+  "assets": {
+    "Hocker01_Raw": {
+      "bounds_blender_m": {
+        "min": [
+          -0.20000000298023224,
+          -0.20000000298023224,
+          0.0
+        ],
+        "max": [
+          0.20000000298023224,
+          0.20000000298023224,
+          0.44999998807907104
+        ]
+      },
+      "dimensions_blender_xyz_m": [
+        0.4000000059604645,
+        0.4000000059604645,
+        0.44999998807907104
+      ],
+      "dimensions_roblox_xyz_m": [
+        0.4000000059604645,
+        0.44999998807907104,
+        0.4000000059604645
+      ],
+      "triangles": 4656,
+      "meshes": 27,
+      "pivot": "bottom centre",
+      "front_blender": "+Y"
+    },
+    "Hocker01_Finish": {
+      "bounds_blender_m": {
+        "min": [
+          -0.20000000298023224,
+          -0.20000000298023224,
+          0.0
+        ],
+        "max": [
+          0.20000000298023224,
+          0.20000000298023224,
+          0.44999998807907104
+        ]
+      },
+      "dimensions_blender_xyz_m": [
+        0.4000000059604645,
+        0.4000000059604645,
+        0.44999998807907104
+      ],
+      "dimensions_roblox_xyz_m": [
+        0.4000000059604645,
+        0.44999998807907104,
+        0.4000000059604645
+      ],
+      "triangles": 4676,
+      "meshes": 27,
+      "pivot": "bottom centre",
+      "front_blender": "+Y"
+    },
+    "Hocker01_Kit": {
+      "bounds_blender_m": {
+        "min": [
+          -0.30000001192092896,
+          -0.25,
+          0.0
+        ],
+        "max": [
+          0.30000001192092896,
+          0.2500000298023224,
+          0.18000000715255737
+        ]
+      },
+      "dimensions_blender_xyz_m": [
+        0.6000000238418579,
+        0.5000000298023224,
+        0.18000000715255737
+      ],
+      "dimensions_roblox_xyz_m": [
+        0.6000000238418579,
+        0.18000000715255737,
+        0.5000000298023224
+      ],
+      "triangles": 2337,
+      "meshes": 22,
+      "pivot": "bottom centre",
+      "front_blender": "+Y"
+    },
+    "Saege01": {
+      "bounds_blender_m": {
+        "min": [
+          -1.2000000476837158,
+          -0.4000000059604645,
+          0.0
+        ],
+        "max": [
+          1.2000000476837158,
+          0.4000000059604645,
+          1.4500000476837158
+        ]
+      },
+      "dimensions_blender_xyz_m": [
+        2.4000000953674316,
+        0.800000011920929,
+        1.4500000476837158
+      ],
+      "dimensions_roblox_xyz_m": [
+        2.4000000953674316,
+        1.4500000476837158,
+        0.800000011920929
+      ],
+      "triangles": 6927,
+      "meshes": 71,
+      "pivot": "bottom centre",
+      "front_blender": "+Y"
+    },
+    "ControlCube_1m": {
+      "bounds_blender_m": {
+        "min": [
+          -0.5,
+          -0.5,
+          0.0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          1.0
+        ]
+      },
+      "dimensions_blender_xyz_m": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "dimensions_roblox_xyz_m": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "triangles": 12,
+      "meshes": 1,
+      "pivot": "bottom centre",
+      "front_blender": "+Y"
+    }
+  },
+  "activeCutMode": "not designed; parked handover only",
+  "originalScenePreserved": "Scene",
+  "backup": "before-p03-02.blend"
+}

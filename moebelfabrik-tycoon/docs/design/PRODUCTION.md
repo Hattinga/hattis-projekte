@@ -1,6 +1,6 @@
 # Hockerrezept und Stationsübergaben
 
-Stand 12. November 2026. Entwurfsvertrag für **P01-01**, **P01-02** und **P01-06**, Rezept `Hocker01`, Version 1. Die Mengen, Zeiten und Kapazitäten sind vorläufige Prüfwerte. Sie sind noch nicht als Spielcode oder Stationsmodelle umgesetzt.
+Stand 18. November 2026. Entwurfsvertrag für **P01-01**, **P01-02** und **P01-06**, Rezept `Hocker01`, Version 1. Die Mengen, Zeiten und Kapazitäten sind vorläufige Prüfwerte. Das Rezept und die zwölf Stationsplätze sind seit P05-01 serverseitig hinterlegt und an der Greybox geprüft. Der aktive Produktionsablauf folgt in P05. [Beleg](../evidence/P05-01.md)
 
 [Spielkern](CORE.md) · [Wirtschaft](ECONOMY.md) · [Zustandsregeln](../technical/STATE.md) · [Prüfbeleg](../evidence/P01-01-02.md)
 

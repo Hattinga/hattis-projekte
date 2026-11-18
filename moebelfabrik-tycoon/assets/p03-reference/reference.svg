@@ -1,0 +1,294 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="3300" viewBox="0 0 1800 3300" role="img" aria-labelledby="title desc">
+<title id="title">P03-01 – Hocker, Säge und neue Gebäudeecke</title><desc id="desc">Bemaßter lokaler Gestaltungsvorschlag mit unveränderten Waren- und Stationshüllen. Hocker mit vier Beinen und neun Holzteilen. Säge in freiem Übergabemodus. Eigenständiges Gebäudemuster mit Fenster und geschlossenem Dachauflager. Noch keine Art-Freigabe.</desc>
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto-start-reverse"><path d="M8 4 L0 0 L0 8 Z" fill="#364C58"/></marker><pattern id="woodHatch" width="16" height="16" patternUnits="userSpaceOnUse"><path d="M0 13 L16 9" fill="none" stroke="#946C42" stroke-width="1" opacity=".4"/></pattern><pattern id="wallHatch" width="14" height="14" patternUnits="userSpaceOnUse"><path d="M-3 3 L3 -3 M0 14 L14 0 M11 17 L17 11" fill="none" stroke="#B8B2A5" stroke-width="1"/></pattern></defs>
+<style>text{font-family:Arial,Helvetica,sans-serif;fill:#233842}.title{font-size:43px;font-weight:700;fill:white}.subtitle{font-size:22px;fill:#DEE8E5}.section{font-size:29px;font-weight:700}.tag{font-size:24px;font-weight:700;fill:#9E5B24}.body{font-size:21px}.small{font-size:18px}.dimension{font-size:20px;font-weight:700;fill:#364C58}.view{font-size:23px;font-weight:700}.note{font-size:20px;fill:#6E4B2C}.line{stroke:#364C58;stroke-width:2;fill:none}.dim{stroke:#364C58;stroke-width:1.4;fill:none}.ext{stroke:#7F9399;stroke-width:1}.leader{stroke:#627C85;stroke-width:1.5;fill:none}.dash{stroke:#668D9C;stroke-width:2;stroke-dasharray:8 6;fill:none}.obj{stroke:#423F36;stroke-width:2}.free{stroke:#407A91;stroke-width:2;stroke-dasharray:9 5;fill:#E5F3F7;fill-opacity:.62}.muted{fill:#60737A}.white{fill:white}</style>
+<rect x="0" y="0" width="1800" height="3300" fill="#F2F3EE" />
+<rect x="0" y="0" width="1800" height="130" fill="#243840" />
+<text x="40" y="58" class="title" >P03-01 · Technisches Referenzblatt</text>
+<text x="42" y="98" class="subtitle" >13.11.2026 · Meter führen · Gestaltungsvorschlag v0.1 · keine Modelle / keine Art-Freigabe</text>
+<text x="1760" y="55" class="subtitle" text-anchor="end">V = bestehender Vertrag</text>
+<text x="1760" y="93" class="subtitle" text-anchor="end">D = neue Entscheidung</text>
+<rect x="30" y="150" width="1740" height="720" fill="#FFFFFF" rx="16" stroke="#CED5D4"/>
+<text x="60" y="195" class="tag" >01</text>
+<text x="160" y="195" class="section" >Hocker01 · vier Beine / neun Holzteile</text>
+<text x="60" y="229" class="body" >V1: Hülle und Einzelteile unverändert. D-H: bündige Schraubverbindungen und abtragende 1-mm-Fasen.</text>
+<text x="145" y="290" class="view" >Front · -Z · 700 px/m</text>
+<line x1="100" y1="700" x2="475" y2="700" class="line" />
+<rect x="159" y="402.5" width="24.500000000000004" height="297.5" fill="#C59664" class="obj"/>
+<rect x="386.5" y="402.5" width="24.500000000000004" height="297.5" fill="#C59664" class="obj"/>
+<rect x="183.5" y="448" width="203" height="42" fill="#C59664" class="obj"/>
+<rect x="145" y="385" width="280" height="17.5" fill="#C59664" class="obj"/>
+<rect x="145" y="385" width="280" height="17.5" fill="url(#woodHatch)" />
+<circle cx="171.25" cy="479.5" r="3.5" fill="#34383C" />
+<circle cx="398.75" cy="479.5" r="3.5" fill="#34383C" />
+<line x1="110" y1="385" x2="110" y2="700" class="dim" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+<line x1="100" y1="385" x2="120" y2="385" class="ext" />
+<line x1="100" y1="700" x2="120" y2="700" class="ext" />
+<text x="95" y="542.5" class="dimension" text-anchor="middle" transform="rotate(-90 95 542.5)">0,45</text>
+<line x1="145" y1="748" x2="425" y2="748" class="dim" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+<line x1="145" y1="738" x2="145" y2="758" class="ext" />
+<line x1="425" y1="738" x2="425" y2="758" class="ext" />
+<text x="285" y="736" class="dimension" text-anchor="middle">0,40</text>
+<line x1="159" y1="795" x2="411" y2="795" class="dim" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+<line x1="159" y1="785" x2="159" y2="805" class="ext" />
+<line x1="411" y1="785" x2="411" y2="805" class="ext" />
+<text x="285" y="783" class="dimension" text-anchor="middle">Gestell 0,36</text>
+<line x1="386.5" y1="469" x2="460" y2="525" class="leader" />
+<circle cx="386.5" cy="469" r="3" fill="#364C58" />
+<text x="466" y="520" class="small" >H3 · Zarge</text>
+<line x1="411" y1="581" x2="455" y2="655" class="leader" />
+<circle cx="411" cy="581" r="3" fill="#364C58" />
+<text x="461" y="650" class="small" >H2 · Bein</text>
+<text x="145" y="835" class="small" >H1 Sitz 0,025 · Überstand 0,02 je Seite</text>
+<text x="615" y="290" class="view" >Draufsicht · 700 px/m</text>
+<rect x="615" y="365" width="280" height="280" fill="#E9D5BA" class="obj" fill-opacity=".45"/>
+<rect x="629" y="379" width="24.500000000000004" height="24.500000000000004" fill="#C59664" class="obj"/>
+<circle cx="641.25" cy="391.25" r="3.5" fill="#34383C" />
+<rect x="629" y="606.5" width="24.500000000000004" height="24.500000000000004" fill="#C59664" class="obj"/>
+<circle cx="641.25" cy="618.75" r="3.5" fill="#34383C" />
+<rect x="856.5" y="379" width="24.500000000000004" height="24.500000000000004" fill="#C59664" class="obj"/>
+<circle cx="868.75" cy="391.25" r="3.5" fill="#34383C" />
+<rect x="856.5" y="606.5" width="24.500000000000004" height="24.500000000000004" fill="#C59664" class="obj"/>
+<circle cx="868.75" cy="618.75" r="3.5" fill="#34383C" />
+<rect x="653.5" y="384.25" width="203" height="14" fill="#C59664" class="obj"/>
+<rect x="653.5" y="611.75" width="203" height="14" fill="#C59664" class="obj"/>
+<rect x="634.25" y="403.5" width="14" height="203" fill="#C59664" class="obj"/>
+<rect x="861.75" y="403.5" width="14" height="203" fill="#C59664" class="obj"/>
+<line x1="615" y1="336" x2="895" y2="336" class="dim" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+<line x1="615" y1="326" x2="615" y2="346" class="ext" />
+<line x1="895" y1="326" x2="895" y2="346" class="ext" />
+<text x="755" y="324" class="dimension" text-anchor="middle">0,40</text>
+<line x1="930" y1="365" x2="930" y2="645" class="dim" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+<line x1="920" y1="365" x2="940" y2="365" class="ext" />
+<line x1="920" y1="645" x2="940" y2="645" class="ext" />
+<text x="915" y="505" class="dimension" text-anchor="middle" transform="rotate(-90 915 505)">0,40</text>
+<line x1="755" y1="667" x2="755" y2="705" class="dim" marker-end="url(#arrow)"/>
+<text x="755" y="735" class="small" text-anchor="middle">+Z hinten</text>
+<text x="615" y="775" class="small" >H4: zwei weitere Zargen entlang Z</text>
+<text x="615" y="805" class="small" >Beinmitten X/Z = ±0,1625</text>
+<text x="615" y="835" class="small" >Sitz transparent nur für die Zeichnung</text>
+<text x="1080" y="290" class="view" >HJ1 / HJ2 · Anschluss schematisch</text>
+<rect x="1110" y="330" width="500" height="30" fill="#C59664" class="obj"/>
+<rect x="1150" y="360" width="60" height="300" fill="#C59664" class="obj"/>
+<rect x="1210" y="475" width="400" height="90" fill="#C59664" class="obj"/>
+<line x1="1180" y1="330" x2="1180" y2="420" class="line" stroke-width="5"/>
+<circle cx="1180" cy="330" r="6" fill="#34383C" />
+<line x1="1150" y1="542" x2="1260" y2="542" class="line" stroke-width="5"/>
+<circle cx="1150" cy="542" r="6" fill="#34383C" />
+<line x1="1210" y1="475" x2="1375" y2="430" class="leader" />
+<circle cx="1210" cy="475" r="3" fill="#364C58" />
+<text x="1381" y="425" class="small" >HJ2: Stirnstoß, keine offene Fuge</text>
+<line x1="1180" y1="355" x2="1240" y2="385" class="leader" />
+<circle cx="1180" cy="355" r="3" fill="#364C58" />
+<text x="1246" y="380" class="small" >HJ1: Bein trägt Sitz flächig</text>
+<line x1="1180" y1="330" x2="1250" y2="320" class="leader" />
+<circle cx="1180" cy="330" r="3" fill="#364C58" />
+<text x="1256" y="315" class="small" >Kopf bündig, Ø0,010</text>
+<text x="1080" y="705" class="body" >9 Holzteile = 1 Sitz + 4 Beine + 4 Zargen</text>
+<text x="1080" y="740" class="small" >Schraubachsen X: Y=0,315 / Z: Y=0,345</text>
+<text x="1080" y="772" class="small" >Roh / Finish: dieselbe Geometrie und Größe</text>
+<rect x="1080" y="792" width="35" height="26" fill="#C59664" />
+<text x="1128" y="813" class="small" >Roh #C59664</text>
+<rect x="1360" y="792" width="35" height="26" fill="#B8824E" />
+<text x="1408" y="813" class="small" >Finish #B8824E (D)</text>
+<text x="1080" y="843" class="note" >Paket / Träger / Karton bleiben gemäß V1.</text>
+<rect x="30" y="890" width="1740" height="755" fill="#FFFFFF" rx="16" stroke="#CED5D4"/>
+<text x="60" y="935" class="tag" >02</text>
+<text x="160" y="935" class="section" >Saege01 · Übergabemodus mit freien Warenräumen</text>
+<text x="60" y="969" class="body" >V1: 2,40 × 1,45 × 0,80 m. Drei Auflagen 0,70 × 0,60 m auf Y=0,90. Fluss -X → +X.</text>
+<text x="100" y="1010" class="view" >Front · 320 px/m</text>
+<line x1="70" y1="1510" x2="900" y2="1510" class="line" />
+<rect x="115.99999999999994" y="1254" width="32" height="256" fill="#34383C" class="obj"/>
+<rect x="820" y="1254" width="32" height="256" fill="#34383C" class="obj"/>
+<rect x="131.99999999999994" y="1446" width="704" height="19.2" fill="#34383C" class="obj"/>
+<rect x="404" y="1254" width="160" height="144" fill="#788678" class="obj"/>
+<circle cx="484" cy="1311.6" r="48" fill="#CBD2D2" stroke="#34383C" stroke-width="2" stroke-dasharray="3 3"/>
+<circle cx="484" cy="1311.6" r="5" fill="#34383C" />
+<rect x="100" y="1228.4" width="768" height="25.6" fill="#34383C" class="obj"/>
+<rect x="423.2" y="1062" width="121.6" height="144" fill="#D88B3D" stroke="#A7632B" stroke-width="2" stroke-dasharray="7 5" fill-opacity=".50"/>
+<rect x="434.4" y="1206" width="9.6" height="16" fill="#34383C" />
+<rect x="524" y="1206" width="9.6" height="16" fill="#34383C" />
+<rect x="660" y="1046" width="128" height="128" fill="#788678" stroke="#627C85" stroke-width="2" stroke-dasharray="7 5" fill-opacity=".4"/>
+<text x="724" y="1110" class="body" text-anchor="middle">✓</text>
+<rect x="116.00000000000001" y="1222" width="224" height="6.4" fill="#788678" class="obj"/>
+<rect x="116.00000000000001" y="1046" width="224" height="176" fill="#E5F3F7" class="free"/>
+<text x="227.99999999999997" y="1154.8" class="dimension" text-anchor="middle">EIN</text>
+<rect x="372" y="1222" width="224" height="6.4" fill="#788678" class="obj"/>
+<rect x="372" y="1046" width="224" height="176" fill="#E5F3F7" class="free"/>
+<text x="484" y="1154.8" class="dimension" text-anchor="middle">PROZESS</text>
+<rect x="628" y="1222" width="224" height="6.4" fill="#788678" class="obj"/>
+<rect x="628" y="1046" width="224" height="176" fill="#E5F3F7" class="free"/>
+<text x="740" y="1154.8" class="dimension" text-anchor="middle">AUS</text>
+<line x1="70" y1="1046" x2="70" y2="1510" class="dim" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+<line x1="60" y1="1046" x2="80" y2="1046" class="ext" />
+<line x1="60" y1="1510" x2="80" y2="1510" class="ext" />
+<text x="55" y="1278" class="dimension" text-anchor="middle" transform="rotate(-90 55 1278)">1,45</text>
+<line x1="900" y1="1222" x2="900" y2="1510" class="dim" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+<line x1="890" y1="1222" x2="910" y2="1222" class="ext" />
+<line x1="890" y1="1510" x2="910" y2="1510" class="ext" />
+<text x="885" y="1366" class="dimension" text-anchor="middle" transform="rotate(-90 885 1366)">Auflage 0,90</text>
+<line x1="100" y1="1560" x2="868" y2="1560" class="dim" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+<line x1="100" y1="1550" x2="100" y2="1570" class="ext" />
+<line x1="868" y1="1550" x2="868" y2="1570" class="ext" />
+<text x="484" y="1548" class="dimension" text-anchor="middle">2,40</text>
+<line x1="484" y1="1263.6" x2="580" y2="1282" class="leader" />
+<circle cx="484" cy="1263.6" r="3" fill="#364C58" />
+<text x="586" y="1277" class="small" >S6: Blattoberkante 0,77</text>
+<text x="100" y="1605" class="small" >Blatt unter Tisch; hintere Bauteile gestrichelt außerhalb Warenraum.</text>
+<text x="1020" y="1010" class="view" >Draufsicht · 280 px/m</text>
+<rect x="1020" y="1080" width="672" height="224" fill="#34383C" class="obj"/>
+<rect x="1034" y="1108" width="196" height="168" fill="#E5F3F7" stroke="#407A91" stroke-width="2"/>
+<rect x="1048" y="1122" width="168" height="140" fill="none" class="dash"/>
+<text x="1132" y="1192" class="dimension" text-anchor="middle">EIN</text>
+<rect x="1258" y="1108" width="196" height="168" fill="#E5F3F7" stroke="#407A91" stroke-width="2"/>
+<rect x="1272" y="1122" width="168" height="140" fill="none" class="dash"/>
+<text x="1356" y="1192" class="dimension" text-anchor="middle">PROZESS</text>
+<rect x="1482" y="1108" width="196" height="168" fill="#E5F3F7" stroke="#407A91" stroke-width="2"/>
+<rect x="1496" y="1122" width="168" height="140" fill="none" class="dash"/>
+<text x="1580" y="1192" class="dimension" text-anchor="middle">AUS</text>
+<rect x="1020" y="1278.8" width="672" height="22.400000000000002" fill="#788678" class="obj"/>
+<rect x="1302.8" y="1278.8" width="106.4" height="22.400000000000002" fill="#D88B3D" class="obj"/>
+<rect x="1510" y="1278.8" width="112" height="22.400000000000002" fill="#788678" class="obj"/>
+<line x1="1020" y1="1047" x2="1692" y2="1047" class="dim" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+<line x1="1020" y1="1037" x2="1020" y2="1057" class="ext" />
+<line x1="1692" y1="1037" x2="1692" y2="1057" class="ext" />
+<text x="1356" y="1035" class="dimension" text-anchor="middle">2,40</text>
+<line x1="1730" y1="1080" x2="1730" y2="1304" class="dim" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+<line x1="1720" y1="1080" x2="1740" y2="1080" class="ext" />
+<line x1="1720" y1="1304" x2="1740" y2="1304" class="ext" />
+<text x="1715" y="1192" class="dimension" text-anchor="middle" transform="rotate(-90 1715 1192)">0,80</text>
+<line x1="1076" y1="1348" x2="1636" y2="1348" class="dim" marker-end="url(#arrow)"/>
+<text x="1356" y="1380" class="small" text-anchor="middle">Warenfluss -X → +X; Bedienseite -Z oben</text>
+<line x1="1356" y1="1290" x2="1435" y2="1328" class="leader" />
+<circle cx="1356" cy="1290" r="3" fill="#364C58" />
+<text x="1441" y="1323" class="small" >S7: Haube Z=0,31…0,39</text>
+<text x="1020" y="1435" class="body" >Freiraum je Slot: 0,70 × 0,55 × 0,60</text>
+<text x="1020" y="1470" class="small" >Träger 0,60 × 0,50: 0,05 m Rand rundum</text>
+<text x="1020" y="1502" class="small" >Kartonoberkante 1,41 → 0,04 m Luft</text>
+<text x="1020" y="1534" class="small" >Haube zu Warenraum: 0,01 m in Z</text>
+<text x="1020" y="1575" class="note" >Aktiver Schnitt / Schutzbewegung noch offen.</text>
+<text x="1020" y="1607" class="note" >Keine feste Geometrie im blauen Freiraum.</text>
+<rect x="30" y="1665" width="1740" height="1545" fill="#FFFFFF" rx="16" stroke="#CED5D4"/>
+<text x="60" y="1710" class="tag" >03</text>
+<text x="160" y="1710" class="section" >Gebaeudeecke01 · eigene Außenprobe mit offenem Rückschnitt</text>
+<text x="60" y="1744" class="body" >D-G: Giebel 4,80 m × Tiefe 3,00 m; Wand 0,24 m. Kein Hallen- oder Torentwurf, keine FableWorkshop-Geometrie.</text>
+<text x="120" y="1790" class="view" >Front / Giebel · 125 px/m</text>
+<rect x="120" y="2012.5" width="600" height="362.5" fill="#E8E0D1" class="obj"/>
+<rect x="120" y="2000" width="600" height="12.5" fill="#C59664" class="obj"/>
+<polygon points="120,2000 720,2000 720,1992.5 420,1842.5 120,1992.5" fill="#E8E0D1" class="obj"/>
+<polygon points="82.5,2011.25 420,1842.5 757.5,2011.25 757.5,1991.25 420,1822.5 82.5,1991.25" fill="#C59664" class="obj"/>
+<polygon points="82.5,1991.25 420,1822.5 757.5,1991.25 757.5,1986.75 420,1818 82.5,1986.75" fill="#34383C" class="obj"/>
+<polygon points="405,1825.5 420,1813.25 435,1825.5 435,1824.75 420,1812.5 405,1824.75" fill="#788678" stroke="#34383C" stroke-width="2"/>
+<rect x="245" y="2100" width="150" height="150" fill="#566264" class="obj"/>
+<rect x="246.25" y="2101.25" width="147.5" height="147.5" fill="#788678" class="obj"/>
+<rect x="253.75" y="2108.75" width="132.5" height="132.5" fill="#B9CCD0" stroke="#34383C" stroke-width="1"/>
+<rect x="240" y="2250" width="160" height="5" fill="#C7C3B8" class="obj"/>
+<line x1="70" y1="2375" x2="850" y2="2375" class="line" />
+<line x1="120" y1="2440" x2="720" y2="2440" class="dim" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+<line x1="120" y1="2430" x2="120" y2="2450" class="ext" />
+<line x1="720" y1="2430" x2="720" y2="2450" class="ext" />
+<text x="420" y="2428" class="dimension" text-anchor="middle">Wandgrundkörper 4,80</text>
+<line x1="810" y1="1812.5" x2="810" y2="2375" class="dim" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+<line x1="800" y1="1812.5" x2="820" y2="1812.5" class="ext" />
+<line x1="800" y1="2375" x2="820" y2="2375" class="ext" />
+<text x="795" y="2093.75" class="dimension" text-anchor="middle" transform="rotate(-90 795 2093.75)">gesamt 4,50</text>
+<line x1="245" y1="2288" x2="395" y2="2288" class="dim" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+<line x1="245" y1="2278" x2="245" y2="2298" class="ext" />
+<line x1="395" y1="2278" x2="395" y2="2298" class="ext" />
+<text x="320" y="2276" class="dimension" text-anchor="middle">Öffnung 1,20</text>
+<line x1="430" y1="2100" x2="430" y2="2250" class="dim" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+<line x1="420" y1="2100" x2="440" y2="2100" class="ext" />
+<line x1="420" y1="2250" x2="440" y2="2250" class="ext" />
+<text x="415" y="2175" class="dimension" text-anchor="middle" transform="rotate(-90 415 2175)">1,20</text>
+<line x1="420" y1="1812.5" x2="530" y2="1830" class="leader" />
+<circle cx="420" cy="1812.5" r="3" fill="#364C58" />
+<text x="536" y="1825" class="small" >G8: First max. 4,500</text>
+<line x1="82.5" y1="1986.75" x2="110" y2="1930" class="leader" />
+<circle cx="82.5" cy="1986.75" r="3" fill="#364C58" />
+<text x="116" y="1860" class="small" >G6: Überstand 0,30</text>
+<line x1="620" y1="1943.75" x2="640" y2="2010" class="leader" />
+<circle cx="620" cy="1943.75" r="3" fill="#364C58" />
+<text x="556" y="2045" class="small" >G7: Ortgang folgt Dach</text>
+<text x="120" y="2485" class="small" >Dachneigung 26,565° · Dachhaut am First 4,456</text>
+
+<text x="1010" y="1790" class="view">Dreiviertel · schematisch</text>
+<polygon points="1175,2360 1040,2240 1040,1979 1175,2084.6" fill="#D3CDBF" class="obj"/>
+<polygon points="1175,2360 1607,2360 1607,2084.6 1391,1976.6 1175,2084.6" fill="#E8E0D1" class="obj"/>
+<polygon points="1175,2099 1607,2099 1607,2090 1175,2090" fill="#C59664" class="obj"/>
+<polygon points="1265,2270 1373,2270 1373,2162 1265,2162" fill="#788678" class="obj"/>
+<polygon points="1271.5249999999999,2263.8999999999996 1366.925,2263.8999999999996 1366.925,2168.5 1271.5249999999999,2168.5" fill="#B9CCD0" class="obj"/>
+<polygon points="1402.25,1968.96 1645.25,2090.46 1487.75,1950.46 1244.75,1828.96" fill="#58645F" class="obj"/>
+<polygon points="1159.25,2090.46 1402.25,1968.96 1244.75,1828.96 1001.75,1950.46" fill="#788678" class="obj"/>
+<line x1="1402.25" y1="1965" x2="1244.75" y2="1825" stroke="#34383C" stroke-width="7"/>
+<line x1="1071.5" y1="2088" x2="970" y2="2170" class="leader"/>
+<circle cx="1071.5" cy="2088" r="3" fill="#364C58"/>
+<text x="976" y="2165" class="small">GJ1: Wandstärke 0,24</text>
+<line x1="1062.5" y1="1984.6" x2="970" y2="1875" class="leader"/>
+<circle cx="1062.5" cy="1984.6" r="3" fill="#364C58"/>
+<text x="976" y="1870" class="small">GJ2: durchgehendes Auflager</text>
+<text x="1010" y="2380" class="small" >Hinten offen: Prüfzugang zu Sparren und Laibung.</text>
+<text x="1010" y="2415" class="small" >Zwei Seitenwände tragen alle vier Sparrenpaare.</text>
+<text x="1010" y="2460" class="dimension" >Dachgesamtmaß 5,40 × 3,50 m</text>
+<text x="1010" y="2492" class="note" >Kein Tor; offene Hallenentscheidung bleibt offen.</text>
+<text x="120" y="2518" class="view" >Linke Seite · 120 px/m</text>
+<rect x="130" y="2772" width="360" height="348" fill="#E8E0D1" class="obj"/>
+<rect x="130" y="2760" width="360" height="12" fill="#C59664" class="obj"/>
+<rect x="130" y="2752.8" width="360" height="7.199999999999999" fill="#C59664" class="obj"/>
+<rect x="100" y="2585.2799999999997" width="420" height="162.00000000000006" fill="#788678" class="obj"/>
+<rect x="100" y="2747.28" width="420" height="24" fill="#34383C" class="obj"/>
+<rect x="100" y="2580" width="420" height="5.279999999999999" fill="#34383C" class="obj"/>
+<line x1="144.4" y1="2585.2799999999997" x2="144.4" y2="2747.28" class="line" stroke="#50695E" stroke-width="1"/>
+<line x1="264.4" y1="2585.2799999999997" x2="264.4" y2="2747.28" class="line" stroke="#50695E" stroke-width="1"/>
+<line x1="384.4" y1="2585.2799999999997" x2="384.4" y2="2747.28" class="line" stroke="#50695E" stroke-width="1"/>
+<line x1="475.59999999999997" y1="2585.2799999999997" x2="475.59999999999997" y2="2747.28" class="line" stroke="#50695E" stroke-width="1"/>
+<line x1="80" y1="3120" x2="560" y2="3120" class="line" />
+<line x1="130" y1="3160" x2="490" y2="3160" class="dim" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+<line x1="130" y1="3150" x2="130" y2="3170" class="ext" />
+<line x1="490" y1="3150" x2="490" y2="3170" class="ext" />
+<text x="310" y="3148" class="dimension" text-anchor="middle">Wandtiefe 3,00</text>
+<line x1="100" y1="2573" x2="520" y2="2573" class="dim" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+<line x1="100" y1="2563" x2="100" y2="2583" class="ext" />
+<line x1="520" y1="2563" x2="520" y2="2583" class="ext" />
+<text x="310" y="2561" class="dimension" text-anchor="middle">Dachtiefe 3,50</text>
+<line x1="100" y1="2747.28" x2="585" y2="2740" class="leader" />
+<circle cx="100" cy="2747.28" r="3" fill="#364C58" />
+<text x="591" y="2735" class="small" >Ortgang 0,25 vor Wand</text>
+<line x1="370" y1="2760" x2="585" y2="2930" class="leader" />
+<circle cx="370" cy="2760" r="3" fill="#364C58" />
+<text x="591" y="2925" class="small" >Ringplatte 2,90…3,00</text>
+<text x="585" y="3000" class="small" >Dachfläche projiziert;</text>
+<text x="585" y="3028" class="small" >First und Traufe sind</text>
+<text x="585" y="3056" class="small" >durchgehende Kanten.</text>
+<text x="1010" y="2570" class="view" >GJ2 · Auflagerdetail / 650 px/m</text>
+<rect x="1160" y="3020" width="156" height="130" fill="#E8E0D1" class="obj"/>
+<rect x="1160" y="3020" width="156" height="130" fill="url(#wallHatch)" />
+<rect x="1160" y="2955" width="156" height="65" fill="#C59664" class="obj"/>
+<polygon points="1160,2955 1316,2955 1316,2838 1160,2916" fill="#B8824E" class="obj"/>
+<polygon points="965,3013.5 1472,2760 1472,2656 965,2909.5" fill="#C59664" class="obj"/>
+<polygon points="965,2909.5 1472,2656 1472,2640.4 965,2893.9" fill="#D7C49F" class="obj"/>
+<polygon points="965,2893.9 1472,2640.4 1472,2632.6 965,2886.1" fill="#34383C" class="obj"/>
+<rect x="965" y="2886.1" width="13" height="130" fill="#34383C" class="obj"/>
+<line x1="1160" y1="3180" x2="1316" y2="3180" class="dim" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+<line x1="1160" y1="3170" x2="1160" y2="3190" class="ext" />
+<line x1="1316" y1="3170" x2="1316" y2="3190" class="ext" />
+<text x="1238" y="3168" class="dimension" text-anchor="middle">Wand / Auflager 0,24</text>
+<line x1="1290" y1="2723.6" x2="1490" y2="2650" class="leader" />
+<circle cx="1290" cy="2723.6" r="3" fill="#364C58" />
+<text x="1496" y="2645" class="small" >Haut 0,012 + Schalung 0,024</text>
+<line x1="1296.5" y1="2825" x2="1490" y2="2760" class="leader" />
+<circle cx="1296.5" cy="2825" r="3" fill="#364C58" />
+<text x="1496" y="2755" class="small" >Sparren 0,16 vertikal</text>
+<line x1="1264" y1="2890" x2="1490" y2="2860" class="leader" />
+<circle cx="1264" cy="2890" r="3" fill="#364C58" />
+<text x="1496" y="2855" class="small" >Keil 0,06…0,18</text>
+<line x1="1264" y1="2981" x2="1490" y2="2975" class="leader" />
+<circle cx="1264" cy="2981" r="3" fill="#364C58" />
+<text x="1496" y="2970" class="small" >Platte 0,10 hoch</text>
+<text x="1370" y="3082" class="small" >Wandtop 2,90 = Plattenunterseite</text>
+<text x="1370" y="3113" class="small" >Plattentop 3,00 = Keilunterseite</text>
+<text x="1370" y="3144" class="small" >Keiltop U(X) = Sparrenunterseite</text>
+<rect x="30" y="3230" width="1740" height="44" fill="#E3E9E5" rx="8"/>
+<text x="50" y="3259" class="small" >Achsen: +Y oben, Front -Z · Blender→Roblox (X,Y,Z)→(X,Z,-Y) · 25/7 Studs/m · 1 m = 3,571429 Studs</text>
+<text x="40" y="3291" class="small" >Maßverträge: DIMENSIONS / ART / P02-06. Neue D-H / D-S / D-G-Vorschläge und vollständige Koordinaten: reference.md.</text>
+</svg>

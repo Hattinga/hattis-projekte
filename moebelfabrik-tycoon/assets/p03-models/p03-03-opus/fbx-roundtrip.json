@@ -1,0 +1,77 @@
+{
+  "Gebaeudeecke01.fbx": {
+    "expected_blender_bounds": [
+      [
+        -0.3,
+        -3.25,
+        0.0
+      ],
+      [
+        5.1,
+        0.25,
+        4.5
+      ]
+    ],
+    "measured": [
+      [
+        -0.3,
+        -3.25,
+        0.0
+      ],
+      [
+        5.1,
+        0.25,
+        4.5
+      ]
+    ],
+    "expected_triangles": 932,
+    "mesh_objects": 32,
+    "triangles": 932,
+    "roots": [
+      "Gebaeudeecke01.001"
+    ],
+    "pass": true,
+    "materials": [
+      "P03_Glass.001",
+      "P03_MachineSteel.001",
+      "P03_MutedGreen.001",
+      "P03_Seal.001",
+      "P03_WallPaint.001",
+      "P03_WoodRaw.001"
+    ]
+  },
+  "ControlCube_1m.fbx": {
+    "expected_blender_bounds": [
+      [
+        -0.5,
+        -0.5,
+        0.0
+      ],
+      [
+        0.5,
+        0.5,
+        1.0
+      ]
+    ],
+    "measured": [
+      [
+        -0.5,
+        -0.5,
+        -0.0
+      ],
+      [
+        0.5,
+        0.5,
+        1.0
+      ]
+    ],
+    "expected_triangles": 12,
+    "mesh_objects": 1,
+    "triangles": 12,
+    "roots": [
+      "ControlCube_1m.001"
+    ],
+    "pass": true,
+    "materials": []
+  }
+}

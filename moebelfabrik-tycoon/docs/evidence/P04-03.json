@@ -1,0 +1,226 @@
+{
+  "task": "P04-03",
+  "date": "2026-11-16",
+  "status": "accepted-artificial-state-only",
+  "place": {
+    "placeId": 79033653140107,
+    "universeId": 10776116608,
+    "studioId": "cf447f32-4634-4818-a824-7e58588e31ab",
+    "observedInitialVersion": 29,
+    "rollbackVersion": 30,
+    "completionVersion": 31,
+    "published": false,
+    "finalMode": "Edit"
+  },
+  "branch": "work/p00-studio-import",
+  "schemaVersion": 2,
+  "tests": {
+    "edit": {
+      "state": {
+        "dataStoreAccess": false,
+        "task": "P04-01",
+        "automaticPlayerStartup": false,
+        "status": "passed",
+        "profilesArtificial": true,
+        "schemaVersion": 2,
+        "checks": 35
+      },
+      "actions": {
+        "dataStoreAccess": false,
+        "profilesArtificial": true,
+        "checks": 35,
+        "status": "passed",
+        "mutations": false,
+        "task": "P04-02",
+        "remotes": false
+      },
+      "transfers": {
+        "profilesArtificial": true,
+        "passed": 36,
+        "persisted": false,
+        "task": "P04-03",
+        "passedCases": [
+          "01 pickup/place: four revision steps and exact Return lifetime",
+          "02 physical return to raw origin",
+          "03 physical StationOutput return is precise",
+          "04 concurrent source claims: only one wins",
+          "05 concurrent sources cannot claim the same carrier",
+          "06 two carried batches cannot claim one destination",
+          "07 stale commit retains claim; fresh retry succeeds",
+          "08 reserve/commit receipts replay before revision, location and TTL",
+          "09 payload conflicts outrank stale revision",
+          "10 actor identity/kind/carrier conflicts bind receipts",
+          "11 cancel receipts replay; cancel never moves stock",
+          "12 exact TTL boundary and idempotent sweep",
+          "13 successful reserve replaces expired overlaps only",
+          "14 sweep removes multiple expired claims in one revision",
+          "15 expired place claim preserves carried stock and Return",
+          "16 cancelled place and consumed pickup preserve Return",
+          "17 foreign stock/actor cannot occupy a Return promise",
+          "18 Delivery survives four hops and full finished store",
+          "19 Delivery allows only its designated raw slot and batch",
+          "20 Delivery wrong raw slot is denied even when unreserved and empty",
+          "21 Delivery/Return survive place cancellation, expiry and physical return",
+          "22 missing/future claim and wrong claim actor fail atomically",
+          "23 malformed requests, quantities and server time fail atomically",
+          "24 full target, wrong stage and foreign owner fail atomically",
+          "25 mutated Return identity/material and malformed records are rejected",
+          "26 returned results, requests and actors do not alias receipts/claims",
+          "27 JSON roundtrip preserves active claims, promises and replay receipts",
+          "28 frozen old profile works; shared store exposes current state",
+          "29 frozen RuntimeStore is rejected before publication",
+          "30 revision overflow rejects reserve, commit, cancel and nonempty sweep",
+          "31 Worker and Band share the exact commit path and assigned carrier",
+          "32 shared Actions enforces claim locks, exact own claim and expiry without mutation",
+          "33 shared Actions enforces Return, Delivery and precise output return",
+          "34 forged completion hop and missing parent Reserve are rejected",
+          "35 cancelled claim cannot be resurrected and committed",
+          "36 completion ordering and one terminal receipt per claim are enforced"
+        ],
+        "dataStoreAccess": false,
+        "remotes": false,
+        "calls": 211,
+        "status": "passed",
+        "failures": [],
+        "failed": 0,
+        "checks": 36
+      }
+    },
+    "server": {
+      "state": {
+        "dataStoreAccess": false,
+        "task": "P04-01",
+        "automaticPlayerStartup": false,
+        "status": "passed",
+        "profilesArtificial": true,
+        "schemaVersion": 2,
+        "checks": 35
+      },
+      "actions": {
+        "dataStoreAccess": false,
+        "profilesArtificial": true,
+        "checks": 35,
+        "status": "passed",
+        "mutations": false,
+        "task": "P04-02",
+        "remotes": false
+      },
+      "transfers": {
+        "profilesArtificial": true,
+        "passed": 36,
+        "persisted": false,
+        "task": "P04-03",
+        "passedCases": [
+          "01 pickup/place: four revision steps and exact Return lifetime",
+          "02 physical return to raw origin",
+          "03 physical StationOutput return is precise",
+          "04 concurrent source claims: only one wins",
+          "05 concurrent sources cannot claim the same carrier",
+          "06 two carried batches cannot claim one destination",
+          "07 stale commit retains claim; fresh retry succeeds",
+          "08 reserve/commit receipts replay before revision, location and TTL",
+          "09 payload conflicts outrank stale revision",
+          "10 actor identity/kind/carrier conflicts bind receipts",
+          "11 cancel receipts replay; cancel never moves stock",
+          "12 exact TTL boundary and idempotent sweep",
+          "13 successful reserve replaces expired overlaps only",
+          "14 sweep removes multiple expired claims in one revision",
+          "15 expired place claim preserves carried stock and Return",
+          "16 cancelled place and consumed pickup preserve Return",
+          "17 foreign stock/actor cannot occupy a Return promise",
+          "18 Delivery survives four hops and full finished store",
+          "19 Delivery allows only its designated raw slot and batch",
+          "20 Delivery wrong raw slot is denied even when unreserved and empty",
+          "21 Delivery/Return survive place cancellation, expiry and physical return",
+          "22 missing/future claim and wrong claim actor fail atomically",
+          "23 malformed requests, quantities and server time fail atomically",
+          "24 full target, wrong stage and foreign owner fail atomically",
+          "25 mutated Return identity/material and malformed records are rejected",
+          "26 returned results, requests and actors do not alias receipts/claims",
+          "27 JSON roundtrip preserves active claims, promises and replay receipts",
+          "28 frozen old profile works; shared store exposes current state",
+          "29 frozen RuntimeStore is rejected before publication",
+          "30 revision overflow rejects reserve, commit, cancel and nonempty sweep",
+          "31 Worker and Band share the exact commit path and assigned carrier",
+          "32 shared Actions enforces claim locks, exact own claim and expiry without mutation",
+          "33 shared Actions enforces Return, Delivery and precise output return",
+          "34 forged completion hop and missing parent Reserve are rejected",
+          "35 cancelled claim cannot be resurrected and committed",
+          "36 completion ordering and one terminal receipt per claim are enforced"
+        ],
+        "dataStoreAccess": false,
+        "remotes": false,
+        "calls": 211,
+        "status": "passed",
+        "failures": [],
+        "failed": 0,
+        "checks": 36
+      }
+    }
+  },
+  "sourceVerification": {
+    "modules": {
+      "State": {
+        "bytes": 16614,
+        "matches": true
+      },
+      "Actions": {
+        "bytes": 6859,
+        "matches": true
+      },
+      "Transfers": {
+        "bytes": 12709,
+        "matches": true
+      }
+    },
+    "universe": 10776116608,
+    "place": 79033653140107,
+    "testCopiesRemaining": 0
+  },
+  "sourceSha256": {
+    "src/server/State.luau": "4FE657AF8A6D4D9ADF6B8CAB842F90AE3ED0E2EDD49ECEE1B8BE84164B5BC204",
+    "src/server/Actions.luau": "E02D17E048A2AB1DE8F1145AAC75CFD5A9E8FC609CAE280625868882F36720D6",
+    "src/server/Transfers.luau": "ECBB3F54D42F5B354CF9AAFF6E927E0DBE6CF26C297C39A3BD6B38A7C4064BEA",
+    "tools/studio/test-p04-03-transfers.luau": "66720C4D709598576F5733FFFCDFA160C01A64C4CA5A7721BA97B9F8E37D5A6E"
+  },
+  "independentReadReview": {
+    "completed": true,
+    "initialFindings": [
+      "Shared Actions did not check claims/promises/output returns",
+      "Commit/cancel receipts not bound to their historical Reserve",
+      "Cancelled claims could be reinserted"
+    ],
+    "fixesReviewed": true,
+    "remainingFindings": 0
+  },
+  "client": {
+    "serverModulesVisible": false,
+    "checkedModules": [
+      "State",
+      "Actions",
+      "Transfers"
+    ]
+  },
+  "console": {
+    "gameScriptErrors": 0,
+    "existingAssetWarning": {
+      "assetId": 203785492,
+      "count": 3,
+      "message": "Asset type does not match requested type",
+      "previouslyDocumented": "docs/evidence/P02-06.md"
+    }
+  },
+  "constraints": {
+    "artificialProfilesOnly": true,
+    "dataStoreAccess": false,
+    "memoryStoreAccess": false,
+    "remotes": false,
+    "automaticPlayerStartup": false,
+    "worldIntegration": false,
+    "persistenceAccepted": false,
+    "commit": false,
+    "push": false,
+    "merge": false
+  },
+  "nextTask": "P04-04"
+}

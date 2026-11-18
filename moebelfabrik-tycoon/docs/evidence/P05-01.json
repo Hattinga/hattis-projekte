@@ -1,0 +1,107 @@
+{
+  "date": "2026-11-18",
+  "task": "P05-01",
+  "status": "accepted",
+  "baselineVersion": 40,
+  "savedVersion": 41,
+  "placeId": 79033653140107,
+  "edit": {
+    "testMode": "Edit",
+    "economicReady": false,
+    "locations": 12,
+    "checks": 9,
+    "status": "passed",
+    "totalDuration": 24,
+    "task": "P05-01",
+    "stations": {
+      "1": {
+        "seconds": 6,
+        "station": "Saege",
+        "points": {
+          "Input": "Workspace.P02Line.Stations.Saege.Input.Transfer",
+          "Output": "Workspace.P02Line.Stations.Saege.Output.Transfer",
+          "Process": "Workspace.P02Line.Stations.Saege.Process.Transfer"
+        }
+      },
+      "2": {
+        "seconds": 8,
+        "station": "Montage",
+        "points": {
+          "Input": "Workspace.P02Line.Stations.Montage.Input.Transfer",
+          "Output": "Workspace.P02Line.Stations.Montage.Output.Transfer",
+          "Process": "Workspace.P02Line.Stations.Montage.Process.Transfer"
+        }
+      },
+      "3": {
+        "seconds": 6,
+        "station": "Finish",
+        "points": {
+          "Input": "Workspace.P02Line.Stations.Finish.Input.Transfer",
+          "Output": "Workspace.P02Line.Stations.Finish.Output.Transfer",
+          "Process": "Workspace.P02Line.Stations.Finish.Process.Transfer"
+        }
+      },
+      "4": {
+        "seconds": 4,
+        "station": "Packen",
+        "points": {
+          "Input": "Workspace.P02Line.Stations.Packen.Input.Transfer",
+          "Output": "Workspace.P02Line.Stations.Packen.Output.Transfer",
+          "Process": "Workspace.P02Line.Stations.Packen.Process.Transfer"
+        }
+      }
+    }
+  },
+  "server": {
+    "testMode": "Server",
+    "economicReady": false,
+    "locations": 12,
+    "checks": 9,
+    "status": "passed",
+    "totalDuration": 24,
+    "task": "P05-01",
+    "stations": {
+      "1": {
+        "seconds": 6,
+        "station": "Saege",
+        "points": {
+          "Input": "Workspace.P02Line.Stations.Saege.Input.Transfer",
+          "Output": "Workspace.P02Line.Stations.Saege.Output.Transfer",
+          "Process": "Workspace.P02Line.Stations.Saege.Process.Transfer"
+        }
+      },
+      "2": {
+        "seconds": 8,
+        "station": "Montage",
+        "points": {
+          "Input": "Workspace.P02Line.Stations.Montage.Input.Transfer",
+          "Output": "Workspace.P02Line.Stations.Montage.Output.Transfer",
+          "Process": "Workspace.P02Line.Stations.Montage.Process.Transfer"
+        }
+      },
+      "3": {
+        "seconds": 6,
+        "station": "Finish",
+        "points": {
+          "Input": "Workspace.P02Line.Stations.Finish.Input.Transfer",
+          "Output": "Workspace.P02Line.Stations.Finish.Output.Transfer",
+          "Process": "Workspace.P02Line.Stations.Finish.Process.Transfer"
+        }
+      },
+      "4": {
+        "seconds": 4,
+        "station": "Packen",
+        "points": {
+          "Input": "Workspace.P02Line.Stations.Packen.Input.Transfer",
+          "Output": "Workspace.P02Line.Stations.Packen.Output.Transfer",
+          "Process": "Workspace.P02Line.Stations.Packen.Process.Transfer"
+        }
+      }
+    }
+  },
+  "client": {
+    "serverModulesVisible": 0
+  },
+  "published": false,
+  "modeAfter": "Edit"
+}

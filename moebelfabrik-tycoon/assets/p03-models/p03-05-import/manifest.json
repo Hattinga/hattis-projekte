@@ -1,0 +1,87 @@
+{
+  "task": "P03-05",
+  "date": "2026-11-16",
+  "status": "neutral-import-ready",
+  "files": [
+    {
+      "path": "checks.json",
+      "sha256": "9cfb9402863fcc1ef153ac6fa39e227f19273f5a58b41e09380464efeea566cf",
+      "bytes": 309036
+    },
+    {
+      "path": "handoff.md",
+      "sha256": "ab8a20877b340de458ccbf5d6b18d3a2825378f5acda0d4fd0a6be5805f95129",
+      "bytes": 4054
+    },
+    {
+      "path": "labels.json",
+      "sha256": "7214b81b66addaa54093a9bd386ce6738607f4e4cf6871aacdbb150f2d800a2b",
+      "bytes": 15801
+    },
+    {
+      "path": "p03-05-import-v01.blend",
+      "sha256": "e10362b9e76ee28a359d7d9ac1567fdf2805f48185442d4c9611d5a8b4482a18",
+      "bytes": 2345848
+    },
+    {
+      "path": "roundtrip.json",
+      "sha256": "abb24a4340c634f16f8fdc9896fce004b0741cb801dd5cfc7a044ab2743339dd",
+      "bytes": 25008
+    },
+    {
+      "path": "exports/ControlCube_1m.fbx",
+      "sha256": "b04c1e2ba63e17f5a80dfccf275dc25dbc1b5053af168cba94a8c95fe79922ee",
+      "bytes": 17100
+    },
+    {
+      "path": "exports/Hocker01_Finish.fbx",
+      "sha256": "1a9c9bb79067c1a6bc42654ec2f1f45bc37332443a67842cbe8e328dbbd2c521",
+      "bytes": 434780
+    },
+    {
+      "path": "exports/Hocker01_Kit.fbx",
+      "sha256": "f4cf347edd0aba241f1ad374da683e21594b29680b22511569aa1e35b568642d",
+      "bytes": 405132
+    },
+    {
+      "path": "exports/Hocker01_Raw.fbx",
+      "sha256": "b173f92f9f0b7f19efcc95640e23cc50c87558595fee4b57fc0fac45a97a592d",
+      "bytes": 447692
+    },
+    {
+      "path": "exports/Saege01.fbx",
+      "sha256": "4302a34c0156fd31eaa0149f130ba3eea3cb022d7535a724cc7afd55cf7b1c65",
+      "bytes": 278828
+    },
+    {
+      "path": "renders/overview-import.png",
+      "sha256": "5f60f294f0c116caa770d0e9e9feff6e077f5dc1ab8e7260d27e3c2f95a42fa3",
+      "bytes": 1041109
+    },
+    {
+      "path": "textures/WoodFinish.png",
+      "sha256": "397032929a07bc07e60941d4145e4cad1608e1c84289f38e49c4f3cb145b03ef",
+      "bytes": 277642
+    },
+    {
+      "path": "textures/WoodRaw.png",
+      "sha256": "518dc669bf54726397ff21083f1650994ec0bca33eabef439d10cdc4f9f08793",
+      "bytes": 291019
+    },
+    {
+      "path": "tools/prepare.py",
+      "sha256": "8e6775e001b15874052f8ebc3f680fb149f75385b913d75954f548432e9590d7",
+      "bytes": 14055
+    },
+    {
+      "path": "tools/render.py",
+      "sha256": "53d4c0f738f9ed2985c4e753b3691cf50498ae6b119350e24d695b5cab3e441a",
+      "bytes": 1108
+    },
+    {
+      "path": "tools/roundtrip.py",
+      "sha256": "83402992478fd8bb1edd878e1dbe923862d5ab7801a5ced3db1fe835cf73d25f",
+      "bytes": 3674
+    }
+  ]
+}

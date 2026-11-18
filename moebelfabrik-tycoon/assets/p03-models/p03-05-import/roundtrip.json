@@ -1,0 +1,799 @@
+{
+  "task": "P03-05",
+  "date": "2026-11-16",
+  "status": "passed",
+  "method": "FBX export to five independent Blender scenes, not Roblox",
+  "assets": {
+    "Hocker01_Raw": {
+      "status": "passed",
+      "dimensions_blender_xyz_m": [
+        0.4000000059604645,
+        0.4000000059604645,
+        0.45000005037190505
+      ],
+      "root_at_origin": true,
+      "bottom_at_zero": true,
+      "meshes": 26,
+      "triangles": 4456,
+      "textures": [
+        "WoodRaw.png"
+      ],
+      "missing_textures": [],
+      "baked_word_meshes": [],
+      "topology": [
+        {
+          "mesh": "Leg_1__WoodRaw.021",
+          "watertight": true,
+          "positive_world_volume_m3": 0.0005196961424420554
+        },
+        {
+          "mesh": "Leg_2__WoodRaw.020",
+          "watertight": true,
+          "positive_world_volume_m3": 0.0005196987440643668
+        },
+        {
+          "mesh": "Leg_3__WoodRaw.020",
+          "watertight": true,
+          "positive_world_volume_m3": 0.0005196987387886732
+        },
+        {
+          "mesh": "Leg_4__WoodRaw.020",
+          "watertight": true,
+          "positive_world_volume_m3": 0.0005196961471902029
+        },
+        {
+          "mesh": "RailXScrew__MachineSteel.080",
+          "watertight": true,
+          "positive_world_volume_m3": 7.653668227652336e-08
+        },
+        {
+          "mesh": "RailXScrew__MachineSteel.081",
+          "watertight": true,
+          "positive_world_volume_m3": 7.653668227652336e-08
+        },
+        {
+          "mesh": "RailXScrew__MachineSteel.082",
+          "watertight": true,
+          "positive_world_volume_m3": 7.653668227652336e-08
+        },
+        {
+          "mesh": "RailXScrew__MachineSteel.083",
+          "watertight": true,
+          "positive_world_volume_m3": 7.653668227652336e-08
+        },
+        {
+          "mesh": "RailX_1__WoodRaw.010",
+          "watertight": true,
+          "positive_world_volume_m3": 0.0003477236629654492
+        },
+        {
+          "mesh": "RailX_2__WoodRaw.010",
+          "watertight": true,
+          "positive_world_volume_m3": 0.0003477236629654492
+        },
+        {
+          "mesh": "RailYScrew__MachineSteel.080",
+          "watertight": true,
+          "positive_world_volume_m3": 7.653668227652336e-08
+        },
+        {
+          "mesh": "RailYScrew__MachineSteel.081",
+          "watertight": true,
+          "positive_world_volume_m3": 7.653668227652336e-08
+        },
+        {
+          "mesh": "RailYScrew__MachineSteel.082",
+          "watertight": true,
+          "positive_world_volume_m3": 7.653668227652336e-08
+        },
+        {
+          "mesh": "RailYScrew__MachineSteel.083",
+          "watertight": true,
+          "positive_world_volume_m3": 7.653668227652336e-08
+        },
+        {
+          "mesh": "RailY_1__WoodRaw.010",
+          "watertight": true,
+          "positive_world_volume_m3": 0.0003477236629654492
+        },
+        {
+          "mesh": "RailY_2__WoodRaw.010",
+          "watertight": true,
+          "positive_world_volume_m3": 0.0003477236629654492
+        },
+        {
+          "mesh": "ScrewSlot_1__Black.020",
+          "watertight": true,
+          "positive_world_volume_m3": 1.0800001119822296e-09
+        },
+        {
+          "mesh": "ScrewSlot_2__Black.020",
+          "watertight": true,
+          "positive_world_volume_m3": 1.0800001119822296e-09
+        },
+        {
+          "mesh": "ScrewSlot_3__Black.020",
+          "watertight": true,
+          "positive_world_volume_m3": 1.0800001119822296e-09
+        },
+        {
+          "mesh": "ScrewSlot_4__Black.020",
+          "watertight": true,
+          "positive_world_volume_m3": 1.0800001119822296e-09
+        },
+        {
+          "mesh": "SeatScrew_1__MachineSteel.020",
+          "watertight": true,
+          "positive_world_volume_m3": 1.2815554341581063e-07
+        },
+        {
+          "mesh": "SeatScrew_2__MachineSteel.020",
+          "watertight": true,
+          "positive_world_volume_m3": 1.2815554341581063e-07
+        },
+        {
+          "mesh": "SeatScrew_3__MachineSteel.020",
+          "watertight": true,
+          "positive_world_volume_m3": 1.2815554341581063e-07
+        },
+        {
+          "mesh": "SeatScrew_4__MachineSteel.020",
+          "watertight": true,
+          "positive_world_volume_m3": 1.2815554341581063e-07
+        },
+        {
+          "mesh": "Seat__WoodRaw.021",
+          "watertight": true,
+          "positive_world_volume_m3": 0.003998273122486457
+        },
+        {
+          "mesh": "StagePlaque__Label.020",
+          "watertight": true,
+          "positive_world_volume_m3": 3.723410020136153e-06
+        }
+      ]
+    },
+    "Hocker01_Finish": {
+      "status": "passed",
+      "dimensions_blender_xyz_m": [
+        0.4000000059604645,
+        0.4000000059604645,
+        0.45000005037190505
+      ],
+      "root_at_origin": true,
+      "bottom_at_zero": true,
+      "meshes": 26,
+      "triangles": 4456,
+      "textures": [
+        "WoodFinish.png"
+      ],
+      "missing_textures": [],
+      "baked_word_meshes": [],
+      "topology": [
+        {
+          "mesh": "Leg_1__WoodFinish.010",
+          "watertight": true,
+          "positive_world_volume_m3": 0.0005196972447707063
+        },
+        {
+          "mesh": "Leg_2__WoodFinish.010",
+          "watertight": true,
+          "positive_world_volume_m3": 0.0005196973957892506
+        },
+        {
+          "mesh": "Leg_3__WoodFinish.010",
+          "watertight": true,
+          "positive_world_volume_m3": 0.0005196987363188721
+        },
+        {
+          "mesh": "Leg_4__WoodFinish.010",
+          "watertight": true,
+          "positive_world_volume_m3": 0.0005196961447204017
+        },
+        {
+          "mesh": "RailXScrew__MachineSteel.084",
+          "watertight": true,
+          "positive_world_volume_m3": 7.653668227652336e-08
+        },
+        {
+          "mesh": "RailXScrew__MachineSteel.085",
+          "watertight": true,
+          "positive_world_volume_m3": 7.653668227652336e-08
+        },
+        {
+          "mesh": "RailXScrew__MachineSteel.086",
+          "watertight": true,
+          "positive_world_volume_m3": 7.653668227652336e-08
+        },
+        {
+          "mesh": "RailXScrew__MachineSteel.087",
+          "watertight": true,
+          "positive_world_volume_m3": 7.653668227652336e-08
+        },
+        {
+          "mesh": "RailX_1__WoodFinish.010",
+          "watertight": true,
+          "positive_world_volume_m3": 0.0003477236629654492
+        },
+        {
+          "mesh": "RailX_2__WoodFinish.010",
+          "watertight": true,
+          "positive_world_volume_m3": 0.0003477236629654492
+        },
+        {
+          "mesh": "RailYScrew__MachineSteel.084",
+          "watertight": true,
+          "positive_world_volume_m3": 7.653668227652336e-08
+        },
+        {
+          "mesh": "RailYScrew__MachineSteel.085",
+          "watertight": true,
+          "positive_world_volume_m3": 7.653668227652336e-08
+        },
+        {
+          "mesh": "RailYScrew__MachineSteel.086",
+          "watertight": true,
+          "positive_world_volume_m3": 7.653668227652336e-08
+        },
+        {
+          "mesh": "RailYScrew__MachineSteel.087",
+          "watertight": true,
+          "positive_world_volume_m3": 7.653668227652336e-08
+        },
+        {
+          "mesh": "RailY_1__WoodFinish.010",
+          "watertight": true,
+          "positive_world_volume_m3": 0.0003477236629654492
+        },
+        {
+          "mesh": "RailY_2__WoodFinish.010",
+          "watertight": true,
+          "positive_world_volume_m3": 0.0003477236629654492
+        },
+        {
+          "mesh": "ScrewSlot_1__Black.021",
+          "watertight": true,
+          "positive_world_volume_m3": 1.0800001119822296e-09
+        },
+        {
+          "mesh": "ScrewSlot_2__Black.021",
+          "watertight": true,
+          "positive_world_volume_m3": 1.0800001119822296e-09
+        },
+        {
+          "mesh": "ScrewSlot_3__Black.021",
+          "watertight": true,
+          "positive_world_volume_m3": 1.0800001119822296e-09
+        },
+        {
+          "mesh": "ScrewSlot_4__Black.021",
+          "watertight": true,
+          "positive_world_volume_m3": 1.0800001119822296e-09
+        },
+        {
+          "mesh": "SeatScrew_1__MachineSteel.021",
+          "watertight": true,
+          "positive_world_volume_m3": 1.2815554341581063e-07
+        },
+        {
+          "mesh": "SeatScrew_2__MachineSteel.021",
+          "watertight": true,
+          "positive_world_volume_m3": 1.2815554341581063e-07
+        },
+        {
+          "mesh": "SeatScrew_3__MachineSteel.021",
+          "watertight": true,
+          "positive_world_volume_m3": 1.2815554341581063e-07
+        },
+        {
+          "mesh": "SeatScrew_4__MachineSteel.021",
+          "watertight": true,
+          "positive_world_volume_m3": 1.2815554341581063e-07
+        },
+        {
+          "mesh": "Seat__WoodFinish.010",
+          "watertight": true,
+          "positive_world_volume_m3": 0.003998273122438824
+        },
+        {
+          "mesh": "StagePlaque__Label.021",
+          "watertight": true,
+          "positive_world_volume_m3": 3.723410020136153e-06
+        }
+      ]
+    },
+    "Hocker01_Kit": {
+      "status": "passed",
+      "dimensions_blender_xyz_m": [
+        0.6000000238418579,
+        0.5,
+        0.18000007735920676
+      ],
+      "root_at_origin": true,
+      "bottom_at_zero": true,
+      "meshes": 21,
+      "triangles": 2172,
+      "textures": [
+        "WoodRaw.png"
+      ],
+      "missing_textures": [],
+      "baked_word_meshes": [],
+      "topology": [
+        {
+          "mesh": "CarrierFloor__Carrier.010",
+          "watertight": true,
+          "positive_world_volume_m3": 0.0029948157016850244
+        },
+        {
+          "mesh": "CarrierRimX__Carrier.020",
+          "watertight": true,
+          "positive_world_volume_m3": 0.00011528751762955141
+        },
+        {
+          "mesh": "CarrierRimX__Carrier.021",
+          "watertight": true,
+          "positive_world_volume_m3": 0.00011528751762955141
+        },
+        {
+          "mesh": "CarrierRimY__Carrier.020",
+          "watertight": true,
+          "positive_world_volume_m3": 9.938124643564797e-05
+        },
+        {
+          "mesh": "CarrierRimY__Carrier.021",
+          "watertight": true,
+          "positive_world_volume_m3": 9.938124643564797e-05
+        },
+        {
+          "mesh": "HandleTop__Carrier.020",
+          "watertight": true,
+          "positive_world_volume_m3": 6.124604773325552e-05
+        },
+        {
+          "mesh": "HandleTop__Carrier.021",
+          "watertight": true,
+          "positive_world_volume_m3": 6.124604773325552e-05
+        },
+        {
+          "mesh": "HandleUpright__Carrier.040",
+          "watertight": true,
+          "positive_world_volume_m3": 2.6183312680700284e-05
+        },
+        {
+          "mesh": "HandleUpright__Carrier.041",
+          "watertight": true,
+          "positive_world_volume_m3": 2.6183312680700284e-05
+        },
+        {
+          "mesh": "HandleUpright__Carrier.042",
+          "watertight": true,
+          "positive_world_volume_m3": 2.6183312680700284e-05
+        },
+        {
+          "mesh": "HandleUpright__Carrier.043",
+          "watertight": true,
+          "positive_world_volume_m3": 2.6183312680700284e-05
+        },
+        {
+          "mesh": "KitBadge__Label.010",
+          "watertight": true,
+          "positive_world_volume_m3": 2.7299999927263656e-06
+        },
+        {
+          "mesh": "Leg_1__WoodRaw.022",
+          "watertight": true,
+          "positive_world_volume_m3": 0.0005202549812969565
+        },
+        {
+          "mesh": "Leg_2__WoodRaw.021",
+          "watertight": true,
+          "positive_world_volume_m3": 0.0005202549812969565
+        },
+        {
+          "mesh": "Leg_3__WoodRaw.021",
+          "watertight": true,
+          "positive_world_volume_m3": 0.0005202549812969565
+        },
+        {
+          "mesh": "Leg_4__WoodRaw.021",
+          "watertight": true,
+          "positive_world_volume_m3": 0.0005202549812969565
+        },
+        {
+          "mesh": "Rail_1__WoodRaw.010",
+          "watertight": true,
+          "positive_world_volume_m3": 0.00034772366178814266
+        },
+        {
+          "mesh": "Rail_2__WoodRaw.010",
+          "watertight": true,
+          "positive_world_volume_m3": 0.00034772366178814266
+        },
+        {
+          "mesh": "Rail_3__WoodRaw.010",
+          "watertight": true,
+          "positive_world_volume_m3": 0.00034772366178814266
+        },
+        {
+          "mesh": "Rail_4__WoodRaw.010",
+          "watertight": true,
+          "positive_world_volume_m3": 0.00034772366178814266
+        },
+        {
+          "mesh": "Seat__WoodRaw.022",
+          "watertight": true,
+          "positive_world_volume_m3": 0.003999382699358531
+        }
+      ]
+    },
+    "Saege01": {
+      "status": "passed",
+      "dimensions_blender_xyz_m": [
+        2.4000000953674316,
+        0.8000001609325409,
+        1.4500001146197903
+      ],
+      "root_at_origin": true,
+      "bottom_at_zero": true,
+      "meshes": 66,
+      "triangles": 5756,
+      "textures": [],
+      "missing_textures": [],
+      "baked_word_meshes": [],
+      "topology": [
+        {
+          "mesh": "Arrow_0.010",
+          "watertight": true,
+          "positive_world_volume_m3": 1.050174170711941e-07
+        },
+        {
+          "mesh": "Arrow_1.010",
+          "watertight": true,
+          "positive_world_volume_m3": 1.0501744315393607e-07
+        },
+        {
+          "mesh": "Arrow_2.010",
+          "watertight": true,
+          "positive_world_volume_m3": 1.0501752139863846e-07
+        },
+        {
+          "mesh": "Base_BladeSpindle__MachineSteel.006",
+          "watertight": true,
+          "positive_world_volume_m3": 0.00036043739907484914
+        },
+        {
+          "mesh": "BladeBearingSupport__MachineSteel.012",
+          "watertight": true,
+          "positive_world_volume_m3": 0.0004695012036568698
+        },
+        {
+          "mesh": "BladeBearingSupport__MachineSteel.013",
+          "watertight": true,
+          "positive_world_volume_m3": 0.0004695012036568698
+        },
+        {
+          "mesh": "BladeBearing__BrushedSteel.012",
+          "watertight": true,
+          "positive_world_volume_m3": 0.00012472543546705479
+        },
+        {
+          "mesh": "BladeBearing__BrushedSteel.013",
+          "watertight": true,
+          "positive_world_volume_m3": 0.00012472543546705479
+        },
+        {
+          "mesh": "EndBrace__MachineSteel.020",
+          "watertight": true,
+          "positive_world_volume_m3": 0.0021524671524639806
+        },
+        {
+          "mesh": "EndBrace__MachineSteel.021",
+          "watertight": true,
+          "positive_world_volume_m3": 0.0021524671524639806
+        },
+        {
+          "mesh": "FootPad__Black.040",
+          "watertight": true,
+          "positive_world_volume_m3": 0.0002974756558657746
+        },
+        {
+          "mesh": "FootPad__Black.041",
+          "watertight": true,
+          "positive_world_volume_m3": 0.0002974756558657746
+        },
+        {
+          "mesh": "FootPad__Black.042",
+          "watertight": true,
+          "positive_world_volume_m3": 0.0002974756558657746
+        },
+        {
+          "mesh": "FootPad__Black.043",
+          "watertight": true,
+          "positive_world_volume_m3": 0.0002974756558657746
+        },
+        {
+          "mesh": "GuardGuide__MachineSteel.020",
+          "watertight": true,
+          "positive_world_volume_m3": 7.815826043062325e-05
+        },
+        {
+          "mesh": "GuardGuide__MachineSteel.021",
+          "watertight": true,
+          "positive_world_volume_m3": 7.815826043062325e-05
+        },
+        {
+          "mesh": "GuardStripe__Black.010",
+          "watertight": true,
+          "positive_world_volume_m3": 1.572619334513295e-05
+        },
+        {
+          "mesh": "Leg__MutedGreen.040",
+          "watertight": true,
+          "positive_world_volume_m3": 0.00797098411096322
+        },
+        {
+          "mesh": "Leg__MutedGreen.041",
+          "watertight": true,
+          "positive_world_volume_m3": 0.00797098411096322
+        },
+        {
+          "mesh": "Leg__MutedGreen.042",
+          "watertight": true,
+          "positive_world_volume_m3": 0.00797098411096322
+        },
+        {
+          "mesh": "Leg__MutedGreen.043",
+          "watertight": true,
+          "positive_world_volume_m3": 0.00797098411096322
+        },
+        {
+          "mesh": "LongBrace__MachineSteel.020",
+          "watertight": true,
+          "positive_world_volume_m3": 0.007536650221013869
+        },
+        {
+          "mesh": "LongBrace__MachineSteel.021",
+          "watertight": true,
+          "positive_world_volume_m3": 0.007536650221013869
+        },
+        {
+          "mesh": "MainTable__MachineSteel.010",
+          "watertight": true,
+          "positive_world_volume_m3": 0.1534621370141078
+        },
+        {
+          "mesh": "MotorHousing__MutedGreen.010",
+          "watertight": true,
+          "positive_world_volume_m3": 0.08977601992067692
+        },
+        {
+          "mesh": "MotorMount__MachineSteel.020",
+          "watertight": true,
+          "positive_world_volume_m3": 0.001074734214560814
+        },
+        {
+          "mesh": "MotorMount__MachineSteel.021",
+          "watertight": true,
+          "positive_world_volume_m3": 0.001074734214560814
+        },
+        {
+          "mesh": "Moving_Blade__BrushedSteel.010",
+          "watertight": true,
+          "positive_world_volume_m3": 0.000352420728206772
+        },
+        {
+          "mesh": "Moving_ParkedGuard__SafetyOrange.010",
+          "watertight": true,
+          "positive_world_volume_m3": 0.013530250516541657
+        },
+        {
+          "mesh": "PlatenBolt__MachineSteel.120",
+          "watertight": true,
+          "positive_world_volume_m3": 1.0800000258151473e-07
+        },
+        {
+          "mesh": "PlatenBolt__MachineSteel.121",
+          "watertight": true,
+          "positive_world_volume_m3": 1.0800000258151473e-07
+        },
+        {
+          "mesh": "PlatenBolt__MachineSteel.122",
+          "watertight": true,
+          "positive_world_volume_m3": 1.0800000258151473e-07
+        },
+        {
+          "mesh": "PlatenBolt__MachineSteel.123",
+          "watertight": true,
+          "positive_world_volume_m3": 1.0800000258151473e-07
+        },
+        {
+          "mesh": "PlatenBolt__MachineSteel.124",
+          "watertight": true,
+          "positive_world_volume_m3": 1.0800000258151473e-07
+        },
+        {
+          "mesh": "PlatenBolt__MachineSteel.125",
+          "watertight": true,
+          "positive_world_volume_m3": 1.0800000258151473e-07
+        },
+        {
+          "mesh": "PlatenBolt__MachineSteel.126",
+          "watertight": true,
+          "positive_world_volume_m3": 1.0800000258151473e-07
+        },
+        {
+          "mesh": "PlatenBolt__MachineSteel.127",
+          "watertight": true,
+          "positive_world_volume_m3": 1.0800000258151473e-07
+        },
+        {
+          "mesh": "PlatenBolt__MachineSteel.128",
+          "watertight": true,
+          "positive_world_volume_m3": 1.0800000258151473e-07
+        },
+        {
+          "mesh": "PlatenBolt__MachineSteel.129",
+          "watertight": true,
+          "positive_world_volume_m3": 1.0800000258151473e-07
+        },
+        {
+          "mesh": "PlatenBolt__MachineSteel.130",
+          "watertight": true,
+          "positive_world_volume_m3": 1.0800000258151473e-07
+        },
+        {
+          "mesh": "PlatenBolt__MachineSteel.131",
+          "watertight": true,
+          "positive_world_volume_m3": 1.0800000258151473e-07
+        },
+        {
+          "mesh": "Platen_0__BrushedSteel.010",
+          "watertight": true,
+          "positive_world_volume_m3": 0.008393831523649014
+        },
+        {
+          "mesh": "Platen_1__BrushedSteel.010",
+          "watertight": true,
+          "positive_world_volume_m3": 0.008393831523649014
+        },
+        {
+          "mesh": "Platen_2__BrushedSteel.010",
+          "watertight": true,
+          "positive_world_volume_m3": 0.008393831523649014
+        },
+        {
+          "mesh": "RearRail__MachineSteel.010",
+          "watertight": true,
+          "positive_world_volume_m3": 0.007015596418084068
+        },
+        {
+          "mesh": "StartButton__SafetyOrange.010",
+          "watertight": true,
+          "positive_world_volume_m3": 8.748601765244714e-06
+        },
+        {
+          "mesh": "StatusBadge__Label.010",
+          "watertight": true,
+          "positive_world_volume_m3": 6.069607129340036e-05
+        },
+        {
+          "mesh": "StatusFastener__BrushedSteel.040",
+          "watertight": true,
+          "positive_world_volume_m3": 2.9400002860229734e-07
+        },
+        {
+          "mesh": "StatusFastener__BrushedSteel.041",
+          "watertight": true,
+          "positive_world_volume_m3": 2.9400002860229734e-07
+        },
+        {
+          "mesh": "StatusFastener__BrushedSteel.042",
+          "watertight": true,
+          "positive_world_volume_m3": 2.9400002860229734e-07
+        },
+        {
+          "mesh": "StatusFastener__BrushedSteel.043",
+          "watertight": true,
+          "positive_world_volume_m3": 2.9400002860229734e-07
+        },
+        {
+          "mesh": "StatusPlate__MutedGreen.010",
+          "watertight": true,
+          "positive_world_volume_m3": 0.006338134533515094
+        },
+        {
+          "mesh": "StatusSupport__MachineSteel.010",
+          "watertight": true,
+          "positive_world_volume_m3": 0.00033497569062726306
+        },
+        {
+          "mesh": "StatusSymbol__SafetyOrange.010",
+          "watertight": true,
+          "positive_world_volume_m3": 2.992761998049983e-06
+        },
+        {
+          "mesh": "StopButton__Red.010",
+          "watertight": true,
+          "positive_world_volume_m3": 6.056733789947247e-05
+        },
+        {
+          "mesh": "SwitchBox__MachineSteel.010",
+          "watertight": true,
+          "positive_world_volume_m3": 0.001030314610510332
+        },
+        {
+          "mesh": "Vent__Black.100",
+          "watertight": true,
+          "positive_world_volume_m3": 2.9534775430407606e-06
+        },
+        {
+          "mesh": "Vent__Black.101",
+          "watertight": true,
+          "positive_world_volume_m3": 2.9534775430407606e-06
+        },
+        {
+          "mesh": "Vent__Black.102",
+          "watertight": true,
+          "positive_world_volume_m3": 2.9534775430407606e-06
+        },
+        {
+          "mesh": "Vent__Black.103",
+          "watertight": true,
+          "positive_world_volume_m3": 2.9534775430407606e-06
+        },
+        {
+          "mesh": "Vent__Black.104",
+          "watertight": true,
+          "positive_world_volume_m3": 2.9534775430407606e-06
+        },
+        {
+          "mesh": "Vent__Black.105",
+          "watertight": true,
+          "positive_world_volume_m3": 2.9534775430407606e-06
+        },
+        {
+          "mesh": "Vent__Black.106",
+          "watertight": true,
+          "positive_world_volume_m3": 2.9534775430407606e-06
+        },
+        {
+          "mesh": "Vent__Black.107",
+          "watertight": true,
+          "positive_world_volume_m3": 2.9534775430407606e-06
+        },
+        {
+          "mesh": "Vent__Black.108",
+          "watertight": true,
+          "positive_world_volume_m3": 2.9534775430407606e-06
+        },
+        {
+          "mesh": "Vent__Black.109",
+          "watertight": true,
+          "positive_world_volume_m3": 2.9534775430407606e-06
+        }
+      ]
+    },
+    "ControlCube_1m": {
+      "status": "passed",
+      "dimensions_blender_xyz_m": [
+        1.0,
+        1.0000001788139343,
+        1.000000200669625
+      ],
+      "root_at_origin": true,
+      "bottom_at_zero": true,
+      "meshes": 1,
+      "triangles": 12,
+      "textures": [],
+      "missing_textures": [],
+      "baked_word_meshes": [],
+      "topology": [
+        {
+          "mesh": "ControlCube__Label.010",
+          "watertight": true,
+          "positive_world_volume_m3": 0.9999999999999999
+        }
+      ]
+    }
+  }
+}

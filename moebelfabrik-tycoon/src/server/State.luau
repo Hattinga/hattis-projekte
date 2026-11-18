@@ -1,0 +1,347 @@
+--!strict
+-- P04-03: closed, server-only schema. No startup, grants, remotes or persistence.
+local runService = game:GetService("RunService")
+assert(runService:IsServer() or (runService:IsStudio() and not runService:IsRunning()),
+	"Factory state is server-only")
+
+export type Stage = "Holzpaket" | "Bausatz" | "Rohhocker" | "Fertig" | "Karton"
+export type Location = {id: string, kind: string, capacity: number, acceptedStages: {Stage}}
+export type Batch = {id: string, ownerUserId: number, recipeId: string, recipeVersion: number, stage: Stage,
+	quantity: number, locationId: string}
+export type Claim = {id: string, actorId: string, actorKind: string, carrierId: string, batchId: string,
+	sourceId: string, targetId: string, quantity: number, expiresAt: number}
+export type ReturnReservation = {kind: "Return", batchId: string, actorId: string, actorKind: string,
+	carrierId: string, recipeId: string, recipeVersion: number, stage: Stage, quantity: number}
+export type DeliveryReservation = {kind: "Delivery", batchId: string, purchaseOperationId: string}
+export type ProductionReservation = {kind: "Production", batchId: string, finishAt: number}
+export type Reservation = ReturnReservation | DeliveryReservation | ProductionReservation
+export type Receipt = {actorId: string, actorKind: string, ownerUserId: number, carrierId: string?,
+	action: string, request: any, result: any}
+export type Profile = {schemaVersion: number, ownerUserId: number, revision: number, money: number,
+	locations: {[string]: Location}, batches: {[string]: Batch}, claims: {[string]: Claim},
+	reservations: {[string]: Reservation}, receipts: {[string]: Receipt}}
+
+local State = {}
+State.SCHEMA_VERSION = 2
+State.SAW = table.freeze({id="Saege", input="Saege.Input", process="Saege.Process", output="Saege.Output",
+	inputStage="Holzpaket" :: Stage, outputStage="Bausatz" :: Stage, durationSeconds=6})
+local MAX_INTEGER = 9007199254740991
+local STAGES: {[string]: boolean} = {Holzpaket=true,Bausatz=true,Rohhocker=true,Fertig=true,Karton=true}
+local KINDS: {[string]: boolean} = {Supplier=true,RawStore=true,FinishedStore=true,Carrier=true,
+	StationInput=true,StationProcess=true,StationOutput=true,Machine=true,VehicleSlot=true,
+	Band=true,Recovery=true}
+local ACTOR_KINDS: {[string]: boolean} = {Player=true,Worker=true,Band=true}
+local PROFILE_FIELDS = {schemaVersion=true,ownerUserId=true,revision=true,money=true,locations=true,
+	batches=true,claims=true,reservations=true,receipts=true}
+local LOCATION_FIELDS = {id=true,kind=true,capacity=true,acceptedStages=true}
+local BATCH_FIELDS = {id=true,ownerUserId=true,recipeId=true,recipeVersion=true,stage=true,quantity=true,locationId=true}
+local CLAIM_FIELDS = {id=true,actorId=true,actorKind=true,carrierId=true,batchId=true,sourceId=true,
+	targetId=true,quantity=true,expiresAt=true}
+local RETURN_FIELDS = {kind=true,batchId=true,actorId=true,actorKind=true,carrierId=true,recipeId=true,
+	recipeVersion=true,stage=true,quantity=true}
+local DELIVERY_FIELDS = {kind=true,batchId=true,purchaseOperationId=true}
+local PRODUCTION_FIELDS = {kind=true,batchId=true,finishAt=true}
+local RECEIPT_FIELDS = {actorId=true,actorKind=true,ownerUserId=true,carrierId=true,action=true,request=true,result=true}
+local RESERVE_REQUEST_FIELDS = {operationId=true,expectedRevision=true,batchId=true,sourceId=true,targetId=true,quantity=true}
+local CLAIM_REQUEST_FIELDS = {operationId=true,expectedRevision=true,claimId=true}
+local PURCHASE_REQUEST_FIELDS = {operationId=true,expectedRevision=true}
+local PURCHASE_RESULT_FIELDS = {ok=true,code=true,message=true,revision=true,batchId=true,supplierId=true,rawSlotId=true,price=true}
+local RESERVE_RESULT_FIELDS = {ok=true,code=true,message=true,revision=true,claimId=true,expiresAt=true}
+local COMMIT_RESULT_FIELDS = {ok=true,code=true,message=true,revision=true,claimId=true,batchId=true,sourceId=true,targetId=true}
+local CANCEL_RESULT_FIELDS = {ok=true,code=true,message=true,revision=true,claimId=true}
+
+local function plainTable(value: any): boolean
+	return type(value)=="table" and getmetatable(value)==nil
+end
+local function record(value: any, fields: {[string]: boolean}): boolean
+	if not plainTable(value) then return false end
+	for key in value do if not fields[key] then return false end end
+	return true
+end
+local function finite(value: any, minimum: number): boolean
+	return type(value)=="number" and value==value and value>=minimum and value<=MAX_INTEGER
+end
+local function integer(value: any, minimum: number): boolean
+	return finite(value,minimum) and value%1==0
+end
+local function identifier(value: any): boolean
+	return type(value)=="string" and #value>0 and #value<=128 and utf8.len(value)~=nil
+end
+local function message(value: any): boolean
+	return type(value)=="string" and #value>0 and #value<=1024 and utf8.len(value)~=nil
+end
+local function carrierMatches(profile: any, carrierId: any, actorKind: any): boolean
+	if not identifier(carrierId) or not ACTOR_KINDS[actorKind] then return false end
+	local carrier=profile.locations[carrierId]
+	return carrier~=nil and carrier.kind==(if actorKind=="Band" then "Band" else "Carrier")
+end
+local function sameReturn(reservation: any, claim: any, batch: any): boolean
+	return reservation.kind=="Return" and reservation.batchId==batch.id
+		and reservation.actorId==claim.actorId and reservation.actorKind==claim.actorKind
+		and reservation.carrierId==claim.carrierId and reservation.recipeId==batch.recipeId
+		and reservation.recipeVersion==batch.recipeVersion and reservation.stage==batch.stage
+		and reservation.quantity==batch.quantity
+end
+
+-- Empty artificial schema specimen. P04-04 must confirm absence before any real new profile.
+function State.newProfile(ownerUserId: number): Profile
+	assert(integer(ownerUserId,1),"Invalid owner")
+	return {schemaVersion=State.SCHEMA_VERSION,ownerUserId=ownerUserId,revision=0,money=0,
+		locations={},batches={},claims={},reservations={},receipts={}}
+end
+
+function State.newLocation(id: string, kind: string, capacity: number, acceptedStages: {Stage}): Location
+	assert(identifier(id) and KINDS[kind],"Invalid location")
+	assert(capacity==1,"Each location represents one physical slot")
+	assert(plainTable(acceptedStages) and #acceptedStages>0,"Missing accepted stages")
+	local stages: {Stage} = {}
+	local stageCount=0
+	for index,stage in acceptedStages do
+		assert(integer(index,1) and index<=#acceptedStages and STAGES[stage],"Invalid stage")
+		stages[index]=stage
+		stageCount+=1
+	end
+	assert(stageCount==#acceptedStages,"Invalid stage list")
+	return {id=id,kind=kind,capacity=capacity,acceptedStages=stages}
+end
+
+function State.newBatch(id: string, ownerUserId: number, stage: Stage, locationId: string): Batch
+	assert(identifier(id) and identifier(locationId),"Invalid batch identity or location")
+	assert(integer(ownerUserId,1) and STAGES[stage],"Invalid owner or stage")
+	return {id=id,ownerUserId=ownerUserId,recipeId="Hocker01",recipeVersion=1,stage=stage,quantity=1,locationId=locationId}
+end
+
+-- The batch's locationId is the only stock membership record.
+function State.countAt(profile: Profile, locationId: string): number
+	local count=0
+	for _,batch in profile.batches do
+		if batch.locationId==locationId then count+=batch.quantity end
+	end
+	return count
+end
+
+function State.validate(profile: any): (boolean, string?)
+	if not record(profile,PROFILE_FIELDS) then return false,"INVALID_PROFILE_SHAPE" end
+	if profile.schemaVersion~=State.SCHEMA_VERSION then return false,"INVALID_SCHEMA" end
+	if not integer(profile.ownerUserId,1) then return false,"INVALID_OWNER" end
+	if not integer(profile.revision,0) then return false,"INVALID_REVISION" end
+	if not integer(profile.money,0) then return false,"INVALID_MONEY" end
+	if not plainTable(profile.locations) or not plainTable(profile.batches) or not plainTable(profile.claims)
+		or not plainTable(profile.reservations) or not plainTable(profile.receipts) then
+		return false,"INVALID_COLLECTION"
+	end
+	local counts: {[string]: number} = {}
+	for id,location in profile.locations do
+		if not identifier(id) or not record(location,LOCATION_FIELDS) or location.id~=id or not KINDS[location.kind] then
+			return false,"INVALID_LOCATION"
+		end
+		if location.capacity~=1 then return false,"INVALID_CAPACITY" end
+		if not plainTable(location.acceptedStages) or #location.acceptedStages==0 then return false,"INVALID_ACCEPTED_STAGES" end
+		local stageCount=0
+		for index,stage in location.acceptedStages do
+			if not integer(index,1) or index>#location.acceptedStages or not STAGES[stage] then
+				return false,"INVALID_ACCEPTED_STAGES"
+			end
+			stageCount+=1
+		end
+		if stageCount~=#location.acceptedStages then return false,"INVALID_ACCEPTED_STAGES" end
+		counts[id]=0
+	end
+	for id,batch in profile.batches do
+		if not identifier(id) or not record(batch,BATCH_FIELDS) or batch.id~=id then return false,"INVALID_BATCH_ID" end
+		if batch.ownerUserId~=profile.ownerUserId then return false,"FOREIGN_BATCH" end
+		if batch.recipeId~="Hocker01" or batch.recipeVersion~=1 or not STAGES[batch.stage] then return false,"INVALID_RECIPE_STAGE" end
+		if batch.quantity~=1 then return false,"INVALID_QUANTITY" end
+		if not identifier(batch.locationId) or profile.locations[batch.locationId]==nil then return false,"UNKNOWN_LOCATION" end
+		if not table.find(profile.locations[batch.locationId].acceptedStages,batch.stage) then return false,"WRONG_STAGE" end
+		counts[batch.locationId]+=1
+		if counts[batch.locationId]>1 then return false,"CAPACITY_EXCEEDED" end
+	end
+	local returnsByBatch: {[string]: any} = {}
+	local deliveriesByBatch: {[string]: string} = {}
+	local deliveriesByOperation: {[string]: string} = {}
+	for locationId,reservation in profile.reservations do
+		if not identifier(locationId) or not plainTable(reservation) then return false,"INVALID_RESERVATION" end
+		local location=profile.locations[locationId]
+		if not location or counts[locationId]~=0 then return false,"INVALID_RESERVED_LOCATION" end
+		if not identifier(reservation.batchId) then return false,"INVALID_RESERVATION_BATCH" end
+		local batch=profile.batches[reservation.batchId]
+		if not batch then return false,"INVALID_RESERVATION_BATCH" end
+		if reservation.kind=="Return" then
+			if not record(reservation,RETURN_FIELDS) or not identifier(reservation.actorId)
+				or not carrierMatches(profile,reservation.carrierId,reservation.actorKind)
+				or batch.locationId~=reservation.carrierId or reservation.recipeId~=batch.recipeId
+				or reservation.recipeVersion~=batch.recipeVersion or reservation.stage~=batch.stage
+				or reservation.quantity~=batch.quantity or not table.find(location.acceptedStages,batch.stage)
+				or location.kind=="Carrier" or location.kind=="Band" or returnsByBatch[batch.id] then
+				return false,"INVALID_RETURN_RESERVATION"
+			end
+			returnsByBatch[batch.id]=reservation
+		elseif reservation.kind=="Delivery" then
+			local batchLocation=profile.locations[batch.locationId]
+			if not record(reservation,DELIVERY_FIELDS) or not identifier(reservation.purchaseOperationId)
+				or location.kind~="RawStore" or batch.stage~="Holzpaket"
+				or not table.find(location.acceptedStages,"Holzpaket") or deliveriesByBatch[batch.id]
+				or (batchLocation.kind~="Supplier" and batchLocation.kind~="Carrier"
+					and batchLocation.kind~="Band" and batchLocation.kind~="VehicleSlot") then
+				return false,"INVALID_DELIVERY_RESERVATION"
+			end
+			deliveriesByBatch[batch.id]=reservation.purchaseOperationId
+			if deliveriesByOperation[reservation.purchaseOperationId] then return false,"INVALID_DELIVERY_RESERVATION" end
+			deliveriesByOperation[reservation.purchaseOperationId]=locationId
+		elseif reservation.kind=="Production" then
+			local saw=State.SAW
+			local input,process=profile.locations[saw.input],profile.locations[saw.process]
+			if not record(reservation,PRODUCTION_FIELDS) or not integer(reservation.finishAt,saw.durationSeconds)
+				or locationId~=saw.output or location.kind~="StationOutput"
+				or not input or input.kind~="StationInput" or not table.find(input.acceptedStages,saw.inputStage)
+				or not process or process.kind~="StationProcess" or batch.locationId~=saw.process
+				or batch.stage~=saw.inputStage or not table.find(location.acceptedStages,saw.outputStage) then
+				return false,"INVALID_PRODUCTION_RESERVATION"
+			end
+		else
+			return false,"INVALID_RESERVATION_KIND"
+		end
+	end
+	local sawReservation=profile.reservations[State.SAW.output]
+	if counts[State.SAW.process]==1 and (not sawReservation or sawReservation.kind~="Production") then
+		return false,"MISSING_PRODUCTION_RESERVATION"
+	end
+	local receiptRevisions: {[number]: boolean} = {}
+	local purchasesByBatch: {[string]: any} = {}
+	local deliveriesCompleted: {[string]: boolean} = {}
+	for operationId,receipt in profile.receipts do
+		if not identifier(operationId) or not record(receipt,RECEIPT_FIELDS)
+			or not identifier(receipt.actorId) or receipt.ownerUserId~=profile.ownerUserId then
+			return false,"INVALID_RECEIPT"
+		end
+		local request,result=receipt.request,receipt.result
+		local purchase=receipt.action=="Purchase"
+		if purchase then
+			if receipt.actorKind~="Player" or receipt.carrierId~=nil
+				or receipt.actorId~="Player/"..string.format("%.0f",profile.ownerUserId) then
+				return false,"INVALID_RECEIPT"
+			end
+		elseif not carrierMatches(profile,receipt.carrierId,receipt.actorKind) or deliveriesByOperation[operationId] then
+			return false,"INVALID_RECEIPT"
+		end
+		local reserve=receipt.action=="Reserve"
+		local commit=receipt.action=="Commit"
+		if not purchase and not reserve and not commit and receipt.action~="Cancel" then return false,"INVALID_RECEIPT_ACTION" end
+		if not record(request,if purchase then PURCHASE_REQUEST_FIELDS elseif reserve then RESERVE_REQUEST_FIELDS else CLAIM_REQUEST_FIELDS)
+			or request.operationId~=operationId or not integer(request.expectedRevision,0)
+			or request.expectedRevision==MAX_INTEGER then return false,"INVALID_RECEIPT_REQUEST" end
+		if reserve then
+			if not identifier(request.batchId) or not identifier(request.sourceId) or not identifier(request.targetId)
+				or request.sourceId==request.targetId or request.quantity~=1
+				or not profile.locations[request.sourceId] or not profile.locations[request.targetId]
+				or not profile.batches[request.batchId]
+				or (request.sourceId~=receipt.carrierId and request.targetId~=receipt.carrierId) then
+				return false,"INVALID_RECEIPT_REQUEST"
+			end
+		elseif not purchase and not identifier(request.claimId) then
+			return false,"INVALID_RECEIPT_REQUEST"
+		end
+		local fields=if purchase then PURCHASE_RESULT_FIELDS elseif reserve then RESERVE_RESULT_FIELDS
+			elseif commit then COMMIT_RESULT_FIELDS else CANCEL_RESULT_FIELDS
+		local code=if purchase then "PURCHASED" elseif reserve then "RESERVED" elseif commit then "COMMITTED" else "CANCELLED"
+		if not record(result,fields) or result.ok~=true or result.code~=code or not message(result.message)
+			or not integer(result.revision,1) or result.revision~=request.expectedRevision+1
+			or result.revision>profile.revision or receiptRevisions[result.revision] then
+			return false,"INVALID_RECEIPT_RESULT"
+		end
+		receiptRevisions[result.revision]=true
+		if purchase then
+			if not identifier(result.batchId) or not identifier(result.supplierId) or not identifier(result.rawSlotId)
+				or result.batchId~="purchase/"..operationId or not profile.batches[result.batchId] or not integer(result.price,1)
+				or not profile.locations[result.supplierId] or profile.locations[result.supplierId].kind~="Supplier"
+				or not profile.locations[result.rawSlotId] or profile.locations[result.rawSlotId].kind~="RawStore" then
+				return false,"INVALID_RECEIPT_RESULT"
+			end
+			local promised=deliveriesByOperation[operationId]
+			local batchPromise=deliveriesByBatch[result.batchId]
+			if (batchPromise and batchPromise~=operationId)
+				or (promised and (promised~=result.rawSlotId or profile.reservations[promised].batchId~=result.batchId)) then
+				return false,"INVALID_DELIVERY_RESERVATION"
+			end
+			purchasesByBatch[result.batchId]={receipt=receipt, promised=promised~=nil}
+		elseif reserve then
+			if result.claimId~=operationId or not finite(result.expiresAt,0) or result.expiresAt==0 then
+				return false,"INVALID_RECEIPT_RESULT"
+			end
+		elseif result.claimId~=request.claimId then
+			return false,"INVALID_RECEIPT_RESULT"
+		end
+		if commit and (not identifier(result.batchId) or not identifier(result.sourceId) or not identifier(result.targetId)
+			or result.sourceId==result.targetId or not profile.batches[result.batchId]
+			or not profile.locations[result.sourceId] or not profile.locations[result.targetId]
+			or (result.sourceId~=receipt.carrierId and result.targetId~=receipt.carrierId)) then
+			return false,"INVALID_RECEIPT_RESULT"
+		end
+	end
+	-- Historical completions bind the original Reserve, not today's stock location.
+	local completedClaims: {[string]: boolean} = {}
+	for _,receipt in profile.receipts do
+		if receipt.action=="Reserve" or receipt.action=="Purchase" then continue end
+		local claimId=receipt.request.claimId
+		local reserved=profile.receipts[claimId]
+		if not reserved or reserved.action~="Reserve" or reserved.actorId~=receipt.actorId
+			or reserved.actorKind~=receipt.actorKind or reserved.carrierId~=receipt.carrierId
+			or reserved.ownerUserId~=receipt.ownerUserId
+			or reserved.result.revision>receipt.request.expectedRevision or completedClaims[claimId] then
+			return false,"INVALID_RECEIPT_CLAIM"
+		end
+		if receipt.action=="Commit" and (receipt.result.batchId~=reserved.request.batchId
+			or receipt.result.sourceId~=reserved.request.sourceId or receipt.result.targetId~=reserved.request.targetId) then
+			return false,"INVALID_RECEIPT_RESULT"
+		end
+		completedClaims[claimId]=true
+		if receipt.action=="Commit" then
+			local purchase=purchasesByBatch[receipt.result.batchId]
+			if purchase and receipt.result.targetId==purchase.receipt.result.rawSlotId
+				and receipt.result.revision>purchase.receipt.result.revision then
+				deliveriesCompleted[receipt.result.batchId]=true
+			end
+		end
+	end
+	for batchId,purchase in purchasesByBatch do
+		if purchase.promised==(deliveriesCompleted[batchId]==true) then return false,"INVALID_DELIVERY_HISTORY" end
+	end
+	local lockedSlots: {[string]: boolean} = {}
+	for claimId,claim in profile.claims do
+		if not identifier(claimId) or not record(claim,CLAIM_FIELDS) or claim.id~=claimId
+			or not identifier(claim.actorId) or not carrierMatches(profile,claim.carrierId,claim.actorKind)
+			or not identifier(claim.batchId) or not identifier(claim.sourceId) or not identifier(claim.targetId)
+			or claim.sourceId==claim.targetId or claim.quantity~=1
+			or not finite(claim.expiresAt,0) or claim.expiresAt==0 then return false,"INVALID_CLAIM" end
+		if completedClaims[claimId] then return false,"CLAIM_ALREADY_COMPLETED" end
+		local batch=profile.batches[claim.batchId]
+		local source,target=profile.locations[claim.sourceId],profile.locations[claim.targetId]
+		if not batch or batch.locationId~=claim.sourceId or not source or not target
+			or source.kind=="StationProcess" or target.kind=="StationProcess"
+			or source.kind=="Machine" or target.kind=="Machine"
+			or (source.id~=claim.carrierId and target.id~=claim.carrierId)
+			or ((source.kind=="Carrier" or source.kind=="Band") and source.id~=claim.carrierId)
+			or ((target.kind=="Carrier" or target.kind=="Band") and target.id~=claim.carrierId)
+			or counts[target.id]~=0 or not table.find(target.acceptedStages,batch.stage)
+			or lockedSlots[source.id] or lockedSlots[target.id] then return false,"INVALID_CLAIM_LOCATIONS" end
+		local hold=profile.reservations[target.id]
+		if hold and (hold.batchId~=batch.id or (hold.kind=="Return" and not sameReturn(hold,claim,batch))) then
+			return false,"INVALID_CLAIM_RESERVATION"
+		end
+		if target.kind=="StationOutput" and (not hold or hold.kind~="Return" or source.id~=claim.carrierId) then
+			return false,"INVALID_CLAIM_OUTPUT"
+		end
+		local receipt=profile.receipts[claimId]
+		if not receipt or receipt.action~="Reserve" or receipt.actorId~=claim.actorId
+			or receipt.actorKind~=claim.actorKind or receipt.carrierId~=claim.carrierId
+			or receipt.request.batchId~=claim.batchId or receipt.request.sourceId~=claim.sourceId
+			or receipt.request.targetId~=claim.targetId or receipt.request.quantity~=claim.quantity
+			or receipt.result.expiresAt~=claim.expiresAt then return false,"INVALID_CLAIM_RECEIPT" end
+		lockedSlots[source.id]=true
+		lockedSlots[target.id]=true
+	end
+	return true,nil
+end
+
+return table.freeze(State)

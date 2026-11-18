@@ -10,6 +10,12 @@ Vor dem Modellieren werden Referenzansicht, wesentliche Abmessungen und entschei
 
 Der [Waren- und Maßvertrag P01-03/P01-05](DIMENSIONS.md) enthält die ersten Sollmaße, Einzelteile und Packlagen sowie die gezielt abgeleiteten Tor- und Dachmaße der vorhandenen Werkstatt. Er ersetzt keine Modell- oder Art-Abnahme im Spiel.
 
+## Sprache und Beschriftung
+
+Verbindliche Nutzerentscheidung vom 16. November 2026: Das Spiel unterstützt **Englisch und Deutsch**. Neue Assets enthalten Formen, Symbole, Pfeile und leere Schildflächen; sprachabhängige Wörter werden als übersetzbare Roblox-Texte angebunden, nicht in Meshes oder Texturen eingebrannt. Stabile semantische Schlüssel verbinden Schild und Übersetzung. Englisch dient als Quell-/Fallbacksprache, Deutsch erhält eigene Übersetzungen; die Anzeige richtet sich nach der Spielersprache. Beide Sprachfassungen müssen auf den tatsächlichen Schildflächen lesbar bleiben.
+
+Die deutschen Wörter in den bisherigen P03-02-Blender-Vorschauen sind historische Musterbeschriftungen. Die Importkopie entfernt diese Wort-Meshes und erhält eine getrennte EN-/DE-Textebene. Dieselbe Trennung gilt später für Spieleroberfläche, Rückmeldungen und Maschinenstatus. Serverseitige Aktionscodes bleiben sprachunabhängig; interne deutsche Fallbackmeldungen ersetzen keine übersetzte Spieleranzeige.
+
 ## Gebäude und Dach
 
 Die Außenprobe umfasst eine kleine Gebäudeecke mit Wand, Fenster und Dach. Wand und Fensterrahmen besitzen erkennbare Tiefe. Dachneigung, Auflager, First und Überstand folgen dem Referenzblatt. Traufe und Ortgang bilden durchgehende Kanten. Die Dachfläche endet kontrolliert am Anschluss und schließt am First. Wandabschluss, Dachunterseite und Fensterlaibung werden auch seitlich geprüft.
@@ -54,6 +60,10 @@ Freigegeben wird die importierte Probe anhand der dokumentierten Passungen, Lesb
 
 Die kleine importierte Werkstatt ist ausschließlich ein KI-Vergleichs- und Importtestobjekt. Jonas hat am 12. November 2026 ausdrücklich klargestellt, dass sie nicht als Gebäude der Spielkarte vorgesehen ist. Eine Bevorzugung des Testentwurfs gibt weder dieses Gebäude für das Spiel frei noch bindet sie das Mapdesign an seine Größe. Die eigentliche Fabrik und weitere Kartenassets erhalten eigene Entwürfe.
 
-Jonas hat in beiden Werkstattproben Fables Entwurf bevorzugt, zuletzt am 11. November 2026 mit dem Urteil "A eindeutig besser". Fable 5.2 ist damit die bevorzugte Modellierungsunterstuetzung fuer die wichtigen Assets dieses Projekts. Codex uebernimmt Briefings, technische Pruefung, Spielcode und Studio-Integration. Dies beschreibt die Projektentscheidung aus den konkreten Proben und ist keine allgemeine Modellrangliste.
+Jonas hat in beiden Werkstattproben Fables Entwurf bevorzugt, zuletzt am 11. November 2026 mit dem Urteil "A eindeutig besser". Diese Auswahl bleibt eine gestalterische Referenz und ist keine allgemeine Modellrangliste.
+
+Nutzerkorrektur vom 17. November 2026: **Fable 5.2 steht nicht mehr kostenlos zur Verfügung.** Die weitere Umsetzung setzt deshalb keinen kostenlosen Fable-Zugang voraus. Vorhandene Blender-Quellen, Exporte und Referenzen werden weiterverwendet. Die Qualitäts- und Abnahmekriterien dieses Vertrags bleiben verbindlich.
+
+Anschließender ausdrücklicher Nutzerauftrag: **Opus 5.5 übernimmt die weitere Modellarbeit.** Der Lead hat `claude-opus-5-5` über Claude Code gestartet und die Modellkennung sowie erfolgreiche Blender-MCP-Aufrufe geprüft. Opus prüft den tatsächlichen offenen Blender-Stand vor Änderungen; Quellen und Ausgangsszenen bleiben erhalten. Codex übernimmt Briefings, technische Gegenprüfung, Spielcode und Studio-Integration. Zusätzliche kostenpflichtige 3D-Generierungsdienste sind nicht beauftragt.
 
 Die gewaehlte Werkstatt hat 13.080 Dreiecke. Quellen, Zuordnung, Messungen und der noch offene Studio-Import sind im [Setup-Beleg](../evidence/P00-STUDIO-SETUP.md) auffindbar. Die Gestaltungsauswahl ersetzt die Abnahme im Spiel nicht.

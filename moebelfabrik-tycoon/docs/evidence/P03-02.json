@@ -1,0 +1,270 @@
+{
+  "task": "P03-02",
+  "date": "2026-11-16",
+  "status": "technical-model-package-ready-final-acceptance-open",
+  "package": "assets/p03-models/p03-02",
+  "geometry": {
+    "checks": 179,
+    "passed": 179,
+    "failed": 0,
+    "report": "../../assets/p03-models/p03-02/checks.json"
+  },
+  "fbxRoundtrip": {
+    "status": "passed",
+    "assets": {
+      "Hocker01_Raw": {
+        "dimensions_blender_xyz_m": [
+          0.4000000059604645,
+          0.4000000059604645,
+          0.45000005053482894
+        ],
+        "rootAtOrigin": true,
+        "bottomAtZero": true,
+        "meshCount": 27,
+        "missingTextures": [],
+        "status": "passed"
+      },
+      "Hocker01_Finish": {
+        "dimensions_blender_xyz_m": [
+          0.4000000059604645,
+          0.4000000059604645,
+          0.45000005053482894
+        ],
+        "rootAtOrigin": true,
+        "bottomAtZero": true,
+        "meshCount": 27,
+        "missingTextures": [],
+        "status": "passed"
+      },
+      "Hocker01_Kit": {
+        "dimensions_blender_xyz_m": [
+          0.6000000238418579,
+          0.5,
+          0.18000007768504744
+        ],
+        "rootAtOrigin": true,
+        "bottomAtZero": true,
+        "meshCount": 22,
+        "missingTextures": [],
+        "status": "passed"
+      },
+      "Saege01": {
+        "dimensions_blender_xyz_m": [
+          2.4000000953674316,
+          0.8000001609325409,
+          1.450000115434392
+        ],
+        "rootAtOrigin": true,
+        "bottomAtZero": true,
+        "meshCount": 71,
+        "missingTextures": [],
+        "status": "passed"
+      },
+      "ControlCube_1m": {
+        "dimensions_blender_xyz_m": [
+          1,
+          1.0000001788139343,
+          1.000000200669625
+        ],
+        "rootAtOrigin": true,
+        "bottomAtZero": true,
+        "meshCount": 1,
+        "missingTextures": [],
+        "status": "passed"
+      }
+    },
+    "report": "../../assets/p03-models/p03-02/fbx-roundtrip.json"
+  },
+  "assets": {
+    "Hocker01_Raw": {
+      "bounds_blender_m": {
+        "min": [
+          -0.20000000298023224,
+          -0.20000000298023224,
+          0
+        ],
+        "max": [
+          0.20000000298023224,
+          0.20000000298023224,
+          0.44999998807907104
+        ]
+      },
+      "dimensions_blender_xyz_m": [
+        0.4000000059604645,
+        0.4000000059604645,
+        0.44999998807907104
+      ],
+      "dimensions_roblox_xyz_m": [
+        0.4000000059604645,
+        0.44999998807907104,
+        0.4000000059604645
+      ],
+      "triangles": 4656,
+      "meshes": 27,
+      "pivot": "bottom centre",
+      "front_blender": "+Y"
+    },
+    "Hocker01_Finish": {
+      "bounds_blender_m": {
+        "min": [
+          -0.20000000298023224,
+          -0.20000000298023224,
+          0
+        ],
+        "max": [
+          0.20000000298023224,
+          0.20000000298023224,
+          0.44999998807907104
+        ]
+      },
+      "dimensions_blender_xyz_m": [
+        0.4000000059604645,
+        0.4000000059604645,
+        0.44999998807907104
+      ],
+      "dimensions_roblox_xyz_m": [
+        0.4000000059604645,
+        0.44999998807907104,
+        0.4000000059604645
+      ],
+      "triangles": 4676,
+      "meshes": 27,
+      "pivot": "bottom centre",
+      "front_blender": "+Y"
+    },
+    "Hocker01_Kit": {
+      "bounds_blender_m": {
+        "min": [
+          -0.30000001192092896,
+          -0.25,
+          0
+        ],
+        "max": [
+          0.30000001192092896,
+          0.2500000298023224,
+          0.18000000715255737
+        ]
+      },
+      "dimensions_blender_xyz_m": [
+        0.6000000238418579,
+        0.5000000298023224,
+        0.18000000715255737
+      ],
+      "dimensions_roblox_xyz_m": [
+        0.6000000238418579,
+        0.18000000715255737,
+        0.5000000298023224
+      ],
+      "triangles": 2337,
+      "meshes": 22,
+      "pivot": "bottom centre",
+      "front_blender": "+Y"
+    },
+    "Saege01": {
+      "bounds_blender_m": {
+        "min": [
+          -1.2000000476837158,
+          -0.4000000059604645,
+          0
+        ],
+        "max": [
+          1.2000000476837158,
+          0.4000000059604645,
+          1.4500000476837158
+        ]
+      },
+      "dimensions_blender_xyz_m": [
+        2.4000000953674316,
+        0.800000011920929,
+        1.4500000476837158
+      ],
+      "dimensions_roblox_xyz_m": [
+        2.4000000953674316,
+        1.4500000476837158,
+        0.800000011920929
+      ],
+      "triangles": 6927,
+      "meshes": 71,
+      "pivot": "bottom centre",
+      "front_blender": "+Y"
+    },
+    "ControlCube_1m": {
+      "bounds_blender_m": {
+        "min": [
+          -0.5,
+          -0.5,
+          0
+        ],
+        "max": [
+          0.5,
+          0.5,
+          1
+        ]
+      },
+      "dimensions_blender_xyz_m": [
+        1,
+        1,
+        1
+      ],
+      "dimensions_roblox_xyz_m": [
+        1,
+        1,
+        1
+      ],
+      "triangles": 12,
+      "meshes": 1,
+      "pivot": "bottom centre",
+      "front_blender": "+Y"
+    }
+  },
+  "units": {
+    "source": "metres, Blender Z up",
+    "mapping": "Blender (X,Y,Z) -> Roblox (X,Z,-Y)",
+    "studsPerMetre": 3.5714285714285716,
+    "scaleAppliedOnExport": 1
+  },
+  "independentReadReview": {
+    "initialFindings": [
+      "inward box faces",
+      "downward flow arrows",
+      "0.6mm protruding rail screw caps"
+    ],
+    "fixed": true
+  },
+  "leadVisualReview": {
+    "completed": true,
+    "views": [
+      "overview-final",
+      "stool-joint",
+      "kit-three-quarter",
+      "saw-front",
+      "saw-side",
+      "saw-top",
+      "saw-blade-cutaway"
+    ],
+    "corrections": [
+      "blade axle and bearing mounts added",
+      "side camera adjusted until complete feet visible"
+    ]
+  },
+  "handoffCopy": {
+    "files": 25,
+    "allSha256Verified": true,
+    "manifest": "../../assets/p03-models/p03-02/manifest.json"
+  },
+  "originalScenePreserved": true,
+  "localBackup": ".local/p03-02-models/before-p03-02.blend",
+  "studioImported": false,
+  "artApproved": false,
+  "activeCutMode": "not designed; parked handover only",
+  "open": [
+    "Roblox 1m/25-to-7 scale, pivots, normals, materials and collisions",
+    "game and small-screen views",
+    "active saw cut, teeth, guard motion and interlock",
+    "final Art approval P03-07",
+    "weaker-device performance and mesh consolidation"
+  ],
+  "commit": false,
+  "push": false,
+  "published": false
+}

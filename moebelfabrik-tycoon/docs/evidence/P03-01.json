@@ -1,0 +1,56 @@
+{
+  "task": "P03-01",
+  "date": "2026-11-16",
+  "status": "accepted-technical-working-reference",
+  "packageVersion": "0.1",
+  "verification": {
+    "xmlValid": true,
+    "width": "1800",
+    "height": "3300",
+    "artifacts": [
+      {
+        "file": "reference.md",
+        "sha256": "a5363f3e16356cba896a0338905640fea1f7635e723de81d78a6782dd96054a8",
+        "matches": true,
+        "bytes": 20240
+      },
+      {
+        "file": "reference.svg",
+        "sha256": "fae353a852d052124ed3615da54b707df9980085cbdeee28dd88e438329f80f6",
+        "matches": true,
+        "bytes": 24801
+      }
+    ],
+    "previousChecks": {
+      "positivePassed": 33,
+      "positiveTotal": 33,
+      "negativePassed": 7,
+      "negativeTotal": 7,
+      "fileChecksPassed": 4,
+      "failed": 0
+    }
+  },
+  "visualReview": {
+    "file": ".local/p03-01/preview.png",
+    "width": 1440,
+    "height": 2640,
+    "completed": true,
+    "reviewed": [
+      "Hocker front/top/joint",
+      "Saw front/top/free-transfer-space",
+      "Building gable/side/roof-bearing-detail"
+    ],
+    "findings": []
+  },
+  "adoptedDecisions": [
+    "D-H working stool form, joints and raw/finish proposal",
+    "D-S working saw transfer mode; active cut and guard motion remain open",
+    "D-G independent building-corner reference only; no hall/gate decision"
+  ],
+  "scope": {
+    "actualModels": false,
+    "studioImport": false,
+    "finalArtApproval": false
+  },
+  "historicalChecksNote": "33 positive, 7 negative and 4 file checks belong to 2026-11-13 package; only hashes/XML and complete preview reviewed again on 2026-11-16."
+}

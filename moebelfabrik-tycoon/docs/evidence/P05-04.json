@@ -1,0 +1,49 @@
+{
+  "date": "2026-11-18",
+  "task": "P05-04",
+  "status": "accepted",
+  "placeId": 79033653140107,
+  "baselineVersion": 44,
+  "savedVersion": 46,
+  "local": {
+    "runtime": "Official Luau CLI 0.747 Windows",
+    "strictAnalysis": {"modules": ["State", "Actions", "Transfers", "Profiles", "Sessions", "Persistence", "Recovery", "Sawmill"], "exit": 0},
+    "compiled": ["KitView", "Recipe", "HandMoves", "Purchases"],
+    "regressions": {"P04-05": "41/41", "P04-06": "35/35"}
+  },
+  "integration": {
+    "replaced": ["State", "Actions", "Recipe"],
+    "added": ["Sawmill", "KitView"],
+    "unchangedVerified": ["HandMoves", "Persistence", "Profiles", "Purchases", "Recovery", "Sessions", "Transfers"],
+    "method": "Quelltext-Prüfsumme je Modul gegen src/server vor und nach dem Einbau"
+  },
+  "edit": {
+    "P04-01": {"status": "passed", "checks": 35},
+    "P04-02": {"status": "passed", "checks": 35},
+    "P05-01": {"status": "passed", "checks": 9, "note": "frische Modulkopie; ein erster Lauf mit gecachtem Edit-require zählte nicht"},
+    "kitMeasure": {"woodPieces": 9, "extentsMeters": [0.600, 0.180, 0.500], "minimumPartStuds": 0.05}
+  },
+  "server": {
+    "status": "passed",
+    "store": "FactoryP0504_Test",
+    "scope": "P0504_740692953946487989ab1d015d0d1aaf",
+    "checks": [
+      "an active input claim blocks start; an uncertain save recovers exactly one persisted run",
+      "reload restores the same input on the physical process point and guards the timer",
+      "after six seconds one batch becomes a measured visible kit with nine pieces",
+      "Return blocks the next run until delivery; an old completion cannot affect the second batch"
+    ],
+    "final": {"storageRevision": 12, "stateRevision": 13, "money": 17, "first": "Montage.Input", "second": "Saege.Output", "woodPieces": 9},
+    "regressions": {"P04-07": "8 Gruppen bestanden", "P05-01": "9 Prüfungen bestanden", "P05-02": "5 Gruppen bestanden, Scope P0502_7e455594f33340d383bf94de98148a3d"}
+  },
+  "firstAttempt": {
+    "status": "failed",
+    "scope": "P0504_df96754be58f4293aeac963ecdd2fbd6",
+    "cause": "Roblox hebt Teile unter 0,05 Studs an; 10-mm-Wände ergaben 0,604 x 0,182 x 0,504 m",
+    "fix": "Dünne Greybox-Wände 14 mm innerhalb der Hülle, Holzteile 4 mm angehoben"
+  },
+  "client": {"serverModules": false, "kitLeftInWorkspace": false},
+  "image": ".local/evidence/P05-04-kit-saw-output.jpg",
+  "playerTrigger": false,
+  "published": false
+}

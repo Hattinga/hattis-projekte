@@ -1,0 +1,67 @@
+{
+  "task": "P04-07",
+  "date": "2026-11-18",
+  "placeId": 79033653140107,
+  "universeId": 10776116608,
+  "baselineVersion": 38,
+  "savedVersion": 40,
+  "published": false,
+  "result": {
+    "economicReady": false,
+    "dataStoreAccess": false,
+    "runtimeOverlayRemoved": true,
+    "checks": [
+      "empty persistence controller exposes no placement",
+      "restart before confirmed pickup restores the source exactly once",
+      "exclusive physical recovery point keeps the confirmed logical slot and balance",
+      "occupied or registered point collision, absent point and wrong owner block all placement",
+      "expired, in-flight and unknown saves cannot authorize placement",
+      "confirmed pickup preserves the same carrier and guaranteed Return",
+      "missing carrier or Return point cannot spill onto a generic pickup point",
+      "confirmed placement restores only the destination and preserves stage and history"
+    ],
+    "status": "passed",
+    "task": "P04-07",
+    "placements": [
+      {
+        "physical": "Workspace.P02Line.Stores.Rohstofflager.Slot1.Transfer",
+        "stateRevision": 1,
+        "recovery": false,
+        "batchId": "wood",
+        "storageRevision": 3,
+        "location": "source"
+      },
+      {
+        "physical": "Workspace.P02Line.Stores.Fertiglager.Slot1.Transfer",
+        "stateRevision": 1,
+        "recovery": true,
+        "batchId": "carton",
+        "storageRevision": 3,
+        "location": "finished"
+      },
+      {
+        "physical": "Workspace.P0407Test.TestCarrier.Attachment",
+        "stateRevision": 4,
+        "recovery": false,
+        "batchId": "wood",
+        "storageRevision": 5,
+        "location": "hand"
+      },
+      {
+        "physical": "Workspace.P02Line.Stations.Saege.Input.Transfer",
+        "stateRevision": 6,
+        "recovery": false,
+        "batchId": "wood",
+        "storageRevision": 7,
+        "location": "target"
+      }
+    ]
+  },
+  "verification": {
+    "luauStrictAnalysis": "passed",
+    "testCompilation": "passed",
+    "clientModulesExposed": false,
+    "editSourceMatches": true,
+    "modeAfter": "Edit"
+  }
+}

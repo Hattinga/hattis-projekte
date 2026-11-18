@@ -1,0 +1,133 @@
+{
+  "task": "P03-02",
+  "date": "2026-11-16",
+  "status": "technical-prototype-not-art-approved",
+  "sourcePackage": ".local/p03-02-models",
+  "files": [
+    {
+      "file": "checks.json",
+      "bytes": 39501,
+      "sha256": "6cfaf6263f97f332ff042863f44c5e06ca7ac04486163c6c1affe0fb7cf5d34c"
+    },
+    {
+      "file": "fbx-roundtrip.json",
+      "bytes": 1656,
+      "sha256": "8c99c6bd06eeb0839803805c447b27222ad72aa4dfc12e88a8e1048b8b056747"
+    },
+    {
+      "file": "handoff.md",
+      "bytes": 7896,
+      "sha256": "04706aaaa026cd1ae58b8351de72acde4b787a71acc6d45e5de9a5ca4eee52e3"
+    },
+    {
+      "file": "p03-02-models-v01.blend",
+      "bytes": 2341079,
+      "sha256": "076ba8888bc015984e5f001e21aea2e88b41e837d47f124646be59169ec0cf79"
+    },
+    {
+      "file": "exports/ControlCube_1m.fbx",
+      "bytes": 17100,
+      "sha256": "3bea51b468cae57d514d84e3aea4b503bf6a9b929bc9fd675f305c5eb86c5d38"
+    },
+    {
+      "file": "exports/Hocker01_Finish.fbx",
+      "bytes": 443068,
+      "sha256": "5ba29357c95a8fde6fe48bbca178ba4d749ada82826ceb494bd477ed652fa2f4"
+    },
+    {
+      "file": "exports/Hocker01_Kit.fbx",
+      "bytes": 412956,
+      "sha256": "9139df72dd4d92c6dd128f91b7b8aeb346bc31c72f9f45b8ee135f853f0b68c9"
+    },
+    {
+      "file": "exports/Hocker01_Raw.fbx",
+      "bytes": 455436,
+      "sha256": "f84e9d809b0a404ad8161c17b749d737e364c4d312011600f05f603beddc35b6"
+    },
+    {
+      "file": "exports/Saege01.fbx",
+      "bytes": 320700,
+      "sha256": "3fe5dd100fe9162d1539688752766a93f9608911c9bce14c76268836596273d8"
+    },
+    {
+      "file": "exports/Hocker01_Finish.fbm/WoodFinish.png",
+      "bytes": 277642,
+      "sha256": "397032929a07bc07e60941d4145e4cad1608e1c84289f38e49c4f3cb145b03ef"
+    },
+    {
+      "file": "exports/Hocker01_Kit.fbm/WoodRaw.png",
+      "bytes": 291019,
+      "sha256": "518dc669bf54726397ff21083f1650994ec0bca33eabef439d10cdc4f9f08793"
+    },
+    {
+      "file": "exports/Hocker01_Raw.fbm/WoodRaw.png",
+      "bytes": 291019,
+      "sha256": "518dc669bf54726397ff21083f1650994ec0bca33eabef439d10cdc4f9f08793"
+    },
+    {
+      "file": "renders/kit-three-quarter.png",
+      "bytes": 1083062,
+      "sha256": "ee46ff5d02d02f83486e63eaeb6b058b470a63635d250f78cf614c7b50a2f62e"
+    },
+    {
+      "file": "renders/overview-final.png",
+      "bytes": 1043385,
+      "sha256": "c3a5151c012526319a5a40b96f69381eecf092ceda42c095ea856794ba59c0e4"
+    },
+    {
+      "file": "renders/saw-blade-cutaway.png",
+      "bytes": 989482,
+      "sha256": "d2d0906715b72cd6f4a825f5f42ed28b6d695c4043501cfbfd9239266e6f784d"
+    },
+    {
+      "file": "renders/saw-front.png",
+      "bytes": 902444,
+      "sha256": "341984ac25574e9071954085e203235bed7abc9a3a79283b95e6a69f18e5cd78"
+    },
+    {
+      "file": "renders/saw-side.png",
+      "bytes": 880528,
+      "sha256": "279ca725e539ecbac268d54fa1060a6ad7c324d4eeeb3d67642fcb108801e5ef"
+    },
+    {
+      "file": "renders/saw-top.png",
+      "bytes": 955010,
+      "sha256": "ec6b5be3cf9e0eee3c5eed4cf33185f85d1b1d9dd659170e4fd2600822e3963d"
+    },
+    {
+      "file": "renders/stool-joint.png",
+      "bytes": 1124649,
+      "sha256": "79eb0fab5c211bf65fcc85f56617543403eb5ca3be152190db18f8b1c774f96b"
+    },
+    {
+      "file": "textures/WoodFinish.png",
+      "bytes": 277642,
+      "sha256": "397032929a07bc07e60941d4145e4cad1608e1c84289f38e49c4f3cb145b03ef"
+    },
+    {
+      "file": "textures/WoodRaw.png",
+      "bytes": 291019,
+      "sha256": "518dc669bf54726397ff21083f1650994ec0bca33eabef439d10cdc4f9f08793"
+    },
+    {
+      "file": "tools/build.py",
+      "bytes": 14206,
+      "sha256": "05b4311c5c1482058cf1bc0f679e6f9b6a5df2700fe67f2ea77df113c11d55a1"
+    },
+    {
+      "file": "tools/finish.py",
+      "bytes": 8115,
+      "sha256": "3a08eedee54f42a98a6ca05b347b2f04748a64eed79416d9d5543733cffc3a5c"
+    },
+    {
+      "file": "tools/render.py",
+      "bytes": 2581,
+      "sha256": "3d368c44259dc531c4ca289ca4b7e1e9d6e2b43bf5faec058a6a3727be672a3c"
+    },
+    {
+      "file": "tools/roundtrip.py",
+      "bytes": 2149,
+      "sha256": "97a91c86632a7cd6e8a404ec7004eba4280b98edc355a76f1c8b0447e41d7eb2"
+    }
+  ]
+}

@@ -1,0 +1,68 @@
+{
+  "task": "P03-02",
+  "date": "2026-11-16",
+  "method": "Blender FBX export -> fresh isolated scene import; no Roblox import",
+  "status": "passed",
+  "assets": {
+    "Hocker01_Raw": {
+      "dimensions_blender_xyz_m": [
+        0.4000000059604645,
+        0.4000000059604645,
+        0.45000005053482894
+      ],
+      "rootAtOrigin": true,
+      "bottomAtZero": true,
+      "meshCount": 27,
+      "missingTextures": [],
+      "status": "passed"
+    },
+    "Hocker01_Finish": {
+      "dimensions_blender_xyz_m": [
+        0.4000000059604645,
+        0.4000000059604645,
+        0.45000005053482894
+      ],
+      "rootAtOrigin": true,
+      "bottomAtZero": true,
+      "meshCount": 27,
+      "missingTextures": [],
+      "status": "passed"
+    },
+    "Hocker01_Kit": {
+      "dimensions_blender_xyz_m": [
+        0.6000000238418579,
+        0.5,
+        0.18000007768504744
+      ],
+      "rootAtOrigin": true,
+      "bottomAtZero": true,
+      "meshCount": 22,
+      "missingTextures": [],
+      "status": "passed"
+    },
+    "Saege01": {
+      "dimensions_blender_xyz_m": [
+        2.4000000953674316,
+        0.8000001609325409,
+        1.450000115434392
+      ],
+      "rootAtOrigin": true,
+      "bottomAtZero": true,
+      "meshCount": 71,
+      "missingTextures": [],
+      "status": "passed"
+    },
+    "ControlCube_1m": {
+      "dimensions_blender_xyz_m": [
+        1.0,
+        1.0000001788139343,
+        1.000000200669625
+      ],
+      "rootAtOrigin": true,
+      "bottomAtZero": true,
+      "meshCount": 1,
+      "missingTextures": [],
+      "status": "passed"
+    }
+  }
+}

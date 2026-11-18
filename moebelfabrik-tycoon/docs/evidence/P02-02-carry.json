@@ -1,0 +1,194 @@
+{
+  "carryPose": {
+    "forwardM": 0.53,
+    "undersideM": 0.7
+  },
+  "overlaps": [],
+  "minWareBottomM": 0.6968872261047363,
+  "targets": [
+    {
+      "standOffsetM": 0.2,
+      "bottomErrorM": 1.907348631036143e-8,
+      "id": "Rohstofflager.Slot4",
+      "overlapsDuringHandling": 0,
+      "placementHits": 0,
+      "reachedErrorM": 0.01212014451622963
+    },
+    {
+      "standOffsetM": 0.2,
+      "bottomErrorM": 1.907348631036143e-8,
+      "id": "Rohstofflager.Slot3",
+      "overlapsDuringHandling": 0,
+      "placementHits": 0,
+      "reachedErrorM": 0.03182031482458114
+    },
+    {
+      "standOffsetM": 0.2,
+      "bottomErrorM": 1.907348631036143e-8,
+      "id": "Rohstofflager.Slot2",
+      "overlapsDuringHandling": 0,
+      "placementHits": 0,
+      "reachedErrorM": 0.02362683415412903
+    },
+    {
+      "standOffsetM": 0.2,
+      "bottomErrorM": 1.907348631036143e-8,
+      "id": "Rohstofflager.Slot1",
+      "overlapsDuringHandling": 0,
+      "placementHits": 0,
+      "reachedErrorM": 0.015434459149837492
+    },
+    {
+      "standOffsetM": 0.15,
+      "bottomErrorM": 1.907348631036143e-8,
+      "id": "Saege.Input",
+      "overlapsDuringHandling": 0,
+      "placementHits": 0,
+      "reachedErrorM": 0.03557140409946442
+    },
+    {
+      "standOffsetM": 0.15,
+      "bottomErrorM": 1.907348631036143e-8,
+      "id": "Saege.Process",
+      "overlapsDuringHandling": 0,
+      "placementHits": 0,
+      "reachedErrorM": 0.03890011429786682
+    },
+    {
+      "standOffsetM": 0.15,
+      "bottomErrorM": 1.907348631036143e-8,
+      "id": "Saege.Output",
+      "overlapsDuringHandling": 0,
+      "placementHits": 0,
+      "reachedErrorM": 0.014653757661581038
+    },
+    {
+      "standOffsetM": 0.15,
+      "bottomErrorM": 1.907348631036143e-8,
+      "id": "Montage.Input",
+      "overlapsDuringHandling": 0,
+      "placementHits": 0,
+      "reachedErrorM": 0.04251855909824371
+    },
+    {
+      "standOffsetM": 0.15,
+      "bottomErrorM": 1.907348631036143e-8,
+      "id": "Montage.Process",
+      "overlapsDuringHandling": 0,
+      "placementHits": 0,
+      "reachedErrorM": 0.014444411247968672
+    },
+    {
+      "standOffsetM": 0.15,
+      "bottomErrorM": 1.907348631036143e-8,
+      "id": "Montage.Output",
+      "overlapsDuringHandling": 0,
+      "placementHits": 0,
+      "reachedErrorM": 0.018363264501094816
+    },
+    {
+      "standOffsetM": 0.15,
+      "bottomErrorM": 1.907348631036143e-8,
+      "id": "Finish.Input",
+      "overlapsDuringHandling": 0,
+      "placementHits": 0,
+      "reachedErrorM": 0.03908177316188812
+    },
+    {
+      "standOffsetM": 0.15,
+      "bottomErrorM": 1.907348631036143e-8,
+      "id": "Finish.Process",
+      "overlapsDuringHandling": 0,
+      "placementHits": 0,
+      "reachedErrorM": 0.014540804475545883
+    },
+    {
+      "standOffsetM": 0.15,
+      "bottomErrorM": 1.907348631036143e-8,
+      "id": "Finish.Output",
+      "overlapsDuringHandling": 0,
+      "placementHits": 0,
+      "reachedErrorM": 0.018459601402282713
+    },
+    {
+      "standOffsetM": 0.15,
+      "bottomErrorM": 1.907348631036143e-8,
+      "id": "Packen.Input",
+      "overlapsDuringHandling": 0,
+      "placementHits": 0,
+      "reachedErrorM": 0.042496220469474794
+    },
+    {
+      "standOffsetM": 0.15,
+      "bottomErrorM": 1.907348631036143e-8,
+      "id": "Packen.Process",
+      "overlapsDuringHandling": 0,
+      "placementHits": 0,
+      "reachedErrorM": 0.042313572764396665
+    },
+    {
+      "standOffsetM": 0.15,
+      "bottomErrorM": 1.907348631036143e-8,
+      "id": "Packen.Output",
+      "overlapsDuringHandling": 0,
+      "placementHits": 0,
+      "reachedErrorM": 0.046787890791893
+    },
+    {
+      "standOffsetM": 0.2,
+      "bottomErrorM": 1.907348631036143e-8,
+      "id": "Fertiglager.Slot1",
+      "overlapsDuringHandling": 0,
+      "placementHits": 0,
+      "reachedErrorM": 0.01843369126319885
+    },
+    {
+      "standOffsetM": 0.2,
+      "bottomErrorM": 1.907348631036143e-8,
+      "id": "Fertiglager.Slot2",
+      "overlapsDuringHandling": 0,
+      "placementHits": 0,
+      "reachedErrorM": 0.037859423756599425
+    },
+    {
+      "standOffsetM": 0.2,
+      "bottomErrorM": 1.907348631036143e-8,
+      "id": "Fertiglager.Slot3",
+      "overlapsDuringHandling": 0,
+      "placementHits": 0,
+      "reachedErrorM": 0.029683020412921902
+    },
+    {
+      "standOffsetM": 0.2,
+      "bottomErrorM": 1.907348631036143e-8,
+      "id": "Fertiglager.Slot4",
+      "overlapsDuringHandling": 0,
+      "placementHits": 0,
+      "reachedErrorM": 0.021472942233085632
+    }
+  ],
+  "waypointsReached": 25,
+  "placed": 20,
+  "status": "done",
+  "task": "P02-02",
+  "maxWareBottomM": 0.9000245857238769,
+  "samples": 1530,
+  "legacyStandpointOverlaps": [
+    "Rohstofflager.Slot4",
+    "Rohstofflager.Slot3",
+    "Rohstofflager.Slot2",
+    "Rohstofflager.Slot1",
+    "Fertiglager.Slot1",
+    "Fertiglager.Slot2",
+    "Fertiglager.Slot3",
+    "Fertiglager.Slot4"
+  ],
+  "passed": true,
+  "overlapSamples": 0,
+  "waypoints": 25,
+  "hitEvents": [],
+  "avatar": {
+    "rig": "R15"
+  },
+  "offFloorSamples": 0
+}

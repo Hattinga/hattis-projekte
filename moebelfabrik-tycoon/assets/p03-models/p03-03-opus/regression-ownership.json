@@ -1,0 +1,23 @@
+{
+  "A_unowned_collision": {
+    "raised": "scene 'P03-03_Gebaeudeecke01' exists but is not owned by P03-03; nothing deleted",
+    "scene_survived": true,
+    "objects_survived": {
+      "P03_SENTINEL_plain": true,
+      "P03_SENTINEL_flagged": true
+    },
+    "mesh_survived": true,
+    "pass": true
+  },
+  "B_foreign_object_in_owned_scene": {
+    "raised": "owned scene 'P03-03_Gebaeudeecke01' contains foreign objects ['P03_SENTINEL_foreign']; nothing deleted",
+    "owned_objects_before": 51,
+    "owned_objects_after": 51,
+    "pass": true
+  },
+  "foreign_scenes_unchanged": true,
+  "sentinel_leftovers": [],
+  "owned_scene_restored": true,
+  "window_scene_restored": true,
+  "pass": true
+}

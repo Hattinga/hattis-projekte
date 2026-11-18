@@ -1,8 +1,10 @@
 -- P02-06: labelled overview of the driven road route on the city greybox.
--- Additive: only creates Workspace.P02Overview (non-colliding markers and billboards). Restore: remove that model.
+-- Creates ServerStorage.P02Overview; temporarily move to Workspace in Edit for overview captures, then restore.
+-- The stored overview must not appear during normal play. Restore: place version 20 (visible revision 1).
 -- Route legs match drive-p02-05-route.luau; each leg is drawn 1.0 m beside the next so overlapping legs stay visible.
 assert(game.PlaceId==79033653140107 and game.GameId==10776116608,"Wrong test place")
-assert(not workspace:FindFirstChild("P02Overview"),"P02Overview already exists")
+local storage=game:GetService("ServerStorage")
+assert(not workspace:FindFirstChild("P02Overview") and not storage:FindFirstChild("P02Overview"),"P02Overview already exists")
 local city=workspace:FindFirstChild("CityGreybox");assert(city and city:GetAttribute("TaskId")=="P02-03R")
 assert(workspace:FindFirstChild("P02Vehicle"),"Vehicle missing")
 local S=25/7
@@ -34,7 +36,7 @@ local function route(from,to)
 	return pts,dist[key(to)]
 end
 local root=Instance.new("Model");root.Name="P02Overview"
-root:SetAttribute("TaskId","P02-06");root:SetAttribute("Revision",1)
+root:SetAttribute("TaskId","P02-06");root:SetAttribute("Revision",2)
 local function world(p,h) return Vector3.new(origin.X+p.X*S,h*S,origin.Z+p.Y*S) end
 local count=0
 local function strip(parent,a,b,width,height,color)
@@ -111,12 +113,18 @@ for _,station in line.Stations:GetChildren() do
 end
 for _,store in line.Stores:GetChildren() do
 	local p=store:GetBoundingBox().Position
-	signAt(stationNotes,store.Name,Vector3.new(p.X,8,p.Z+2.0),2.45,0.45,
+	signAt(stationNotes,store.Name,Vector3.new(p.X,8,p.Z+6.0),2.45,0.45,
 		string.format("%s: %d Plaetze %s",store.Name:upper(),store:GetAttribute("Capacity"),store:GetAttribute("AcceptedStage")),Color3.fromRGB(200,230,255))
+	for index=1,4 do
+		local slot=store:FindFirstChild("Slot"..index);assert(slot and slot:IsA("BasePart"))
+		local prefix=store.Name=="Rohstofflager" and "R" or "F"
+		signAt(stationNotes,store.Name.."Slot"..index,slot.Position+Vector3.new(0,slot.Size.Y/2+0.04,-0.12*S),0.60,0.24,
+			prefix..index,Color3.fromRGB(230,245,255))
+	end
 end
 local band=line.Connections.FirstBandPreview.Position
 signAt(stationNotes,"Band",Vector3.new(band.X,8.4,band.Z-3.6),3.6,0.45,"BAND 1,00 m: Saege-Ausgang > Montage-Eingang",Color3.fromRGB(240,240,240))
 root:SetAttribute("Strips",count)
-root.Parent=workspace
+root.Parent=storage
 if recording then history:FinishRecording(recording,Enum.FinishRecordingOperation.Commit) end
 return {task="P02-06",strips=count,legend=legend}

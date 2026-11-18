@@ -1,0 +1,58 @@
+{
+  "date": "2026-11-18",
+  "task": "P04-08",
+  "status": "accepted",
+  "placeId": 79033653140107,
+  "universeId": 10776116608,
+  "placeVersion": 40,
+  "studioServerStarts": 2,
+  "sourceA": {
+    "checks": [
+      "QA-P04-01: four rejected requests leave confirmed state and revision unchanged",
+      "QA-P04-02: one claim wins, competing source and target stay locked",
+      "QA-P04-04: local pickup was discarded before shutdown"
+    ],
+    "scope": "P0408_b5447ee7bfa84fd9979ed58579be00cf",
+    "economicReady": false,
+    "saved": {
+      "location": "rawA",
+      "stateRevision": 1,
+      "storageRevision": 3,
+      "money": 61
+    },
+    "key": "Player_101",
+    "syntheticProfile": true,
+    "status": "passed",
+    "phase": "A",
+    "store": "FactoryP0408_Test",
+    "task": "P04-08"
+  },
+  "sourceB": {
+    "checks": [
+      "QA-P04-03: read outage blocks initialization, writes and economic actions",
+      "QA-P04-04: fresh Studio server restored the reserved source from the real backend",
+      "QA-P04-03: lost save response blocked placement until a fresh read confirmed the new location",
+      "QA-P04-03: old session cannot overwrite the recovered stand",
+      "QA-P04-02/-04: confirmed destination, charge and commit receipt survive a fresh load and exact replay"
+    ],
+    "scope": "P0408_b5447ee7bfa84fd9979ed58579be00cf",
+    "economicReady": false,
+    "saved": {
+      "stateRevision": 6,
+      "physical": "Workspace.P02Line.Stations.Saege.Input.Transfer",
+      "location": "input",
+      "money": 61,
+      "storageRevision": 9,
+      "receipt": "place-complete"
+    },
+    "key": "Player_101",
+    "syntheticProfile": true,
+    "status": "passed",
+    "phase": "B",
+    "store": "FactoryP0408_Test",
+    "task": "P04-08"
+  },
+  "published": false,
+  "modeAfter": "Edit",
+  "economicReady": false
+}

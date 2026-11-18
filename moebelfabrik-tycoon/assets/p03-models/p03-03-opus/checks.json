@@ -1,0 +1,2829 @@
+{
+  "scene": "P03-03_Gebaeudeecke01",
+  "blender": "5.1.1",
+  "coords": "Roblox metres (X, Y up, Z back; front -Z)",
+  "passed": 141,
+  "failed": 0,
+  "total_triangles": 932,
+  "triangles": {
+    "Fascia_L": 12,
+    "Fascia_R": 12,
+    "FrontWall": 140,
+    "GableFill": 16,
+    "Glass": 12,
+    "Plate_Front": 12,
+    "Plate_L": 12,
+    "Plate_R": 12,
+    "Rafter1_L": 12,
+    "Rafter1_R": 12,
+    "Rafter2_L": 12,
+    "Rafter2_R": 12,
+    "Rafter3_L": 12,
+    "Rafter3_R": 12,
+    "Rafter4_L": 12,
+    "Rafter4_R": 12,
+    "RidgeCap": 20,
+    "RidgeEnd_Front": 12,
+    "RidgeEnd_Rear": 12,
+    "Sheathing_L": 12,
+    "Sheathing_R": 12,
+    "SideWall_L": 12,
+    "SideWall_R": 12,
+    "Sill": 20,
+    "Skin_L": 12,
+    "Skin_R": 12,
+    "Verge_Front": 20,
+    "Verge_Rear": 20,
+    "Wedge_L": 12,
+    "Wedge_R": 12,
+    "WindowFrame": 344,
+    "WindowSeal": 64
+  },
+  "checks": [
+    {
+      "id": "UNIT",
+      "check": "scene metric, scale_length 1.0",
+      "expected": "METRIC/1.0",
+      "measured": "METRIC/1.0",
+      "pass": true
+    },
+    {
+      "id": "PIVOT",
+      "check": "root Gebaeudeecke01 at (0,0,0), identity transform (D-G0 outer front-left corner at ground)",
+      "expected": [
+        0,
+        0,
+        0
+      ],
+      "measured": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "pass": true
+    },
+    {
+      "id": "PART_TF",
+      "check": "all parts parented to root, identity world matrix (geometry authored in place)",
+      "expected": [],
+      "measured": [],
+      "pass": true
+    },
+    {
+      "id": "NO_MODIFIERS",
+      "check": "no part has modifiers, so the measured mesh data IS the evaluated/exported mesh",
+      "expected": [],
+      "measured": [],
+      "pass": true
+    },
+    {
+      "id": "NO_TEXT",
+      "check": "no text/language meshes in scene",
+      "expected": [],
+      "measured": [],
+      "pass": true
+    },
+    {
+      "id": "BOUNDS",
+      "check": "overall Roblox bounds = X -0.30..5.10, Y 0..4.50, Z -0.25..3.25 (5.40 x 4.50 x 3.50)",
+      "expected": [
+        [
+          -0.3,
+          0,
+          -0.25
+        ],
+        [
+          5.1,
+          4.5,
+          3.25
+        ]
+      ],
+      "measured": [
+        [
+          -0.3,
+          0.0,
+          -0.25
+        ],
+        [
+          5.1,
+          4.5,
+          3.25
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "id": "BB_Fascia_L",
+      "check": "Fascia_L bounds",
+      "expected": [
+        [
+          -0.3,
+          2.906,
+          -0.25
+        ],
+        [
+          -0.27999999999999997,
+          3.116,
+          3.25
+        ]
+      ],
+      "measured": [
+        [
+          -0.3,
+          2.906,
+          -0.25
+        ],
+        [
+          -0.28,
+          3.116,
+          3.25
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "id": "BB_Fascia_R",
+      "check": "Fascia_R bounds",
+      "expected": [
+        [
+          5.08,
+          2.906,
+          -0.25
+        ],
+        [
+          5.1,
+          3.116,
+          3.25
+        ]
+      ],
+      "measured": [
+        [
+          5.08,
+          2.906,
+          -0.25
+        ],
+        [
+          5.1,
+          3.116,
+          3.25
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "id": "BB_FrontWall",
+      "check": "FrontWall bounds",
+      "expected": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          4.8,
+          2.9,
+          0.24
+        ]
+      ],
+      "measured": [
+        [
+          0.0,
+          0.0,
+          -0.0
+        ],
+        [
+          4.8,
+          2.9,
+          0.24
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "id": "BB_GableFill",
+      "check": "GableFill bounds",
+      "expected": [
+        [
+          0,
+          3.0,
+          0
+        ],
+        [
+          4.8,
+          4.26,
+          0.24
+        ]
+      ],
+      "measured": [
+        [
+          0.0,
+          3.0,
+          -0.0
+        ],
+        [
+          4.8,
+          4.26,
+          0.24
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "id": "BB_Glass",
+      "check": "Glass bounds",
+      "expected": [
+        [
+          1.07,
+          1.07,
+          0.107
+        ],
+        [
+          2.13,
+          2.13,
+          0.113
+        ]
+      ],
+      "measured": [
+        [
+          1.07,
+          1.07,
+          0.107
+        ],
+        [
+          2.13,
+          2.13,
+          0.113
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "id": "BB_Plate_Front",
+      "check": "Plate_Front bounds",
+      "expected": [
+        [
+          0,
+          2.9,
+          0
+        ],
+        [
+          4.8,
+          3.0,
+          0.24
+        ]
+      ],
+      "measured": [
+        [
+          0.0,
+          2.9,
+          -0.0
+        ],
+        [
+          4.8,
+          3.0,
+          0.24
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "id": "BB_Plate_L",
+      "check": "Plate_L bounds",
+      "expected": [
+        [
+          0,
+          2.9,
+          0.24
+        ],
+        [
+          0.24,
+          3.0,
+          3.0
+        ]
+      ],
+      "measured": [
+        [
+          0.0,
+          2.9,
+          0.24
+        ],
+        [
+          0.24,
+          3.0,
+          3.0
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "id": "BB_Plate_R",
+      "check": "Plate_R bounds",
+      "expected": [
+        [
+          4.56,
+          2.9,
+          0.24
+        ],
+        [
+          4.8,
+          3.0,
+          3.0
+        ]
+      ],
+      "measured": [
+        [
+          4.56,
+          2.9,
+          0.24
+        ],
+        [
+          4.8,
+          3.0,
+          3.0
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "id": "BB_Rafter1_L",
+      "check": "Rafter1_L bounds",
+      "expected": [
+        [
+          -0.27999999999999997,
+          2.92,
+          0.07999999999999999
+        ],
+        [
+          2.4,
+          4.42,
+          0.16
+        ]
+      ],
+      "measured": [
+        [
+          -0.28,
+          2.92,
+          0.08
+        ],
+        [
+          2.4,
+          4.42,
+          0.16
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "id": "BB_Rafter1_R",
+      "check": "Rafter1_R bounds",
+      "expected": [
+        [
+          2.4,
+          2.92,
+          0.07999999999999999
+        ],
+        [
+          5.08,
+          4.42,
+          0.16
+        ]
+      ],
+      "measured": [
+        [
+          2.4,
+          2.92,
+          0.08
+        ],
+        [
+          5.08,
+          4.42,
+          0.16
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "id": "BB_Rafter2_L",
+      "check": "Rafter2_L bounds",
+      "expected": [
+        [
+          -0.27999999999999997,
+          2.92,
+          1.08
+        ],
+        [
+          2.4,
+          4.42,
+          1.1600000000000001
+        ]
+      ],
+      "measured": [
+        [
+          -0.28,
+          2.92,
+          1.08
+        ],
+        [
+          2.4,
+          4.42,
+          1.16
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "id": "BB_Rafter2_R",
+      "check": "Rafter2_R bounds",
+      "expected": [
+        [
+          2.4,
+          2.92,
+          1.08
+        ],
+        [
+          5.08,
+          4.42,
+          1.1600000000000001
+        ]
+      ],
+      "measured": [
+        [
+          2.4,
+          2.92,
+          1.08
+        ],
+        [
+          5.08,
+          4.42,
+          1.16
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "id": "BB_Rafter3_L",
+      "check": "Rafter3_L bounds",
+      "expected": [
+        [
+          -0.27999999999999997,
+          2.92,
+          2.08
+        ],
+        [
+          2.4,
+          4.42,
+          2.16
+        ]
+      ],
+      "measured": [
+        [
+          -0.28,
+          2.92,
+          2.08
+        ],
+        [
+          2.4,
+          4.42,
+          2.16
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "id": "BB_Rafter3_R",
+      "check": "Rafter3_R bounds",
+      "expected": [
+        [
+          2.4,
+          2.92,
+          2.08
+        ],
+        [
+          5.08,
+          4.42,
+          2.16
+        ]
+      ],
+      "measured": [
+        [
+          2.4,
+          2.92,
+          2.08
+        ],
+        [
+          5.08,
+          4.42,
+          2.16
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "id": "BB_Rafter4_L",
+      "check": "Rafter4_L bounds",
+      "expected": [
+        [
+          -0.27999999999999997,
+          2.92,
+          2.84
+        ],
+        [
+          2.4,
+          4.42,
+          2.92
+        ]
+      ],
+      "measured": [
+        [
+          -0.28,
+          2.92,
+          2.84
+        ],
+        [
+          2.4,
+          4.42,
+          2.92
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "id": "BB_Rafter4_R",
+      "check": "Rafter4_R bounds",
+      "expected": [
+        [
+          2.4,
+          2.92,
+          2.84
+        ],
+        [
+          5.08,
+          4.42,
+          2.92
+        ]
+      ],
+      "measured": [
+        [
+          2.4,
+          2.92,
+          2.84
+        ],
+        [
+          5.08,
+          4.42,
+          2.92
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "id": "BB_RidgeCap",
+      "check": "RidgeCap bounds",
+      "expected": [
+        [
+          2.28,
+          4.396,
+          -0.25
+        ],
+        [
+          2.52,
+          4.5,
+          3.25
+        ]
+      ],
+      "measured": [
+        [
+          2.28,
+          4.396,
+          -0.25
+        ],
+        [
+          2.52,
+          4.5,
+          3.25
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "id": "BB_RidgeEnd_Front",
+      "check": "RidgeEnd_Front bounds",
+      "expected": [
+        [
+          2.28,
+          4.396,
+          -0.25
+        ],
+        [
+          2.52,
+          4.494,
+          -0.244
+        ]
+      ],
+      "measured": [
+        [
+          2.28,
+          4.396,
+          -0.25
+        ],
+        [
+          2.52,
+          4.494,
+          -0.244
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "id": "BB_RidgeEnd_Rear",
+      "check": "RidgeEnd_Rear bounds",
+      "expected": [
+        [
+          2.28,
+          4.396,
+          3.244
+        ],
+        [
+          2.52,
+          4.494,
+          3.25
+        ]
+      ],
+      "measured": [
+        [
+          2.28,
+          4.396,
+          3.244
+        ],
+        [
+          2.52,
+          4.494,
+          3.25
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "id": "BB_Sheathing_L",
+      "check": "Sheathing_L bounds",
+      "expected": [
+        [
+          -0.27999999999999997,
+          3.08,
+          -0.23
+        ],
+        [
+          2.4,
+          4.444,
+          3.23
+        ]
+      ],
+      "measured": [
+        [
+          -0.28,
+          3.08,
+          -0.23
+        ],
+        [
+          2.4,
+          4.444,
+          3.23
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "id": "BB_Sheathing_R",
+      "check": "Sheathing_R bounds",
+      "expected": [
+        [
+          2.4,
+          3.08,
+          -0.23
+        ],
+        [
+          5.08,
+          4.444,
+          3.23
+        ]
+      ],
+      "measured": [
+        [
+          2.4,
+          3.08,
+          -0.23
+        ],
+        [
+          5.08,
+          4.444,
+          3.23
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "id": "BB_SideWall_L",
+      "check": "SideWall_L bounds",
+      "expected": [
+        [
+          0,
+          0,
+          0.24
+        ],
+        [
+          0.24,
+          2.9,
+          3.0
+        ]
+      ],
+      "measured": [
+        [
+          0.0,
+          0.0,
+          0.24
+        ],
+        [
+          0.24,
+          2.9,
+          3.0
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "id": "BB_SideWall_R",
+      "check": "SideWall_R bounds",
+      "expected": [
+        [
+          4.56,
+          0,
+          0.24
+        ],
+        [
+          4.8,
+          2.9,
+          3.0
+        ]
+      ],
+      "measured": [
+        [
+          4.56,
+          0.0,
+          0.24
+        ],
+        [
+          4.8,
+          2.9,
+          3.0
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "id": "BB_Sill",
+      "check": "Sill bounds",
+      "expected": [
+        [
+          0.96,
+          0.96,
+          -0.04
+        ],
+        [
+          2.24,
+          1.0,
+          0.24
+        ]
+      ],
+      "measured": [
+        [
+          0.96,
+          0.96,
+          -0.04
+        ],
+        [
+          2.24,
+          1.0,
+          0.24
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "id": "BB_Skin_L",
+      "check": "Skin_L bounds",
+      "expected": [
+        [
+          -0.27999999999999997,
+          3.104,
+          -0.23
+        ],
+        [
+          2.4,
+          4.4559999999999995,
+          3.23
+        ]
+      ],
+      "measured": [
+        [
+          -0.28,
+          3.104,
+          -0.23
+        ],
+        [
+          2.4,
+          4.456,
+          3.23
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "id": "BB_Skin_R",
+      "check": "Skin_R bounds",
+      "expected": [
+        [
+          2.4,
+          3.104,
+          -0.23
+        ],
+        [
+          5.08,
+          4.4559999999999995,
+          3.23
+        ]
+      ],
+      "measured": [
+        [
+          2.4,
+          3.104,
+          -0.23
+        ],
+        [
+          5.08,
+          4.456,
+          3.23
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "id": "BB_Verge_Front",
+      "check": "Verge_Front bounds",
+      "expected": [
+        [
+          -0.3,
+          2.906,
+          -0.25
+        ],
+        [
+          5.1,
+          4.4559999999999995,
+          -0.23
+        ]
+      ],
+      "measured": [
+        [
+          -0.3,
+          2.906,
+          -0.25
+        ],
+        [
+          5.1,
+          4.456,
+          -0.23
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "id": "BB_Verge_Rear",
+      "check": "Verge_Rear bounds",
+      "expected": [
+        [
+          -0.3,
+          2.906,
+          3.23
+        ],
+        [
+          5.1,
+          4.4559999999999995,
+          3.25
+        ]
+      ],
+      "measured": [
+        [
+          -0.3,
+          2.906,
+          3.23
+        ],
+        [
+          5.1,
+          4.456,
+          3.25
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "id": "BB_Wedge_L",
+      "check": "Wedge_L bounds",
+      "expected": [
+        [
+          0,
+          3.0,
+          0.24
+        ],
+        [
+          0.24,
+          3.1799999999999997,
+          3.0
+        ]
+      ],
+      "measured": [
+        [
+          0.0,
+          3.0,
+          0.24
+        ],
+        [
+          0.24,
+          3.18,
+          3.0
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "id": "BB_Wedge_R",
+      "check": "Wedge_R bounds",
+      "expected": [
+        [
+          4.56,
+          3.0,
+          0.24
+        ],
+        [
+          4.8,
+          3.1799999999999997,
+          3.0
+        ]
+      ],
+      "measured": [
+        [
+          4.56,
+          3.0,
+          0.24
+        ],
+        [
+          4.8,
+          3.18,
+          3.0
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "id": "BB_WindowFrame",
+      "check": "WindowFrame bounds",
+      "expected": [
+        [
+          1.01,
+          1.01,
+          0.04
+        ],
+        [
+          2.19,
+          2.19,
+          0.18
+        ]
+      ],
+      "measured": [
+        [
+          1.01,
+          1.01,
+          0.04
+        ],
+        [
+          2.19,
+          2.19,
+          0.18
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "id": "BB_WindowSeal",
+      "check": "WindowSeal bounds",
+      "expected": [
+        [
+          1.0,
+          1.0,
+          0.06
+        ],
+        [
+          2.2,
+          2.2,
+          0.16
+        ]
+      ],
+      "measured": [
+        [
+          1.0,
+          1.0,
+          0.06
+        ],
+        [
+          2.2,
+          2.2,
+          0.16
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "id": "G1_front_t",
+      "check": "front wall thickness Z 0..0.24",
+      "expected": 0.24,
+      "measured": 0.24,
+      "pass": true
+    },
+    {
+      "id": "G1_side_L_t",
+      "check": "side wall L thickness X",
+      "expected": 0.24,
+      "measured": 0.24,
+      "pass": true
+    },
+    {
+      "id": "GJ1_L",
+      "check": "front wall Zmax == side wall L Zmin (single corner butt joint)",
+      "expected": 0.24,
+      "measured": [
+        0.24,
+        0.24
+      ],
+      "pass": true
+    },
+    {
+      "id": "G1_side_R_t",
+      "check": "side wall R thickness X",
+      "expected": 0.24,
+      "measured": 0.24,
+      "pass": true
+    },
+    {
+      "id": "GJ1_R",
+      "check": "front wall Zmax == side wall R Zmin (single corner butt joint)",
+      "expected": 0.24,
+      "measured": [
+        0.24,
+        0.24
+      ],
+      "pass": true
+    },
+    {
+      "id": "GJ2_wall_plate_L",
+      "check": "side wall L top 2.90 == plate underside",
+      "expected": 2.9,
+      "measured": [
+        2.9,
+        2.9
+      ],
+      "pass": true
+    },
+    {
+      "id": "GJ2_plate_wedge_L",
+      "check": "plate L top 3.00 == wedge underside",
+      "expected": 3.0,
+      "measured": [
+        3.0,
+        3.0
+      ],
+      "pass": true
+    },
+    {
+      "id": "GJ2_wedge_top_L",
+      "check": "wedge L top vertices on U(X); heights 0.06/0.18",
+      "expected": [
+        0.06,
+        0.18
+      ],
+      "measured": {
+        "heights": [
+          0.06,
+          0.18
+        ],
+        "max_dev": 6.943941155412858e-08
+      },
+      "pass": true
+    },
+    {
+      "id": "GJ2_wall_plate_R",
+      "check": "side wall R top 2.90 == plate underside",
+      "expected": 2.9,
+      "measured": [
+        2.9,
+        2.9
+      ],
+      "pass": true
+    },
+    {
+      "id": "GJ2_plate_wedge_R",
+      "check": "plate R top 3.00 == wedge underside",
+      "expected": 3.0,
+      "measured": [
+        3.0,
+        3.0
+      ],
+      "pass": true
+    },
+    {
+      "id": "GJ2_wedge_top_R",
+      "check": "wedge R top vertices on U(X); heights 0.06/0.18",
+      "expected": [
+        0.06,
+        0.18
+      ],
+      "measured": {
+        "heights": [
+          0.06,
+          0.18
+        ],
+        "max_dev": 3.814697269177714e-08
+      },
+      "pass": true
+    },
+    {
+      "id": "GJ2_front_plate",
+      "check": "front wall top == front plate underside; plate top == gable infill underside",
+      "expected": [
+        2.9,
+        3.0
+      ],
+      "measured": [
+        2.9,
+        2.9,
+        3.0,
+        3.0
+      ],
+      "pass": true
+    },
+    {
+      "id": "G3_gable_top",
+      "check": "gable infill top vertices on U(X)",
+      "expected": 0,
+      "measured": 2.7656555179333964e-07,
+      "pass": true
+    },
+    {
+      "id": "G4_rafter1_L",
+      "check": "rafter 1L: verts on U/U+0.16, axis Z=0.12, width 0.08",
+      "expected": {
+        "axis": 0.12,
+        "width": 0.08
+      },
+      "measured": {
+        "axis": 0.12,
+        "width": 0.08,
+        "max_dev": 2.7656555179333964e-07
+      },
+      "pass": true
+    },
+    {
+      "id": "G4_rafter1_R",
+      "check": "rafter 1R: verts on U/U+0.16, axis Z=0.12, width 0.08",
+      "expected": {
+        "axis": 0.12,
+        "width": 0.08
+      },
+      "measured": {
+        "axis": 0.12,
+        "width": 0.08,
+        "max_dev": 2.7656555179333964e-07
+      },
+      "pass": true
+    },
+    {
+      "id": "GJ3_rafter1_mitre",
+      "check": "rafter pair 1: identical plumb-cut faces at X=2.40 (no overlap)",
+      "expected": "equal vertex sets, Y 4.26/4.42",
+      "measured": [
+        [
+          4.26,
+          0.08
+        ],
+        [
+          4.26,
+          0.16
+        ],
+        [
+          4.42,
+          0.08
+        ],
+        [
+          4.42,
+          0.16
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "id": "G4_rafter2_L",
+      "check": "rafter 2L: verts on U/U+0.16, axis Z=1.12, width 0.08",
+      "expected": {
+        "axis": 1.12,
+        "width": 0.08
+      },
+      "measured": {
+        "axis": 1.12,
+        "width": 0.08,
+        "max_dev": 2.7656555179333964e-07
+      },
+      "pass": true
+    },
+    {
+      "id": "G4_rafter2_R",
+      "check": "rafter 2R: verts on U/U+0.16, axis Z=1.12, width 0.08",
+      "expected": {
+        "axis": 1.12,
+        "width": 0.08
+      },
+      "measured": {
+        "axis": 1.12,
+        "width": 0.08,
+        "max_dev": 2.7656555179333964e-07
+      },
+      "pass": true
+    },
+    {
+      "id": "GJ3_rafter2_mitre",
+      "check": "rafter pair 2: identical plumb-cut faces at X=2.40 (no overlap)",
+      "expected": "equal vertex sets, Y 4.26/4.42",
+      "measured": [
+        [
+          4.26,
+          1.08
+        ],
+        [
+          4.26,
+          1.16
+        ],
+        [
+          4.42,
+          1.08
+        ],
+        [
+          4.42,
+          1.16
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "id": "G4_rafter3_L",
+      "check": "rafter 3L: verts on U/U+0.16, axis Z=2.12, width 0.08",
+      "expected": {
+        "axis": 2.12,
+        "width": 0.08
+      },
+      "measured": {
+        "axis": 2.12,
+        "width": 0.08,
+        "max_dev": 2.7656555179333964e-07
+      },
+      "pass": true
+    },
+    {
+      "id": "G4_rafter3_R",
+      "check": "rafter 3R: verts on U/U+0.16, axis Z=2.12, width 0.08",
+      "expected": {
+        "axis": 2.12,
+        "width": 0.08
+      },
+      "measured": {
+        "axis": 2.12,
+        "width": 0.08,
+        "max_dev": 2.7656555179333964e-07
+      },
+      "pass": true
+    },
+    {
+      "id": "GJ3_rafter3_mitre",
+      "check": "rafter pair 3: identical plumb-cut faces at X=2.40 (no overlap)",
+      "expected": "equal vertex sets, Y 4.26/4.42",
+      "measured": [
+        [
+          4.26,
+          2.08
+        ],
+        [
+          4.26,
+          2.16
+        ],
+        [
+          4.42,
+          2.08
+        ],
+        [
+          4.42,
+          2.16
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "id": "G4_rafter4_L",
+      "check": "rafter 4L: verts on U/U+0.16, axis Z=2.88, width 0.08",
+      "expected": {
+        "axis": 2.88,
+        "width": 0.08
+      },
+      "measured": {
+        "axis": 2.88,
+        "width": 0.08,
+        "max_dev": 2.7656555179333964e-07
+      },
+      "pass": true
+    },
+    {
+      "id": "G4_rafter4_R",
+      "check": "rafter 4R: verts on U/U+0.16, axis Z=2.88, width 0.08",
+      "expected": {
+        "axis": 2.88,
+        "width": 0.08
+      },
+      "measured": {
+        "axis": 2.88,
+        "width": 0.08,
+        "max_dev": 2.7656555179333964e-07
+      },
+      "pass": true
+    },
+    {
+      "id": "GJ3_rafter4_mitre",
+      "check": "rafter pair 4: identical plumb-cut faces at X=2.40 (no overlap)",
+      "expected": "equal vertex sets, Y 4.26/4.42",
+      "measured": [
+        [
+          4.26,
+          2.84
+        ],
+        [
+          4.26,
+          2.92
+        ],
+        [
+          4.42,
+          2.84
+        ],
+        [
+          4.42,
+          2.92
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "id": "GJ2_rafter1_bearing",
+      "check": "rafter 1 Z-span lies on wedge (or gable infill for axis 0.12)",
+      "expected": true,
+      "measured": {
+        "wedge": false,
+        "gable": true
+      },
+      "pass": true
+    },
+    {
+      "id": "GJ2_rafter2_bearing",
+      "check": "rafter 2 Z-span lies on wedge (or gable infill for axis 0.12)",
+      "expected": true,
+      "measured": {
+        "wedge": true,
+        "gable": false
+      },
+      "pass": true
+    },
+    {
+      "id": "GJ2_rafter3_bearing",
+      "check": "rafter 3 Z-span lies on wedge (or gable infill for axis 0.12)",
+      "expected": true,
+      "measured": {
+        "wedge": true,
+        "gable": false
+      },
+      "pass": true
+    },
+    {
+      "id": "GJ2_rafter4_bearing",
+      "check": "rafter 4 Z-span lies on wedge (or gable infill for axis 0.12)",
+      "expected": true,
+      "measured": {
+        "wedge": true,
+        "gable": false
+      },
+      "pass": true
+    },
+    {
+      "id": "GJ3_Sheathing_L",
+      "check": "Sheathing L: all vertices on U+0.16 / U+0.184",
+      "expected": 0,
+      "measured": 1.8501281734417674e-07,
+      "pass": true
+    },
+    {
+      "id": "GJ3_Sheathing_R",
+      "check": "Sheathing R: all vertices on U+0.16 / U+0.184",
+      "expected": 0,
+      "measured": 1.8501281734417674e-07,
+      "pass": true
+    },
+    {
+      "id": "GJ3_Skin_L",
+      "check": "Skin L: all vertices on U+0.184 / U+0.196",
+      "expected": 0,
+      "measured": 1.8501281734417674e-07,
+      "pass": true
+    },
+    {
+      "id": "GJ3_Skin_R",
+      "check": "Skin R: all vertices on U+0.184 / U+0.196",
+      "expected": 0,
+      "measured": 1.8501281734417674e-07,
+      "pass": true
+    },
+    {
+      "id": "G5_pitch",
+      "check": "roof pitch measured on Skin_L top edge",
+      "expected": 26.565,
+      "measured": 26.565,
+      "pass": true
+    },
+    {
+      "id": "DG21_layer_coverage",
+      "check": "D-G21: sheathing+skin actually cover X -0.28..5.08, Z -0.23..3.23 (0.020 short of nominal G5 envelope on every edge; that strip is the edge board)",
+      "expected": {
+        "X": [
+          -0.28,
+          5.08
+        ],
+        "Z": [
+          -0.23,
+          3.23
+        ]
+      },
+      "measured": {
+        "X": [
+          -0.28,
+          5.08
+        ],
+        "Z": [
+          -0.23,
+          3.23
+        ],
+        "parts": {
+          "Sheathing_L": [
+            [
+              -0.28,
+              3.08,
+              -0.23
+            ],
+            [
+              2.4,
+              4.444,
+              3.23
+            ]
+          ],
+          "Sheathing_R": [
+            [
+              2.4,
+              3.08,
+              -0.23
+            ],
+            [
+              5.08,
+              4.444,
+              3.23
+            ]
+          ],
+          "Skin_L": [
+            [
+              -0.28,
+              3.104,
+              -0.23
+            ],
+            [
+              2.4,
+              4.456,
+              3.23
+            ]
+          ],
+          "Skin_R": [
+            [
+              2.4,
+              3.104,
+              -0.23
+            ],
+            [
+              5.08,
+              4.456,
+              3.23
+            ]
+          ]
+        }
+      },
+      "pass": true
+    },
+    {
+      "id": "DG21_envelope_closed",
+      "check": "nominal G5 roof envelope X -0.30..5.10, Z -0.25..3.25 measured over skin+sheathing+fascia+verge+ridge cap",
+      "expected": [
+        [
+          -0.3,
+          -0.25
+        ],
+        [
+          5.1,
+          3.25
+        ]
+      ],
+      "measured": [
+        [
+          -0.3,
+          -0.25
+        ],
+        [
+          5.1,
+          3.25
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "id": "G6_overhang_L",
+      "check": "eaves overhang L: outer fascia face from outer wall face",
+      "expected": 0.3,
+      "measured": 0.3,
+      "pass": true
+    },
+    {
+      "id": "G6_fascia_t_L",
+      "check": "fascia L thickness",
+      "expected": 0.02,
+      "measured": 0.02,
+      "pass": true
+    },
+    {
+      "id": "G6_fascia_h_L",
+      "check": "fascia L ALONE at outer face: bottom 2.906, top 3.106 (=U+0.196), height 0.200",
+      "expected": {
+        "bottom": 2.906,
+        "top": 3.106,
+        "height": 0.2
+      },
+      "measured": {
+        "bottom": 2.906,
+        "top": 3.106,
+        "height": 0.2
+      },
+      "pass": true
+    },
+    {
+      "id": "GJ4_fascia_flush_L",
+      "check": "fascia L top in skin top plane U+0.196; skin end face X=-0.28 (Y 3.104..3.116) lies on fascia inner face (Y 2.906..3.116)",
+      "expected": {
+        "top_plane_dev": 0,
+        "skin_end_Y": [
+          3.104,
+          3.116
+        ],
+        "fascia_inner_Y": [
+          2.906,
+          3.116
+        ]
+      },
+      "measured": {
+        "top_plane_dev": 6.23464580518096e-08,
+        "skin_end_Y": [
+          3.104,
+          3.116
+        ],
+        "fascia_inner_Y": [
+          2.906,
+          3.116
+        ]
+      },
+      "pass": true
+    },
+    {
+      "id": "G6_overhang_R",
+      "check": "eaves overhang R: outer fascia face from outer wall face",
+      "expected": 0.3,
+      "measured": 0.3,
+      "pass": true
+    },
+    {
+      "id": "G6_fascia_t_R",
+      "check": "fascia R thickness",
+      "expected": 0.02,
+      "measured": 0.02,
+      "pass": true
+    },
+    {
+      "id": "G6_fascia_h_R",
+      "check": "fascia R ALONE at outer face: bottom 2.906, top 3.106 (=U+0.196), height 0.200",
+      "expected": {
+        "bottom": 2.906,
+        "top": 3.106,
+        "height": 0.2
+      },
+      "measured": {
+        "bottom": 2.906,
+        "top": 3.106,
+        "height": 0.2
+      },
+      "pass": true
+    },
+    {
+      "id": "GJ4_fascia_flush_R",
+      "check": "fascia R top in skin top plane U+0.196; skin end face X=5.08 (Y 3.104..3.116) lies on fascia inner face (Y 2.906..3.116)",
+      "expected": {
+        "top_plane_dev": 0,
+        "skin_end_Y": [
+          3.104,
+          3.116
+        ],
+        "fascia_inner_Y": [
+          2.906,
+          3.116
+        ]
+      },
+      "measured": {
+        "top_plane_dev": 1.0108947751108488e-07,
+        "skin_end_Y": [
+          3.104,
+          3.116
+        ],
+        "fascia_inner_Y": [
+          2.906,
+          3.116
+        ]
+      },
+      "pass": true
+    },
+    {
+      "id": "G7_Verge_Front",
+      "check": "Verge_Front: all verts on U-0.004 / U+0.196, thickness 0.02, outer corner height 0.200",
+      "expected": {
+        "t": 0.02,
+        "outer_Y": [
+          2.906,
+          3.106
+        ]
+      },
+      "measured": {
+        "t": 0.02,
+        "max_dev": 1.487731933237646e-07,
+        "outer_Y": [
+          2.906,
+          3.106
+        ]
+      },
+      "pass": true
+    },
+    {
+      "id": "G7_Verge_Rear",
+      "check": "Verge_Rear: all verts on U-0.004 / U+0.196, thickness 0.02, outer corner height 0.200",
+      "expected": {
+        "t": 0.02,
+        "outer_Y": [
+          2.906,
+          3.106
+        ]
+      },
+      "measured": {
+        "t": 0.02,
+        "max_dev": 1.487731933237646e-07,
+        "outer_Y": [
+          2.906,
+          3.106
+        ]
+      },
+      "pass": true
+    },
+    {
+      "id": "G7_overhang_front",
+      "check": "verge outer face in front of front wall face",
+      "expected": 0.25,
+      "measured": 0.25,
+      "pass": true
+    },
+    {
+      "id": "G7_overhang_rear",
+      "check": "verge outer face behind rear cut Z=3.00",
+      "expected": 0.25,
+      "measured": 0.25,
+      "pass": true
+    },
+    {
+      "id": "GJ4_mitre_L_front",
+      "check": "fascia L/Verge_Front: coplanar 45deg mitre, common outer edge 2.906..3.106 and common top 3.116; verge face lies fully on the fascia face. NOT identical faces: at the inner corner the horizontal fascia bottom (2.906) is 0.010 below the raking verge bottom (2.916), leaving an exposed fascia end sliver triangle",
+      "expected": {
+        "outer_edge_Y": [
+          2.906,
+          3.106
+        ],
+        "inner_edge_Y": {
+          "fascia": [
+            2.906,
+            3.116
+          ],
+          "verge": [
+            2.916,
+            3.116
+          ]
+        },
+        "exposed_fascia_sliver_m2": 0.00014142
+      },
+      "measured": {
+        "fascia_face_(s,Y)": [
+          [
+            -0.0,
+            2.906
+          ],
+          [
+            -0.0,
+            3.106
+          ],
+          [
+            0.028284,
+            3.116
+          ],
+          [
+            0.028284,
+            2.906
+          ]
+        ],
+        "verge_face_(s,Y)": [
+          [
+            -0.0,
+            3.106
+          ],
+          [
+            -0.0,
+            2.906
+          ],
+          [
+            0.028284,
+            2.916
+          ],
+          [
+            0.028284,
+            3.116
+          ]
+        ],
+        "outer_edge_Y": [
+          [
+            2.906,
+            3.106
+          ],
+          [
+            2.906,
+            3.106
+          ]
+        ],
+        "inner_edge_Y": {
+          "fascia": [
+            2.906,
+            3.116
+          ],
+          "verge": [
+            2.916,
+            3.116
+          ]
+        },
+        "verge_face_inside_fascia_face": true,
+        "fascia_area_m2": 0.00579822,
+        "verge_area_m2": 0.0056568,
+        "exposed_fascia_sliver_m2": 0.00014142
+      },
+      "pass": true
+    },
+    {
+      "id": "GJ4_mitre_L_rear",
+      "check": "fascia L/Verge_Rear: coplanar 45deg mitre, common outer edge 2.906..3.106 and common top 3.116; verge face lies fully on the fascia face. NOT identical faces: at the inner corner the horizontal fascia bottom (2.906) is 0.010 below the raking verge bottom (2.916), leaving an exposed fascia end sliver triangle",
+      "expected": {
+        "outer_edge_Y": [
+          2.906,
+          3.106
+        ],
+        "inner_edge_Y": {
+          "fascia": [
+            2.906,
+            3.116
+          ],
+          "verge": [
+            2.916,
+            3.116
+          ]
+        },
+        "exposed_fascia_sliver_m2": 0.00014142
+      },
+      "measured": {
+        "fascia_face_(s,Y)": [
+          [
+            0.028284,
+            2.906
+          ],
+          [
+            0.028284,
+            3.116
+          ],
+          [
+            -0.0,
+            3.106
+          ],
+          [
+            -0.0,
+            2.906
+          ]
+        ],
+        "verge_face_(s,Y)": [
+          [
+            0.028284,
+            3.116
+          ],
+          [
+            0.028284,
+            2.916
+          ],
+          [
+            -0.0,
+            2.906
+          ],
+          [
+            -0.0,
+            3.106
+          ]
+        ],
+        "outer_edge_Y": [
+          [
+            2.906,
+            3.106
+          ],
+          [
+            2.906,
+            3.106
+          ]
+        ],
+        "inner_edge_Y": {
+          "fascia": [
+            2.906,
+            3.116
+          ],
+          "verge": [
+            2.916,
+            3.116
+          ]
+        },
+        "verge_face_inside_fascia_face": true,
+        "fascia_area_m2": 0.00579822,
+        "verge_area_m2": 0.0056568,
+        "exposed_fascia_sliver_m2": 0.00014142
+      },
+      "pass": true
+    },
+    {
+      "id": "GJ4_mitre_R_front",
+      "check": "fascia R/Verge_Front: coplanar 45deg mitre, common outer edge 2.906..3.106 and common top 3.116; verge face lies fully on the fascia face. NOT identical faces: at the inner corner the horizontal fascia bottom (2.906) is 0.010 below the raking verge bottom (2.916), leaving an exposed fascia end sliver triangle",
+      "expected": {
+        "outer_edge_Y": [
+          2.906,
+          3.106
+        ],
+        "inner_edge_Y": {
+          "fascia": [
+            2.906,
+            3.116
+          ],
+          "verge": [
+            2.916,
+            3.116
+          ]
+        },
+        "exposed_fascia_sliver_m2": 0.00014142
+      },
+      "measured": {
+        "fascia_face_(s,Y)": [
+          [
+            0.0,
+            2.906
+          ],
+          [
+            0.028284,
+            2.906
+          ],
+          [
+            0.028284,
+            3.116
+          ],
+          [
+            0.0,
+            3.106
+          ]
+        ],
+        "verge_face_(s,Y)": [
+          [
+            0.0,
+            2.906
+          ],
+          [
+            0.0,
+            3.106
+          ],
+          [
+            0.028284,
+            3.116
+          ],
+          [
+            0.028284,
+            2.916
+          ]
+        ],
+        "outer_edge_Y": [
+          [
+            2.906,
+            3.106
+          ],
+          [
+            2.906,
+            3.106
+          ]
+        ],
+        "inner_edge_Y": {
+          "fascia": [
+            2.906,
+            3.116
+          ],
+          "verge": [
+            2.916,
+            3.116
+          ]
+        },
+        "verge_face_inside_fascia_face": true,
+        "fascia_area_m2": 0.00579822,
+        "verge_area_m2": 0.0056568,
+        "exposed_fascia_sliver_m2": 0.00014142
+      },
+      "pass": true
+    },
+    {
+      "id": "GJ4_mitre_R_rear",
+      "check": "fascia R/Verge_Rear: coplanar 45deg mitre, common outer edge 2.906..3.106 and common top 3.116; verge face lies fully on the fascia face. NOT identical faces: at the inner corner the horizontal fascia bottom (2.906) is 0.010 below the raking verge bottom (2.916), leaving an exposed fascia end sliver triangle",
+      "expected": {
+        "outer_edge_Y": [
+          2.906,
+          3.106
+        ],
+        "inner_edge_Y": {
+          "fascia": [
+            2.906,
+            3.116
+          ],
+          "verge": [
+            2.916,
+            3.116
+          ]
+        },
+        "exposed_fascia_sliver_m2": 0.00014142
+      },
+      "measured": {
+        "fascia_face_(s,Y)": [
+          [
+            0.028284,
+            2.906
+          ],
+          [
+            0.0,
+            2.906
+          ],
+          [
+            0.0,
+            3.106
+          ],
+          [
+            0.028284,
+            3.116
+          ]
+        ],
+        "verge_face_(s,Y)": [
+          [
+            0.028284,
+            2.916
+          ],
+          [
+            0.028284,
+            3.116
+          ],
+          [
+            0.0,
+            3.106
+          ],
+          [
+            0.0,
+            2.906
+          ]
+        ],
+        "outer_edge_Y": [
+          [
+            2.906,
+            3.106
+          ],
+          [
+            2.906,
+            3.106
+          ]
+        ],
+        "inner_edge_Y": {
+          "fascia": [
+            2.906,
+            3.116
+          ],
+          "verge": [
+            2.916,
+            3.116
+          ]
+        },
+        "verge_face_inside_fascia_face": true,
+        "fascia_area_m2": 0.00579822,
+        "verge_area_m2": 0.0056568,
+        "exposed_fascia_sliver_m2": 0.00014142
+      },
+      "pass": true
+    },
+    {
+      "id": "GJ5_skin_ridge",
+      "check": "both skin halves end at X=2.40 with top Y=4.456 (closed seam)",
+      "expected": [
+        4.444,
+        4.456
+      ],
+      "measured": [
+        [
+          4.444,
+          4.456
+        ],
+        [
+          4.444,
+          4.456
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "id": "G8_cap_profile",
+      "check": "ridge cap profile points (X;Y) incl. apex 4.500",
+      "expected": [
+        [
+          2.28,
+          4.396
+        ],
+        [
+          2.28,
+          4.402
+        ],
+        [
+          2.4,
+          4.494
+        ],
+        [
+          2.4,
+          4.5
+        ],
+        [
+          2.52,
+          4.396
+        ],
+        [
+          2.52,
+          4.402
+        ]
+      ],
+      "measured": [
+        [
+          2.28,
+          4.396
+        ],
+        [
+          2.28,
+          4.402
+        ],
+        [
+          2.4,
+          4.494
+        ],
+        [
+          2.4,
+          4.5
+        ],
+        [
+          2.52,
+          4.396
+        ],
+        [
+          2.52,
+          4.402
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "id": "GJ5_cap_foot_2.28",
+      "check": "cap foot X=2.28 sits on skin top",
+      "expected": 4.396,
+      "measured": 4.396,
+      "pass": true
+    },
+    {
+      "id": "GJ5_cap_foot_2.52",
+      "check": "cap foot X=2.52 sits on skin top",
+      "expected": 4.396,
+      "measured": 4.396,
+      "pass": true
+    },
+    {
+      "id": "GJ5_RidgeEnd_Front",
+      "check": "RidgeEnd_Front closes gap between roof top plane (4.456 at ridge; over Z -0.25..-0.23 / 3.23..3.25 this plane is the verge-board top) and cap underside (4.494)",
+      "expected": [
+        [
+          2.28,
+          4.396
+        ],
+        [
+          2.4,
+          4.456
+        ],
+        [
+          2.4,
+          4.494
+        ],
+        [
+          2.52,
+          4.396
+        ]
+      ],
+      "measured": [
+        [
+          2.28,
+          4.396
+        ],
+        [
+          2.4,
+          4.456
+        ],
+        [
+          2.4,
+          4.494
+        ],
+        [
+          2.52,
+          4.396
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "id": "GJ5_RidgeEnd_Rear",
+      "check": "RidgeEnd_Rear closes gap between roof top plane (4.456 at ridge; over Z -0.25..-0.23 / 3.23..3.25 this plane is the verge-board top) and cap underside (4.494)",
+      "expected": [
+        [
+          2.28,
+          4.396
+        ],
+        [
+          2.4,
+          4.456
+        ],
+        [
+          2.4,
+          4.494
+        ],
+        [
+          2.52,
+          4.396
+        ]
+      ],
+      "measured": [
+        [
+          2.28,
+          4.396
+        ],
+        [
+          2.4,
+          4.456
+        ],
+        [
+          2.4,
+          4.494
+        ],
+        [
+          2.52,
+          4.396
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "id": "G9_open",
+      "check": "opening passes through whole wall; solid wall beside it starts at Z=0",
+      "expected": {
+        "opening": null,
+        "wall_hit_Z": 0.0
+      },
+      "measured": {
+        "opening": null,
+        "wall_hit": [
+          0.5,
+          1.600000023841858,
+          -0.0
+        ]
+      },
+      "pass": true
+    },
+    {
+      "id": "G9_raw_wall_cutout",
+      "check": "FrontWall ALONE: cutout = opening 1.20x1.20 plus sill slot X 0.96..2.24 / Y 0.96..1.00 -> clear height 0.96..2.20 = 1.24 at X=1.6, slot width 1.28 at Y=0.98 (filled by the sill)",
+      "expected": {
+        "height_incl_slot": 1.24,
+        "slot_width": 1.28
+      },
+      "measured": {
+        "height_incl_slot": 1.24,
+        "slot_width": 1.28
+      },
+      "pass": true
+    },
+    {
+      "id": "G9_finished_opening",
+      "check": "assembled FrontWall+Sill: finished opening 1.20 x 1.20, bottom = sill top 1.00 (rays from 5 points in the opening, front/mid/rear depth)",
+      "expected": {
+        "w": 1.2,
+        "h": 1.2,
+        "bottom_Y": 1.0
+      },
+      "measured": {
+        "1.6,1.6,0.02": {
+          "w": 1.2,
+          "h": 1.2,
+          "bottom_Y": 1.0
+        },
+        "1.6,1.6,0.12": {
+          "w": 1.2,
+          "h": 1.2,
+          "bottom_Y": 1.0
+        },
+        "1.6,1.6,0.22": {
+          "w": 1.2,
+          "h": 1.2,
+          "bottom_Y": 1.0
+        },
+        "1.05,1.05,0.12": {
+          "w": 1.2,
+          "h": 1.2,
+          "bottom_Y": 1.0
+        },
+        "2.15,2.15,0.12": {
+          "w": 1.2,
+          "h": 1.2,
+          "bottom_Y": 1.0
+        }
+      },
+      "pass": true
+    },
+    {
+      "id": "G10_outer",
+      "check": "frame outer size",
+      "expected": [
+        1.18,
+        1.18
+      ],
+      "measured": [
+        1.18,
+        1.18
+      ],
+      "pass": true
+    },
+    {
+      "id": "GJ6_recess",
+      "check": "frame 0.04 behind outer plaster, 0.06 before inner face",
+      "expected": [
+        0.04,
+        0.06
+      ],
+      "measured": [
+        0.04,
+        0.06
+      ],
+      "pass": true
+    },
+    {
+      "id": "GJ6_gap",
+      "check": "0.01 sealing joint around frame",
+      "expected": 0.01,
+      "measured": [
+        0.01,
+        0.01,
+        0.01,
+        0.01
+      ],
+      "pass": true
+    },
+    {
+      "id": "G10_light",
+      "check": "frame light opening 1.06 (profile 0.06) in the outer section Z 0.04..0.113 incl. glass plane",
+      "expected": {
+        "Z0.08": 1.06,
+        "Z0.110": 1.06
+      },
+      "measured": {
+        "Z0.08": 1.06,
+        "Z0.110": 1.06
+      },
+      "pass": true
+    },
+    {
+      "id": "DG22_rear_stop",
+      "check": "D-G22: rear glazing stop Z 0.113..0.18 leaves clear 1.04 (0.010 rebate shoulder)",
+      "expected": 1.04,
+      "measured": 1.04,
+      "pass": true
+    },
+    {
+      "id": "GJ6_glass_rebate",
+      "check": "glass seated in stepped rebate (actual meshes): glass rear face Z=0.113 lies on the frame shoulder (faces at Z=0.113 facing the glass, area 1.06^2-1.04^2=0.042 m2, inside glass outline); points 0.5 mm behind the 0.010 glass edge band are inside the frame, behind the clear glass they are not; points 0.5 mm outside all four glass edges are inside the rebate side walls; front of glass is open (no glazing bead modelled)",
+      "expected": {
+        "glass_Z": [
+          0.107,
+          0.113
+        ],
+        "shoulder_area_m2": 0.042,
+        "rear_band_points_in_frame": "80/80",
+        "points_behind_clear_glass_in_frame": "0/40",
+        "edge_points_in_frame": "160/160",
+        "points_in_front_of_glass_band_in_frame": "0/20"
+      },
+      "measured": {
+        "glass_Z": [
+          0.107,
+          0.113
+        ],
+        "shoulder_faces": 8,
+        "shoulder_area_m2": 0.042,
+        "shoulder_within_glass_xy": true,
+        "rear_band_points_in_frame": "80/80",
+        "points_behind_clear_glass_in_frame": "0/40",
+        "edge_points_in_frame": "160/160",
+        "points_in_front_of_glass_band_in_frame": "0/20"
+      },
+      "pass": true
+    },
+    {
+      "id": "GJ7_sill",
+      "check": "sill top 1.00 = opening bottom, frame bottom 1.01, sill to inner wall face 0.24, 0.04 projection",
+      "expected": {
+        "top": 1.0,
+        "frame": 1.01,
+        "rear": 0.24,
+        "front": -0.04
+      },
+      "measured": {
+        "top": 1.0,
+        "frame": 1.01,
+        "rear": 0.24,
+        "front": -0.04
+      },
+      "pass": true
+    },
+    {
+      "id": "GJ6_seal_recessed",
+      "check": "seal fills joint, recessed 0.02 behind both frame faces, rests on sill",
+      "expected": {
+        "Z": [
+          0.06,
+          0.16
+        ],
+        "bottom": 1.0
+      },
+      "measured": [
+        [
+          1.0,
+          1.0,
+          0.06
+        ],
+        [
+          2.2,
+          2.2,
+          0.16
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "id": "MESH_Fascia_L",
+      "check": "Fascia_L: finite, closed manifold, consistent outward normals, positive volume",
+      "expected": "closed, vol>0",
+      "measured": {
+        "tris": 12,
+        "vol_m3": 0.0142673,
+        "nonmanifold": 0,
+        "badwind": 0
+      },
+      "pass": true
+    },
+    {
+      "id": "MESH_Fascia_R",
+      "check": "Fascia_R: finite, closed manifold, consistent outward normals, positive volume",
+      "expected": "closed, vol>0",
+      "measured": {
+        "tris": 12,
+        "vol_m3": 0.0142684,
+        "nonmanifold": 0,
+        "badwind": 0
+      },
+      "pass": true
+    },
+    {
+      "id": "MESH_FrontWall",
+      "check": "FrontWall: finite, closed manifold, consistent outward normals, positive volume",
+      "expected": "closed, vol>0",
+      "measured": {
+        "tris": 140,
+        "vol_m3": 2.9828396,
+        "nonmanifold": 0,
+        "badwind": 0
+      },
+      "pass": true
+    },
+    {
+      "id": "MESH_GableFill",
+      "check": "GableFill: finite, closed manifold, consistent outward normals, positive volume",
+      "expected": "closed, vol>0",
+      "measured": {
+        "tris": 16,
+        "vol_m3": 0.76032,
+        "nonmanifold": 0,
+        "badwind": 0
+      },
+      "pass": true
+    },
+    {
+      "id": "MESH_Glass",
+      "check": "Glass: finite, closed manifold, consistent outward normals, positive volume",
+      "expected": "closed, vol>0",
+      "measured": {
+        "tris": 12,
+        "vol_m3": 0.0067416,
+        "nonmanifold": 0,
+        "badwind": 0
+      },
+      "pass": true
+    },
+    {
+      "id": "MESH_Plate_Front",
+      "check": "Plate_Front: finite, closed manifold, consistent outward normals, positive volume",
+      "expected": "closed, vol>0",
+      "measured": {
+        "tris": 12,
+        "vol_m3": 0.1151999,
+        "nonmanifold": 0,
+        "badwind": 0
+      },
+      "pass": true
+    },
+    {
+      "id": "MESH_Plate_L",
+      "check": "Plate_L: finite, closed manifold, consistent outward normals, positive volume",
+      "expected": "closed, vol>0",
+      "measured": {
+        "tris": 12,
+        "vol_m3": 0.0662398,
+        "nonmanifold": 0,
+        "badwind": 0
+      },
+      "pass": true
+    },
+    {
+      "id": "MESH_Plate_R",
+      "check": "Plate_R: finite, closed manifold, consistent outward normals, positive volume",
+      "expected": "closed, vol>0",
+      "measured": {
+        "tris": 12,
+        "vol_m3": 0.0662393,
+        "nonmanifold": 0,
+        "badwind": 0
+      },
+      "pass": true
+    },
+    {
+      "id": "MESH_Rafter1_L",
+      "check": "Rafter1_L: finite, closed manifold, consistent outward normals, positive volume",
+      "expected": "closed, vol>0",
+      "measured": {
+        "tris": 12,
+        "vol_m3": 0.034304,
+        "nonmanifold": 0,
+        "badwind": 0
+      },
+      "pass": true
+    },
+    {
+      "id": "MESH_Rafter1_R",
+      "check": "Rafter1_R: finite, closed manifold, consistent outward normals, positive volume",
+      "expected": "closed, vol>0",
+      "measured": {
+        "tris": 12,
+        "vol_m3": 0.034304,
+        "nonmanifold": 0,
+        "badwind": 0
+      },
+      "pass": true
+    },
+    {
+      "id": "MESH_Rafter2_L",
+      "check": "Rafter2_L: finite, closed manifold, consistent outward normals, positive volume",
+      "expected": "closed, vol>0",
+      "measured": {
+        "tris": 12,
+        "vol_m3": 0.0343041,
+        "nonmanifold": 0,
+        "badwind": 0
+      },
+      "pass": true
+    },
+    {
+      "id": "MESH_Rafter2_R",
+      "check": "Rafter2_R: finite, closed manifold, consistent outward normals, positive volume",
+      "expected": "closed, vol>0",
+      "measured": {
+        "tris": 12,
+        "vol_m3": 0.0343033,
+        "nonmanifold": 0,
+        "badwind": 0
+      },
+      "pass": true
+    },
+    {
+      "id": "MESH_Rafter3_L",
+      "check": "Rafter3_L: finite, closed manifold, consistent outward normals, positive volume",
+      "expected": "closed, vol>0",
+      "measured": {
+        "tris": 12,
+        "vol_m3": 0.0343034,
+        "nonmanifold": 0,
+        "badwind": 0
+      },
+      "pass": true
+    },
+    {
+      "id": "MESH_Rafter3_R",
+      "check": "Rafter3_R: finite, closed manifold, consistent outward normals, positive volume",
+      "expected": "closed, vol>0",
+      "measured": {
+        "tris": 12,
+        "vol_m3": 0.0343027,
+        "nonmanifold": 0,
+        "badwind": 0
+      },
+      "pass": true
+    },
+    {
+      "id": "MESH_Rafter4_L",
+      "check": "Rafter4_L: finite, closed manifold, consistent outward normals, positive volume",
+      "expected": "closed, vol>0",
+      "measured": {
+        "tris": 12,
+        "vol_m3": 0.0343041,
+        "nonmanifold": 0,
+        "badwind": 0
+      },
+      "pass": true
+    },
+    {
+      "id": "MESH_Rafter4_R",
+      "check": "Rafter4_R: finite, closed manifold, consistent outward normals, positive volume",
+      "expected": "closed, vol>0",
+      "measured": {
+        "tris": 12,
+        "vol_m3": 0.0343033,
+        "nonmanifold": 0,
+        "badwind": 0
+      },
+      "pass": true
+    },
+    {
+      "id": "MESH_RidgeCap",
+      "check": "RidgeCap: finite, closed manifold, consistent outward normals, positive volume",
+      "expected": "closed, vol>0",
+      "measured": {
+        "tris": 20,
+        "vol_m3": 0.0050388,
+        "nonmanifold": 0,
+        "badwind": 0
+      },
+      "pass": true
+    },
+    {
+      "id": "MESH_RidgeEnd_Front",
+      "check": "RidgeEnd_Front: finite, closed manifold, consistent outward normals, positive volume",
+      "expected": "closed, vol>0",
+      "measured": {
+        "tris": 12,
+        "vol_m3": 2.74e-05,
+        "nonmanifold": 0,
+        "badwind": 0
+      },
+      "pass": true
+    },
+    {
+      "id": "MESH_RidgeEnd_Rear",
+      "check": "RidgeEnd_Rear: finite, closed manifold, consistent outward normals, positive volume",
+      "expected": "closed, vol>0",
+      "measured": {
+        "tris": 12,
+        "vol_m3": 2.77e-05,
+        "nonmanifold": 0,
+        "badwind": 0
+      },
+      "pass": true
+    },
+    {
+      "id": "MESH_Sheathing_L",
+      "check": "Sheathing_L: finite, closed manifold, consistent outward normals, positive volume",
+      "expected": "closed, vol>0",
+      "measured": {
+        "tris": 12,
+        "vol_m3": 0.2225455,
+        "nonmanifold": 0,
+        "badwind": 0
+      },
+      "pass": true
+    },
+    {
+      "id": "MESH_Sheathing_R",
+      "check": "Sheathing_R: finite, closed manifold, consistent outward normals, positive volume",
+      "expected": "closed, vol>0",
+      "measured": {
+        "tris": 12,
+        "vol_m3": 0.2225475,
+        "nonmanifold": 0,
+        "badwind": 0
+      },
+      "pass": true
+    },
+    {
+      "id": "MESH_SideWall_L",
+      "check": "SideWall_L: finite, closed manifold, consistent outward normals, positive volume",
+      "expected": "closed, vol>0",
+      "measured": {
+        "tris": 12,
+        "vol_m3": 1.92096,
+        "nonmanifold": 0,
+        "badwind": 0
+      },
+      "pass": true
+    },
+    {
+      "id": "MESH_SideWall_R",
+      "check": "SideWall_R: finite, closed manifold, consistent outward normals, positive volume",
+      "expected": "closed, vol>0",
+      "measured": {
+        "tris": 12,
+        "vol_m3": 1.9209626,
+        "nonmanifold": 0,
+        "badwind": 0
+      },
+      "pass": true
+    },
+    {
+      "id": "MESH_Sill",
+      "check": "Sill: finite, closed manifold, consistent outward normals, positive volume",
+      "expected": "closed, vol>0",
+      "measured": {
+        "tris": 20,
+        "vol_m3": 0.0142888,
+        "nonmanifold": 0,
+        "badwind": 0
+      },
+      "pass": true
+    },
+    {
+      "id": "MESH_Skin_L",
+      "check": "Skin_L: finite, closed manifold, consistent outward normals, positive volume",
+      "expected": "closed, vol>0",
+      "measured": {
+        "tris": 12,
+        "vol_m3": 0.1112729,
+        "nonmanifold": 0,
+        "badwind": 0
+      },
+      "pass": true
+    },
+    {
+      "id": "MESH_Skin_R",
+      "check": "Skin_R: finite, closed manifold, consistent outward normals, positive volume",
+      "expected": "closed, vol>0",
+      "measured": {
+        "tris": 12,
+        "vol_m3": 0.1112729,
+        "nonmanifold": 0,
+        "badwind": 0
+      },
+      "pass": true
+    },
+    {
+      "id": "MESH_Verge_Front",
+      "check": "Verge_Front: finite, closed manifold, consistent outward normals, positive volume",
+      "expected": "closed, vol>0",
+      "measured": {
+        "tris": 20,
+        "vol_m3": 0.0215198,
+        "nonmanifold": 0,
+        "badwind": 0
+      },
+      "pass": true
+    },
+    {
+      "id": "MESH_Verge_Rear",
+      "check": "Verge_Rear: finite, closed manifold, consistent outward normals, positive volume",
+      "expected": "closed, vol>0",
+      "measured": {
+        "tris": 20,
+        "vol_m3": 0.0215216,
+        "nonmanifold": 0,
+        "badwind": 0
+      },
+      "pass": true
+    },
+    {
+      "id": "MESH_Wedge_L",
+      "check": "Wedge_L: finite, closed manifold, consistent outward normals, positive volume",
+      "expected": "closed, vol>0",
+      "measured": {
+        "tris": 12,
+        "vol_m3": 0.0794881,
+        "nonmanifold": 0,
+        "badwind": 0
+      },
+      "pass": true
+    },
+    {
+      "id": "MESH_Wedge_R",
+      "check": "Wedge_R: finite, closed manifold, consistent outward normals, positive volume",
+      "expected": "closed, vol>0",
+      "measured": {
+        "tris": 12,
+        "vol_m3": 0.0794887,
+        "nonmanifold": 0,
+        "badwind": 0
+      },
+      "pass": true
+    },
+    {
+      "id": "MESH_WindowFrame",
+      "check": "WindowFrame: finite, closed manifold, consistent outward normals, positive volume",
+      "expected": "closed, vol>0",
+      "measured": {
+        "tris": 344,
+        "vol_m3": 0.0403633,
+        "nonmanifold": 0,
+        "badwind": 0
+      },
+      "pass": true
+    },
+    {
+      "id": "MESH_WindowSeal",
+      "check": "WindowSeal: finite, closed manifold, consistent outward normals, positive volume",
+      "expected": "closed, vol>0",
+      "measured": {
+        "tris": 64,
+        "vol_m3": 0.00476,
+        "nonmanifold": 0,
+        "badwind": 0
+      },
+      "pass": true
+    },
+    {
+      "id": "NO_PENETRATION",
+      "check": "no part's interior sample lies inside another part (contacts are face-to-face)",
+      "expected": [],
+      "measured": [],
+      "pass": true
+    },
+    {
+      "id": "TRIS",
+      "check": "total exported triangles (report)",
+      "expected": "report",
+      "measured": 932,
+      "pass": true
+    }
+  ]
+}

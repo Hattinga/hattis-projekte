@@ -2,7 +2,7 @@
 
 Stand 12. November 2026. P02-02, Revision 1. Konkrete Testgeometrie für den [Waren- und Maßvertrag](DIMENSIONS.md) und die [Stationsübergaben](PRODUCTION.md). Die Probe liegt neben Fables bestehender Werkstatt und ist ein Testaufbau vor der späteren Art-Integration.
 
-**Klarstellung:** Weder die kleine Vergleichswerkstatt noch dieses technische Stationsfeld sind das vorgesehene Fabrikgebäude oder der Grundriss der Spielkarte. Die separate Kartenplanung steht in [MAP](MAP.md). Die P02-02-Trageabnahme ist noch offen; der Aufbau darf nicht als fertiger Spielbereich geführt werden.
+**Klarstellung:** Weder die kleine Vergleichswerkstatt noch dieses technische Stationsfeld sind das vorgesehene Fabrikgebäude oder der Grundriss der Spielkarte. Die separate Kartenplanung steht in [MAP](MAP.md). Die [P02-02-Trageabnahme](../evidence/P02-02.md) ist am 13.11. bestanden; der Aufbau bleibt ein technisches Testfeld und kein fertiger Spielbereich.
 
 ## Zuständigkeit und Koordinaten
 
@@ -50,6 +50,8 @@ Die erste gerade **Bandvorschau** verbindet Sägeausgang (-12,50; 4,50; H 0,90) 
 
 Ein nativer Roblox-Prüfträger enthält den offenen Träger und neun fest verbundene Holzteil-Stellvertreter. Seine Außenmaße sind 0,60×0,18×0,50 m. Er ist als reine Messhilfe gekennzeichnet und bleibt ohne Laufzeitskripte. Der Tester rüstet ihn aus dem Rucksack aus und läuft mit ihm vom Rohstofflager über die Eingangs-/Ausgangsstandpunkte aller vier Stationen zum Fertiglager. Die Vorlage ist kein zusätzlicher Warenbestand und keine gelieferte oder produzierte Charge.
 
-Die Route führt vom vorderen Gang links um die erste Zeile in den Mittelgang, durchläuft die U-Folge und kehrt links zum vorderen Gang zurück. Zusätzlich werden alle acht Lagerplätze einzeln geprüft. Neben Avatarbewegung und Boden gehört die sichtbare Trägerhülle zur Prüfung: ihre nicht kollidierenden Teile dürfen nicht einfach durch die Stationskörper laufen. Die endgültige Tragepose und das beobachtete Ergebnis stehen im P02-02-Prüfbeleg.
+Die Route führt vom vorderen Gang links um die erste Zeile in den Mittelgang, durchläuft die U-Folge und kehrt links zum vorderen Gang zurück. Zusätzlich werden alle acht Lagerplätze einzeln geprüft. Neben Avatarbewegung und Boden gehört die sichtbare Trägerhülle zur Prüfung: ihre nicht kollidierenden Teile dürfen nicht einfach durch die Stationskörper laufen.
+
+**Geprüfter Trageweg vom 13.11., alte Quellkoordinaten X/Y in Metern:** Mit 0,53 m Vorhalteweite und Unterkante 0,70 m liegen die sicheren Lagerannäherungen bei **Y=1,30** statt direkt auf den Fußmarkierungen Y=1,10. Vor Säge/Montage nutzt die Probe **Y=3,15**, vor Finish/Packen **Y=3,45**; die jeweiligen Transferpunkte bleiben unverändert. Westliche Hilfspunkte **X=-15,50**, vorderer Rückweg **Y=1,30**; die rechte U-Kehre erfolgt bei **X=-8,75; Y=3,30**. Der Avatar startet quer nach Welt−X bereits auf der vorderen Ganglinie. Er hebt die Ware vor dem Vorschieben auf Tischhöhe an und nimmt sie umgekehrt zurück. [Probe und Messwerte](../evidence/P02-02.md) zeigen 20 freie Auflagen und einen durchgehenden Weg ohne Hüllenüberschneidung. Die vorhandenen Fußmarkierungen sind Annäherungsmarken, keine Freigabe jeder Vorhalte-/Drehpose; insbesondere schneiden die ursprünglichen acht Lagerstandpunkte die vorgehaltene Hülle um 0,08 m. Spätere Hand-/Personalsteuerung übernimmt den geprüften Abstand, statt direkt auf diesen alten Markierungen zu stoppen.
 
 P02-02 weist Stellplätze, gemeinsame Anschlüsse und den tatsächlichen Fuß-/Trageweg nach. Bearbeitung, Umbuchung, Rezeptfortschritt, automatische Bänder, Personal, Warenreservierungen und Persistenz werden erst in den vorgesehenen Folgephasen implementiert. Der reale Fahrzeugrundkurs und der Spawn in der Sollanfahrt bleiben P02-03/P02-05.

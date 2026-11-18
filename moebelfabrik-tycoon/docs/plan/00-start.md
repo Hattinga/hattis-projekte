@@ -31,14 +31,16 @@ Rezept und Stationsvertrag für P01-01/P01-02: [PRODUCTION](../design/PRODUCTION
 **Abhängigkeit.** P01. P02 und P03 können parallel beginnen.
 
 - [x] **P02-01** Im festgelegten Test-Place Boden, Wege und Maßraster mit einfachen Stellvertretern abstecken. Avatarmaß und Toröffnung aus P01 übernehmen. Abgenommen, wenn die Greybox im vereinbarten Maßstab liegt und der passende Teststand im Status verlinkt ist.
-- [ ] **P02-02** Vier Stationen sowie Rohstoff- und Fertiglager aufstellen. Eingänge, Ausgänge und Übergabeflächen für Hand, Mitarbeiter und das erste gerade Band markieren. Abgenommen, wenn ein Spieler die vollständige Folge mit einem Werkstückstellvertreter in sinnvoller Reihenfolge ablaufen kann.
+- [x] **P02-02** Vier Stationen sowie Rohstoff- und Fertiglager aufstellen. Eingänge, Ausgänge und Übergabeflächen für Hand, Mitarbeiter und das erste gerade Band markieren. Abgenommen, wenn ein Spieler die vollständige Folge mit einem Werkstückstellvertreter in sinnvoller Reihenfolge ablaufen kann.
 - [x] **P02-03** Lieferant, Fabrik, Händler und Privatkundenplatz über einen kurzen Rundkurs verbinden. Ladeplätze, Einfahrten und Wendeflächen an den jeweiligen Zielen markieren. Abgenommen, wenn jedes Ziel über eine zusammenhängende Straße erreichbar ist und ein Rückweg zur Fabrik besteht.
 - [x] **P02-03R** Den Kartenentwurf gemäß Nutzerklärung als organisch gewachsene Stadt ohne Spiegelung überarbeiten. Mehrere Tischlereien, Wohnviertel, Gewerbe, Läden und Lieferhöfe in einen glaubwürdigen Grundriss mit Haupt-/Nebenstraßen einordnen. Abgenommen, wenn die Stadtwirkung, verteilten Standorte und Warenwege im neuen Grundriss nachvollziehbar sind. Die vorhandene Ring-Greybox ist nur der frühere technische Nachweis; die Stadtüberarbeitung hat Vorrang vor P02-04.
 - [x] **P02-04** Quad und Anhänger für den Fahrtest durch einen lenkbaren Stellvertreter mit passenden Außenmaßen darstellen. Holzpaket und Hockerkarton auf der Ladefläche platzieren. Abgenommen, wenn Ladefläche, Anhängerkupplung, Fahrzeughülle und Last als räumliche Einheit geprüft werden können.
 - [x] **P02-05** Die beladene Strecke abfahren. Engste Kurve, Tor, Ladehöhe und Wendemanöver beobachten und Blockaden beheben. Abgenommen, wenn der Stellvertreter alle vier Orte über die Straße erreicht und der Avatar an jeder Übergabe mit Ware Platz hat.
-- [ ] **P02-06** Grundriss und Fahrnachweis sichern. Ein beschrifteter Übersichtsstand zeigt Stationsfolge, Lagerslots und Straßenroute. Eine Aufnahme dokumentiert die Fahrt mit sichtbarer Last. Abgenommen, wenn daraus die räumlichen Vorgaben für P03 und die spätere Integration hervorgehen.
+- [x] **P02-06** Grundriss und Fahrnachweis sichern. Ein beschrifteter Übersichtsstand zeigt Stationsfolge, Lagerslots und Straßenroute. Eine Aufnahme dokumentiert die Fahrt mit sichtbarer Last. Abgenommen, wenn daraus die räumlichen Vorgaben für P03 und die spätere Integration hervorgehen.
 
 [P02-01-Beleg](../evidence/P02-01.md): Maßraster, Referenzhüllen und unabhängige Fußprobe bestanden; Test-Place als Version 7 gespeichert. Stationsfolge und Fahrprüfung bleiben offen. Der vorhandene Spawn schneidet die Sollanfahrt und muss vor der Fahrfreigabe berücksichtigt werden.
+
+[P02-02-Beleg](../evidence/P02-02.md): Trageabnahme am 13.11. im Stand 22 nachgeholt. Sichtbarer 20-Teil-Träger über alle 20 Auflagen, 25/25 Laufziele und 1.530 Messungen ohne Überschneidung oder Bodenfehler. Sichere Annäherungs-/Drehabstände im Stellplan festgehalten; endgültige Animation und Fabrikintegration folgen separat.
 
 [P02-03-Beleg](../evidence/P02-03.md): eigenständige Spielkarte mit vier angeschlossenen Zielen, Grundstücken und neuer Hallenprobe als Version 10 gespeichert; Spawn auf das echte Fabrikgrundstück versetzt. Vergleichswerkstatt und Stationsfeld sind nur Testobjekte. Nutzerpriorität ist das Mapdesign; die separate Trageabnahme P02-02 bleibt offen. Fahrzeugfahrt folgt in P02-04/P02-05.
 
@@ -48,14 +50,22 @@ Rezept und Stationsvertrag für P01-01/P01-02: [PRODUCTION](../design/PRODUCTION
 
 [P02-05-Beleg](../evidence/P02-05.md): automatische beladene Fahrt zu Lieferant, Händler, Privatkunden und zurück ohne Blockade; Avatar mit Ware hat an allen vier Orten Platz am Anhänger; Wendekreis 6,9–7,2 m Wand zu Wand. Tordurchfahrt mit Kehre in der Halle nur mit schrägem Anlauf. Handgefahrene Runde steht aus.
 
+[P02-06-Beleg](../evidence/P02-06.md): beschriftete Übersicht mit Stationsfolge, acht einzeln nummerierten Lagerslots und Straßenroute sowie acht Fahrbilder über 15 Sekunden; räumliche Vorgaben für P03 zusammengeführt. Übersicht als `ServerStorage.P02Overview` archiviert, Edit-/Play-Prüfung und unabhängige Bildprüfung bestanden, Version 22 gespeichert. P02-02 bleibt offen.
+
 ## P03 · Art-Muster im Test-Place
 
 **Abhängigkeit.** P01 und zugänglicher Test-Place aus P00. P02 liefert zusätzliche Maße für die gemeinsame Integration. Maßstab und Gestaltung richten sich nach [ART](../design/ART.md).
 
-- [ ] **P03-01** Referenzblatt für Hocker, Säge und Gebäudeecke erstellen. Proportionen, Werkstoff, Anschlussart und entscheidende Maße markieren. Abgenommen, wenn jede sichtbare Hauptform und Verbindung auf eine Referenz oder eine dokumentierte gestalterische Entscheidung zurückgeht.
+- [x] **P03-01** Referenzblatt für Hocker, Säge und Gebäudeecke erstellen. Proportionen, Werkstoff, Anschlussart und entscheidende Maße markieren. Abgenommen, wenn jede sichtbare Hauptform und Verbindung auf eine Referenz oder eine dokumentierte gestalterische Entscheidung zurückgeht.
 - [ ] **P03-02** Hocker und Säge als Muster ausarbeiten. Hockerbauteile, Rohmontage und Finish zeigen, Säge mit glaubwürdiger Auflage sowie verständlichem Ein- und Ausgang bauen. Abgenommen, wenn das Werkstück im Maßstab zur Maschine passt und die Zustände aus Spielentfernung erkennbar sind.
 - [ ] **P03-03** Wand, Fenster und Dach als kleine Außenprobe ausarbeiten. Wandstärke, Rahmen, Dachauflager, First, Traufe und Überstand am Referenzblatt prüfen. Abgenommen, wenn Dach und Wand in Seitenansicht, Nahaufnahme und Dreiviertelansicht sauber aufeinander treffen.
 - [ ] **P03-04** Quad und Anhänger gemeinsam mit Avatar, Hockerkarton und Tor prüfen. Maßgerechte Stellvertreter nach P01 verwenden und Ladefläche, Lastbegrenzung und sichtbare Befestigung zeigen. Abgenommen, wenn der Karton aufliegt, die Last ins Fahrzeugprofil passt und das beladene Gespann durch das Tor kommt.
 - [ ] **P03-05** Quelldatei, Export und Übergabehinweise gemäß [Blender-Rolle](../roles/BLENDER.md) ablegen. Zuständige Studio-Rolle importiert die Probe in den Test-Place und kontrolliert Maße, Drehpunkte, Materialien und Kollision. Abgenommen, wenn die dokumentierten Werte in Roblox nachvollziehbar sind.
 - [ ] **P03-06** In Roblox neutrale Nahaufnahmen, normale Spielkamera, Außenansicht und kleine Bildschirmansicht aufnehmen. Dachanschluss, Hockerverbindung, Maschinenauflage und Fahrzeugladung in der Evidenz benennen. Abgenommen, wenn jede kritische Passung am importierten Modell beurteilt werden kann.
 - [ ] **P03-07** Art-Abnahme mit den Kriterien aus [ART](../design/ART.md) protokollieren. Beanstandete Passungen am Muster korrigieren und betroffene Ansichten erneut prüfen. Abgenommen, wenn die gemeinsame Wirkung in Roblox freigegeben ist. Diese Freigabe ist Voraussetzung für die Assetserie in der [Prototypabnahme](03-prototyp-abnahme.md).
+
+[P03-01-Beleg](../evidence/P03-01.md): technisches Referenzblatt v0.1 mit zugeordneten Vertragswerten und dokumentierten D-H/D-S/D-G-Entscheidungen übernommen, Dateiidentität/XML und vollständige Vorschau geprüft. Keine finale Art-Freigabe. Sägeübergabemodus beschrieben; aktiver Schnitt bleibt offen. Hocker/Säge werden auf Nutzerauftrag vom 16.11. parallel als lokale technische Blender-Muster vorbereitet.
+
+[P03-02-Zwischenstand](../evidence/P03-02.md): Roh-/Finishhocker, offener Bausatz und Säge samt Blender-Quelle, fünf FBX und sieben Ansichten unter `assets/p03-models/p03-02/`. 179 Geometrieprüfungen und fünf Blender-FBX-Rückimporte bestanden. Roblox-Import/Ansichten, aktive Sägeprozessdarstellung und finale Art bleiben offen; P03-02/P03-05 noch nicht vollständig abgenommen.
+
+[P03-03-Zwischenstand](../evidence/P03-03.md): Gebäude-Außenprobe v0.2 übernommen. 141 Geometrieprüfungen und zwei FBX-Rückimporte aus Blender sind belegt. Seitenansicht, Auflager-Nahaufnahme und Dreiviertelansicht gesichtet. Die Abnahme der Detailabweichungen und der Roblox-Import stehen aus.

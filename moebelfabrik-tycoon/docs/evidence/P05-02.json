@@ -1,0 +1,41 @@
+{
+  "date": "2026-11-18",
+  "task": "P05-02",
+  "status": "accepted",
+  "placeId": 79033653140107,
+  "universeId": 10776116608,
+  "baselineVersion": 41,
+  "savedVersion": 42,
+  "probe": {
+    "economicReady": false,
+    "status": "passed",
+    "checks": [
+      "four marked supplier points and four physical raw slots bind to separate places",
+      "insufficient funds, a full supplier and full raw storage leave the confirmed balance unchanged",
+      "foreign actor and injected price cannot write",
+      "uncertain purchase reconciles to exactly one debit, supplier charge, delivery promise and receipt",
+      "physical transfer path preserves the purchase history and consumes only its guaranteed raw slot"
+    ],
+    "scope": "P0502_674642252df849d5b158d1729acf3803",
+    "store": "FactoryP0502_Test",
+    "task": "P05-02",
+    "final": {
+      "locationId": "RawStore.Slot1",
+      "stateRevision": 9,
+      "money": 0,
+      "batchId": "purchase/buy-001",
+      "storageRevision": 6,
+      "supplierPoint": "Workspace.CityGreybox.DeliveryYards.Holzlieferant.P05Pickup.Slot1.Transfer"
+    }
+  },
+  "regressions": {
+    "edit": 130,
+    "server": 130,
+    "localPersistence": 35
+  },
+  "client": {
+    "exposed": 0
+  },
+  "published": false,
+  "modeAfter": "Edit"
+}

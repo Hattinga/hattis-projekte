@@ -1,0 +1,387 @@
+{
+  "asset": "Gebaeudeecke01",
+  "task": "P03-03",
+  "scene": "P03-03_Gebaeudeecke01",
+  "blender": "5.1.1",
+  "units": "metres, scale_length 1.0",
+  "axes": "Blender X,Y,Z -> Roblox X,Z,-Y; FBX axis_forward=-Z axis_up=Y global_scale=1",
+  "pivot": "Roblox (0,0,0) = outer front-left wall corner at ground (D-G0)",
+  "parts": {
+    "Fascia_L": {
+      "group": "edge",
+      "material": "P03_MachineSteel",
+      "triangles": 12
+    },
+    "Fascia_R": {
+      "group": "edge",
+      "material": "P03_MachineSteel",
+      "triangles": 12
+    },
+    "FrontWall": {
+      "group": "wall",
+      "material": "P03_WallPaint",
+      "triangles": 140
+    },
+    "GableFill": {
+      "group": "wall",
+      "material": "P03_WallPaint",
+      "triangles": 16
+    },
+    "Glass": {
+      "group": "window",
+      "material": "P03_Glass",
+      "triangles": 12
+    },
+    "Plate_Front": {
+      "group": "bearing",
+      "material": "P03_WoodRaw",
+      "triangles": 12
+    },
+    "Plate_L": {
+      "group": "bearing",
+      "material": "P03_WoodRaw",
+      "triangles": 12
+    },
+    "Plate_R": {
+      "group": "bearing",
+      "material": "P03_WoodRaw",
+      "triangles": 12
+    },
+    "Rafter1_L": {
+      "group": "rafter",
+      "material": "P03_WoodRaw",
+      "triangles": 12
+    },
+    "Rafter1_R": {
+      "group": "rafter",
+      "material": "P03_WoodRaw",
+      "triangles": 12
+    },
+    "Rafter2_L": {
+      "group": "rafter",
+      "material": "P03_WoodRaw",
+      "triangles": 12
+    },
+    "Rafter2_R": {
+      "group": "rafter",
+      "material": "P03_WoodRaw",
+      "triangles": 12
+    },
+    "Rafter3_L": {
+      "group": "rafter",
+      "material": "P03_WoodRaw",
+      "triangles": 12
+    },
+    "Rafter3_R": {
+      "group": "rafter",
+      "material": "P03_WoodRaw",
+      "triangles": 12
+    },
+    "Rafter4_L": {
+      "group": "rafter",
+      "material": "P03_WoodRaw",
+      "triangles": 12
+    },
+    "Rafter4_R": {
+      "group": "rafter",
+      "material": "P03_WoodRaw",
+      "triangles": 12
+    },
+    "RidgeCap": {
+      "group": "ridge",
+      "material": "P03_MachineSteel",
+      "triangles": 20
+    },
+    "RidgeEnd_Front": {
+      "group": "ridge",
+      "material": "P03_MachineSteel",
+      "triangles": 12
+    },
+    "RidgeEnd_Rear": {
+      "group": "ridge",
+      "material": "P03_MachineSteel",
+      "triangles": 12
+    },
+    "Sheathing_L": {
+      "group": "roof",
+      "material": "P03_WoodRaw",
+      "triangles": 12
+    },
+    "Sheathing_R": {
+      "group": "roof",
+      "material": "P03_WoodRaw",
+      "triangles": 12
+    },
+    "SideWall_L": {
+      "group": "wall",
+      "material": "P03_WallPaint",
+      "triangles": 12
+    },
+    "SideWall_R": {
+      "group": "wall",
+      "material": "P03_WallPaint",
+      "triangles": 12
+    },
+    "Sill": {
+      "group": "window",
+      "material": "P03_MachineSteel",
+      "triangles": 20
+    },
+    "Skin_L": {
+      "group": "roof",
+      "material": "P03_MutedGreen",
+      "triangles": 12
+    },
+    "Skin_R": {
+      "group": "roof",
+      "material": "P03_MutedGreen",
+      "triangles": 12
+    },
+    "Verge_Front": {
+      "group": "edge",
+      "material": "P03_MachineSteel",
+      "triangles": 20
+    },
+    "Verge_Rear": {
+      "group": "edge",
+      "material": "P03_MachineSteel",
+      "triangles": 20
+    },
+    "Wedge_L": {
+      "group": "bearing",
+      "material": "P03_WoodRaw",
+      "triangles": 12
+    },
+    "Wedge_R": {
+      "group": "bearing",
+      "material": "P03_WoodRaw",
+      "triangles": 12
+    },
+    "WindowFrame": {
+      "group": "window",
+      "material": "P03_MutedGreen",
+      "triangles": 344
+    },
+    "WindowSeal": {
+      "group": "window",
+      "material": "P03_Seal",
+      "triangles": 64
+    }
+  },
+  "last_checks": {
+    "passed": 141,
+    "failed": 0,
+    "tris": 932
+  },
+  "last_run": "2026-11-17 09:16:31",
+  "last_renders": {
+    "front": {
+      "path": "C:\\Claudeprojecte\\repo\\hattis-projekte\\moebelfabrik-tycoon\\.local\\p03-03-opus\\output\\renders\\front.png",
+      "seconds": 2.27,
+      "exists": true
+    },
+    "side_left": {
+      "path": "C:\\Claudeprojecte\\repo\\hattis-projekte\\moebelfabrik-tycoon\\.local\\p03-03-opus\\output\\renders\\side_left.png",
+      "seconds": 2.15,
+      "exists": true
+    },
+    "top": {
+      "path": "C:\\Claudeprojecte\\repo\\hattis-projekte\\moebelfabrik-tycoon\\.local\\p03-03-opus\\output\\renders\\top.png",
+      "seconds": 3.07,
+      "exists": true
+    },
+    "three_quarter": {
+      "path": "C:\\Claudeprojecte\\repo\\hattis-projekte\\moebelfabrik-tycoon\\.local\\p03-03-opus\\output\\renders\\three_quarter.png",
+      "seconds": 2.4,
+      "exists": true
+    },
+    "rear_cutaway": {
+      "path": "C:\\Claudeprojecte\\repo\\hattis-projekte\\moebelfabrik-tycoon\\.local\\p03-03-opus\\output\\renders\\rear_cutaway.png",
+      "seconds": 2.47,
+      "exists": true
+    },
+    "detail_gj2_bearing": {
+      "path": "C:\\Claudeprojecte\\repo\\hattis-projekte\\moebelfabrik-tycoon\\.local\\p03-03-opus\\output\\renders\\detail_gj2_bearing.png",
+      "seconds": 3.13,
+      "exists": true
+    },
+    "detail_gj4_eaves_verge": {
+      "path": "C:\\Claudeprojecte\\repo\\hattis-projekte\\moebelfabrik-tycoon\\.local\\p03-03-opus\\output\\renders\\detail_gj4_eaves_verge.png",
+      "seconds": 2.71,
+      "exists": true
+    },
+    "detail_gj5_ridge": {
+      "path": "C:\\Claudeprojecte\\repo\\hattis-projekte\\moebelfabrik-tycoon\\.local\\p03-03-opus\\output\\renders\\detail_gj5_ridge.png",
+      "seconds": 2.96,
+      "exists": true
+    },
+    "detail_gj6_window": {
+      "path": "C:\\Claudeprojecte\\repo\\hattis-projekte\\moebelfabrik-tycoon\\.local\\p03-03-opus\\output\\renders\\detail_gj6_window.png",
+      "seconds": 3.16,
+      "exists": true
+    },
+    "detail_gj6_window_rear": {
+      "path": "C:\\Claudeprojecte\\repo\\hattis-projekte\\moebelfabrik-tycoon\\.local\\p03-03-opus\\output\\renders\\detail_gj6_window_rear.png",
+      "seconds": 4.22,
+      "exists": true
+    },
+    "detail_gj6_rebate_front": {
+      "path": "C:\\Claudeprojecte\\repo\\hattis-projekte\\moebelfabrik-tycoon\\.local\\p03-03-opus\\output\\renders\\detail_gj6_rebate_front.png",
+      "seconds": 3.01,
+      "exists": true
+    },
+    "detail_gj6_rebate_rear": {
+      "path": "C:\\Claudeprojecte\\repo\\hattis-projekte\\moebelfabrik-tycoon\\.local\\p03-03-opus\\output\\renders\\detail_gj6_rebate_rear.png",
+      "seconds": 3.32,
+      "exists": true
+    },
+    "detail_gj6_section": {
+      "path": "C:\\Claudeprojecte\\repo\\hattis-projekte\\moebelfabrik-tycoon\\.local\\p03-03-opus\\output\\renders\\detail_gj6_section.png",
+      "seconds": 2.74,
+      "exists": true
+    }
+  },
+  "last_blend": {
+    "path": "C:\\Claudeprojecte\\repo\\hattis-projekte\\moebelfabrik-tycoon\\.local\\p03-03-opus\\output\\p03-03-gebaeudeecke01-v01.blend",
+    "bytes": 670766,
+    "contents": {
+      "scenes": [
+        "P03-03_Gebaeudeecke01"
+      ],
+      "objects": 50,
+      "meshes": 34,
+      "materials": [
+        "P03-03_Ground",
+        "P03_Glass",
+        "P03_MachineSteel",
+        "P03_MutedGreen",
+        "P03_Seal",
+        "P03_WallPaint",
+        "P03_WoodRaw"
+      ]
+    }
+  },
+  "last_fbx": {
+    "Gebaeudeecke01.fbx": {
+      "result": [
+        "FINISHED"
+      ],
+      "bytes": 117932,
+      "objects": 33
+    },
+    "ControlCube_1m.fbx": {
+      "result": [
+        "FINISHED"
+      ],
+      "bytes": 11708,
+      "objects": 1
+    }
+  },
+  "last_roundtrip": {
+    "Gebaeudeecke01.fbx": {
+      "expected_blender_bounds": [
+        [
+          -0.3,
+          -3.25,
+          0
+        ],
+        [
+          5.1,
+          0.25,
+          4.5
+        ]
+      ],
+      "measured": [
+        [
+          -0.3,
+          -3.25,
+          0
+        ],
+        [
+          5.1,
+          0.25,
+          4.5
+        ]
+      ],
+      "expected_triangles": 932,
+      "mesh_objects": 32,
+      "triangles": 932,
+      "roots": [
+        "Gebaeudeecke01.001"
+      ],
+      "pass": true,
+      "materials": [
+        "P03_Glass.001",
+        "P03_MachineSteel.001",
+        "P03_MutedGreen.001",
+        "P03_Seal.001",
+        "P03_WallPaint.001",
+        "P03_WoodRaw.001"
+      ]
+    },
+    "ControlCube_1m.fbx": {
+      "expected_blender_bounds": [
+        [
+          -0.5,
+          -0.5,
+          0
+        ],
+        [
+          0.5,
+          0.5,
+          1
+        ]
+      ],
+      "measured": [
+        [
+          -0.5,
+          -0.5,
+          0
+        ],
+        [
+          0.5,
+          0.5,
+          1
+        ]
+      ],
+      "expected_triangles": 12,
+      "mesh_objects": 1,
+      "triangles": 12,
+      "roots": [
+        "ControlCube_1m.001"
+      ],
+      "pass": true,
+      "materials": []
+    }
+  },
+  "detail_decisions": {
+    "D-G21": "Sheathing/skin coverage X -0.28..5.08, Z -0.23..3.23; boards close nominal envelope. Fascia outer face0.200 high, horizontal bottom2.906 and inner face0.210; verge0.200 along U-0.004..U+0.196 contour. Tops coplanar with skin; no overlapping volume.",
+    "D-G22": "Window frame stepped: outer section Z 0.040..0.113 light 1.06 (rebate side walls), rear stop Z 0.113..0.180 clear 1.04. Glass 1.06x1.06x0.006 rests with a 0.010 band on the stop shoulder at Z=0.113; no glazing bead in front.",
+    "GJ4_mitre_profile": "Coplanar 45deg mitre, common outer edge 2.906..3.106 and top 3.116; at the inner corner fascia bottom 2.906 vs verge bottom 2.916 -> exposed fascia sliver 0.5*0.028284*0.010 = 1.414e-4 m2 per corner (recorded, not hidden).",
+    "G9": "FrontWall raw cutout includes the sill slot (height 1.24 at X=1.6, slot width 1.28); finished opening with sill assembled is 1.20 x 1.20.",
+    "cleanup": "cleanup_owned() verifies scene ownership and absence of foreign objects before any deletion; see regression-ownership.json."
+  },
+  "last_regress": {
+    "A_unowned_collision": {
+      "raised": "scene 'P03-03_Gebaeudeecke01' exists but is not owned by P03-03; nothing deleted",
+      "scene_survived": true,
+      "objects_survived": {
+        "P03_SENTINEL_plain": true,
+        "P03_SENTINEL_flagged": true
+      },
+      "mesh_survived": true,
+      "pass": true
+    },
+    "B_foreign_object_in_owned_scene": {
+      "raised": "owned scene 'P03-03_Gebaeudeecke01' contains foreign objects ['P03_SENTINEL_foreign']; nothing deleted",
+      "owned_objects_before": 51,
+      "owned_objects_after": 51,
+      "pass": true
+    },
+    "foreign_scenes_unchanged": true,
+    "sentinel_leftovers": [],
+    "owned_scene_restored": true,
+    "window_scene_restored": true,
+    "pass": true
+  }
+}

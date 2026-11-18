@@ -1,0 +1,29 @@
+{
+  "date": "2026-11-13",
+  "task": "P04-01",
+  "placeId": 79033653140107,
+  "universeId": 10776116608,
+  "savedVersion": 25,
+  "restorationVersion": 22,
+  "edit": {
+    "dataStoreAccess": false,
+    "task": "P04-01",
+    "automaticPlayerStartup": false,
+    "status": "passed",
+    "profilesArtificial": true,
+    "schemaVersion": 1,
+    "checks": 35
+  },
+  "server": {
+    "dataStoreAccess": false,
+    "task": "P04-01",
+    "automaticPlayerStartup": false,
+    "status": "passed",
+    "profilesArtificial": true,
+    "schemaVersion": 1,
+    "checks": 35
+  },
+  "clientModuleVisible": false,
+  "independentReview": "passed",
+  "published": false
+}

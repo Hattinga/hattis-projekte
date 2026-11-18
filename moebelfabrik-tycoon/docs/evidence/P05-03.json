@@ -1,0 +1,37 @@
+{
+  "date": "2026-11-18",
+  "task": "P05-03",
+  "status": "accepted",
+  "placeId": 79033653140107,
+  "baselineVersion": 42,
+  "savedVersion": 44,
+  "server": {
+    "status": "passed",
+    "storage": false,
+    "task": "P05-03",
+    "checks": [
+      "out of reach and the wrong side leave the inventory untouched",
+      "wood is shown once on the avatar and holds its original place",
+      "the assembly bench rejects raw wood and keeps it in the player's hand",
+      "the same wood is placed once on the saw intake and the hand is empty",
+      "full intake keeps the second package carried until a successful physical return"
+    ]
+  },
+  "client": {
+    "module": false,
+    "hud": true,
+    "prompt": "E"
+  },
+  "handoff": {
+    "storage": false,
+    "playerReady": true,
+    "actions": 4,
+    "demo": "P0503HandDemo"
+  },
+  "manual": {
+    "status": "passed",
+    "method": "Tastatur-Durchlauf mit E durch den Nutzer",
+    "evidence": "Nutzer bestätigte Erfolg im Chat"
+  },
+  "published": false
+}
