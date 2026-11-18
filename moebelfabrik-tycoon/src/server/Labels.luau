@@ -32,6 +32,9 @@ Labels.entries = table.freeze({
 	table.freeze({key = "collect.Karton", en = "COLLECT STOOL CARTON", de = "HOCKERKARTON ABHOLEN"}),
 	table.freeze({key = "store.name", en = "FINISHED STORE", de = "FERTIGLAGER"}),
 	table.freeze({key = "store.full", en = "STORE FULL – FREE A SLOT", de = "FERTIGLAGER VOLL – PLATZ FREIMACHEN"}),
+	-- P06-01 buyer drop-off pads.
+	table.freeze({key = "dropoff.dealer", en = "DEALER DROP-OFF", de = "HÄNDLERANNAHME"}),
+	table.freeze({key = "dropoff.private", en = "PRIVATE DROP-OFF", de = "PRIVATANNAHME"}),
 }) :: {Entry}
 
 local byKey: {[string]: Entry} = {}

@@ -1,15 +1,16 @@
 # Projektstatus
 
-Stand 18. November 2026. **P02, P04 und P05 sind abgenommen.** Die komplette Handkette lief automatisch und per Tastatur mit echten E-Prompts. Der Nutzer hat die offenen Entwurfsentscheidungen an Claude delegiert, sie sind in den Fachdateien festgehalten. **Als Nächstes folgt P06 (Quad, Ladung und echte Fahrten).**
+Stand 18. November 2026. **P02, P04, P05 und P06-01 sind abgenommen.** Die Handlinie steht jetzt in der Halle der Start-Tischlerei. Ladezonen und Annahmeplätze sind auf den vier Testhöfen abgesteckt. Die Entwurfsentscheidungen, die der Nutzer an Claude delegiert hat, sind in den Fachdateien festgehalten. **Als Nächstes folgt P06-02 (Gespann mit Ladeplätzen auf der echten Strecke).**
 
 | Feld | Aktuell |
 |---|---|
-| Letzter abgeschlossener Schritt | **P05-09** – Linien-Demo, automatische Kette und Tastaturdurchlauf; Befund „Prompts nur in Blickrichtung“ korrigiert ([Beleg](../evidence/P05-09.md)) |
-| Davor | **P05-08** – `Line`-Takt, `WareView`/`LineView`, Stations- und Lagerschilder, Rückstau ohne Verbrauch ([Beleg](../evidence/P05-08.md)) |
-| Naechster Umsetzungsschritt | **P06-01** – kurze Teststrecke Lieferant → Werkstatt → Händler → Privatkunde auf der vorhandenen `CityGreybox` abstecken. Ladezonen auf den Höfen, keine Hallenzufahrt (Entscheidung in [MAP](../design/MAP.md)) |
+| Letzter abgeschlossener Schritt | **P06-01** – `P02Line` in die Halle `Tischlerei_West` verschoben, `LoadZone` je Hof, Annahmen bei Händler und Privatkunde, Lieferantenplätze mit Bedienmarken ([Beleg](../evidence/P06-01.md)) |
+| Davor | **P05-09** – Linien-Demo, automatische Kette und Tastaturdurchlauf; Befund „Prompts nur in Blickrichtung“ korrigiert ([Beleg](../evidence/P05-09.md)) |
+| Naechster Umsetzungsschritt | **P06-02** – Gespann `Workspace.P02Vehicle` auf der Teststrecke zu den neuen Zonen fahren lassen. Haltestellung in der `LoadZone`, Wende und Anfahrt prüfen. Danach P06-03 (Ladeplätze A/B als Bestandsorte) |
 | Entscheidungen 18.11. (delegiert) | Hallentor: Laden nur auf dem Hof, Halle wird nicht befahren, Tor bleibt 4 m ([MAP](../design/MAP.md)). Oberfläche: eine Finish-Oberfläche in Hocker01 v1 ([PRODUCTION](../design/PRODUCTION.md)). P00-03: Zielprofil schwächeres Android-Phone 1600×720, Touch, Grafikstufe 1; bis zum echten Gerät Studio-Emulator als Stellvertreter, Checkbox bleibt offen ([P00](../plan/00-start.md)) |
 | Paralleles Paket | **P03-03** – Gebäude-Außenprobe lokal übernommen ([Beleg](../evidence/P03-03.md)), Abnahme und Roblox-Import stehen aus. **P03-05-Upload blockiert:** Der Nutzer muss unter `Assistant Settings > MCP Permissions` den Ordner `assets\p03-models\p03-05-import\exports` freigeben, das kann Claude nicht selbst tun. |
 | Planabschnitt | [Handbetrieb, P06](../plan/01-handbetrieb.md#p06--quad-ladung-und-echte-fahrten) |
+| Handlinie | `Workspace.P02Line` steht seit P06-01 in der Halle `CityGreybox.Buildings.Tischlerei_West` (Pivot 169,29/3,85/376,50 Studs). Die alten Bodenstreifen liegen in `ServerStorage.P02LineArchive`. Proben und Demo binden über Namen. |
 | Zustaendigkeit | Lead integriert gemeinsame Dateien/Studio; Blender-Agent lieferte getrenntes P03-02-Paket, Lead hat Quelle/Exporte/Ansichten uebernommen. Kein paralleler Studio-Schreiber |
 | Aktueller Test-Place | Furniture Factory Tycoon, Place `79033653140107`, Universe `10776116608`, privat |
 | Spielkarte | `Workspace.CityGreybox`, Revision 1; Ursprung (430;0;450) Studs, 19 Strassen/Zufahrten, 4 Tischlereien |
@@ -19,9 +20,14 @@ Stand 18. November 2026. **P02, P04 und P05 sind abgenommen.** Die komplette Han
 | Vergleichsobjekt | `Workspace.FableWorkshop`, Asset `106051543998570`; kein vorgesehenes Spielgebaeude |
 | Technikproben | `Workspace.P02Greybox` und `Workspace.P02Line`; Prueftraeger in `ServerStorage.P02CarryProbe`, nicht im Spielstart |
 | Arbeitsbranch | `work/p00-studio-import`; jeder Abschluss wird gepusht (Nutzerauftrag vom 18.11.: fortlaufend committen und pushen) |
-| Speicherung | TeamCreate **Version 49**, privater Stand, Studio im Edit-Modus. |
-| Wiederherstellbare Staende | Version 46 = Sawmill/KitView, Version 47 = zusätzlich Stations/StoolView, Version 48 = zusätzlich Labels/CartonView/`FactoryLabels`, Version 49 = zusätzlich Line/WareView/LineView. |
+| Speicherung | TeamCreate **Version 52**, privater Stand, Studio im Edit-Modus. |
+| Wiederherstellbare Staende | Version 48 = Labels/CartonView/`FactoryLabels`, Version 49 = zusätzlich Line/WareView/LineView (Linie noch auf der Testfläche), Version 52 = Linie in der Halle plus P06-01-Zonen. |
 | Pruefbelege | [P02-06](../evidence/P02-06.md), [P02-05](../evidence/P02-05.md), [P02-04](../evidence/P02-04.md), [P02-03R](../evidence/P02-03R.md); Stadtentwurf [MAP](../design/MAP.md), Masse [DIMENSIONS](../design/DIMENSIONS.md) |
+
+## P06-01 abgenommen (18.11.)
+
+- Die Handlinie wurde starr in die Halle der Start-Tischlerei verschoben, die Lagerseite liegt am Tor. [build-p06-01-zones.luau](../../tools/studio/build-p06-01-zones.luau) legt `LoadZone`, Annahmen und Lieferanten-Bedienmarken an. [check-p06-01-zones.luau](../../tools/studio/check-p06-01-zones.luau) bestand fünf Gruppen: Zonen, Überschneidungsfreiheit, Abstand zum Fahrmodell, Wegfindung durch das Tor, Übersetzung.
+- Lieferantenplätze wurden 0,4 m nach außen verschoben (vorher 3 cm im Einfahrweg), Annahmen liegen in der hinteren linken Hofecke. [Beleg](../evidence/P06-01.md)
 
 ## P05-09 und Phase P05 abgenommen (18.11.)
 
@@ -175,7 +181,7 @@ Stand 18. November 2026. **P02, P04 und P05 sind abgenommen.** Die komplette Han
 
 **Naechste Schritte in Reihenfolge.**
 
-1. **P06**: Teststrecke und Ladezonen auf den Höfen (P06-01), Gespann mit festen Ladeplätzen A/B (P06-02/03), Beladen und Entladen über die gemeinsamen Umbuchungen (P06-04/05), danach Fahrtnachweis und Wiederbeitritt. Spieler-Kaufbedienung am Lieferantenhof gehört zu P06-04.
+1. **P06**: Gespannfahrt zu den neuen Zonen (P06-02), feste Ladeplätze A/B als Bestandsorte (P06-03), Beladen und Entladen über die gemeinsamen Umbuchungen (P06-04/05), danach Fahrtnachweis und Wiederbeitritt. Spieler-Kaufbedienung am Lieferantenhof gehört zu P06-04.
 2. **P03-02/P03-05**: Nach ausstehender Exportordnerfreigabe die neutrale Kopie unter `assets/p03-models/p03-05-import/` einmalig hochladen/importieren; `label-p03-05-probe.luau` mit deren `labels.json` ausfuehren. 1-m-Koerper, Material/Normalen/Marker/Kollision und beide Sprachen pruefen. Aktive Saegeprozessdarstellung/Art bleiben offen, kein paralleler Studio-Schreiber. Fable 5.2 nicht als kostenlosen Dienst einplanen; Art-Vertrag beachten.
 3. Handgefahrene Runde mit dem Gespann als Gegenprobe zur automatischen Fahrt (in P06-08 per simulierter Eingabe möglich). P00-03 auf einem echten Gerät, sobald verfügbar.
 
