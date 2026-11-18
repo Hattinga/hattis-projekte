@@ -1,12 +1,12 @@
 # Projektstatus
 
-Stand 18. November 2026. **P02, P04 und P05-01 bis P05-08 sind abgenommen. Der fortlaufende Linienbetrieb mit Warenansichten, zweisprachigen Schildern und Rückstau bestand die Serverprobe, private Version 49. Als Nächstes folgt die Gesamtprüfung der Handkette (P05-09).**
+Stand 18. November 2026. **P02, P04 und P05-01 bis P05-08 sind abgenommen. Für P05-09 stehen die spielbare Linien-Demo und die automatische Kette (zwei Kartons in 34 s). Es fehlt nur noch der manuelle Tastaturdurchlauf durch den Nutzer.**
 
 | Feld | Aktuell |
 |---|---|
 | Letzter abgeschlossener Schritt | **P05-08** – `Line`-Takt, `WareView`/`LineView`, Stations- und Lagerschilder, Rückstau ohne Verbrauch ([Beleg](../evidence/P05-08.md)) |
-| Davor | **P05-06/P05-07** – Finish- und Packlauf, Kartondarstellung, Einlagerung ins Fertiglager, zweisprachige Schilder ([P05-06](../evidence/P05-06.md), [P05-07](../evidence/P05-07.md)) |
-| Naechster Umsetzungsschritt | **P05-09** – spielbare Linien-Demo (Prompts an allen Hand-Plätzen, Echtzeittakt, HUD) mit markiertem Testbestand; automatischer Durchlauf QA-P05-02/03, danach manueller Tastaturdurchlauf durch den Nutzer |
+| In Arbeit | **P05-09** – Demo [start-p05-09-line-demo.luau](../../tools/studio/start-p05-09-line-demo.luau), automatische Kette [test-p05-09-chain.luau](../../tools/studio/test-p05-09-chain.luau) bestanden ([Zwischenstand](../evidence/P05-09.md)) |
+| Naechster Umsetzungsschritt | **Nutzer**: Tastaturdurchlauf der P05-09-Demo (Play starten, Claude startet die Demo). Danach P05-09 abhaken und die P05-Phasenabnahme vornehmen. |
 | Paralleles Paket | **P03-03** – Gebäude-Außenprobe von Claude Opus 5.5 mit 141 Geometrieprüfungen, zwei FBX-Rückimporten und 13 Ansichten lokal übernommen ([Beleg](../evidence/P03-03.md)). Abnahme und Roblox-Import stehen aus. Für die separate P03-05-Importkopie fehlt die Exportordnerfreigabe. |
 | Noch offene Umgebungsvoraussetzung | **P00-03** - reales schwaecheres Testgeraet bestimmen (braucht den Nutzer) |
 | Offene Entwurfsfrage (Nutzer) | Hallentor 4 m / Halle 10 m tief: Kehre in der Halle passt nur mit schraegem Anlauf (0,31 m Reserve); gerader Anlauf streift den Torpfeiler um 0,32 m. Tor breiter, Halle tiefer oder rueckwaerts ausfahren? Nichts geaendert. |
@@ -170,7 +170,7 @@ Stand 18. November 2026. **P02, P04 und P05-01 bis P05-08 sind abgenommen. Der f
 
 **Naechste Schritte in Reihenfolge.**
 
-1. **P05-09**: Spielbare Linien-Demo (HandMoves an Rohstoff-, Stations- und Fertiglagerplätzen, `Line.tick` im Echtzeittakt, `LineView` mit Hand-Träger, HUD) mit markiertem Testbestand. Danach automatischer Durchlauf nach QA-P05-02/03 und der manuelle Tastaturdurchlauf durch den Nutzer.
+1. **P05-09 manuell**: Der Nutzer spielt die Demo per Tastatur durch (Anleitung im [Zwischenstand](../evidence/P05-09.md)). Danach Checkbox P05-09 und P05-Abnahme.
 2. **P03-02/P03-05**: Nach ausstehender Exportordnerfreigabe die neutrale Kopie unter `assets/p03-models/p03-05-import/` einmalig hochladen/importieren; `label-p03-05-probe.luau` mit deren `labels.json` ausfuehren. 1-m-Koerper, Material/Normalen/Marker/Kollision und beide Sprachen pruefen. Aktive Saegeprozessdarstellung/Art bleiben offen, kein paralleler Studio-Schreiber. Fable 5.2 nicht als kostenlosen Dienst einplanen; Art-Vertrag beachten.
 3. Nutzerentscheidungen einholen: Hallentor (oben), schwaecheres Testgeraet (P00-03), handgefahrene Runde mit dem Gespann als Gegenprobe zur automatischen Fahrt.
 

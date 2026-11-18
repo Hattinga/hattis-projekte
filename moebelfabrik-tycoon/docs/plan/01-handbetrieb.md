@@ -67,6 +67,8 @@
 
 [P05-08-Beleg](../evidence/P05-08.md): `Line.tick` beendet fällige Läufe und startet bereite Stationen ohne automatische Weitergabe. `LineView` zeigt jede Charge an ihrem bestätigten Ort sowie zweisprachige Stations- und Lagerschilder. Bei vollen Ausgängen und vollem Lager wird kein Input verbraucht und nichts gespeichert, ein freigegebener Platz setzt die Linie fort. Stationssuite 18/18 und vier Serverprüfgruppen nach QA-P05-03 bestanden, private Version 49.
 
+[P05-09-Zwischenstand](../evidence/P05-09.md): Die spielbare Linien-Demo mit 16 Prompts, Echtzeittakt, Warenansichten und HUD steht. Die automatische Kette nach QA-P05-02 bestand in 34 s (zwei Kartons ohne Auftrag eingelagert), QA-P05-01 und QA-P05-03 sind durch die P05-02- und P05-08-Proben belegt. Offen ist der manuelle Tastaturdurchlauf durch den Nutzer.
+
 ## P06 · Quad, Ladung und echte Fahrten
 
 **Voraussetzungen** P02, P04 und P05 sind abgenommen. Maße für Ladeplätze, Hockerkarton, Anhänger und Ladezonen sind abgestimmt.
