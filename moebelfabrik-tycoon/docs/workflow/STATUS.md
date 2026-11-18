@@ -24,6 +24,12 @@ Stand 18. November 2026. **P02, P04, P05 und P06-01 bis P06-03 sind abgenommen.*
 | Wiederherstellbare Staende | Version 49 = Line/WareView/LineView (Linie noch auf der Testfläche), Version 52 = Linie in der Halle plus P06-01-Zonen, Version 53 = zusätzlich Vehicles, Fahrzeug-Slot-Punkte, statische Ladung archiviert. |
 | Pruefbelege | [P02-06](../evidence/P02-06.md), [P02-05](../evidence/P02-05.md), [P02-04](../evidence/P02-04.md), [P02-03R](../evidence/P02-03R.md); Stadtentwurf [MAP](../design/MAP.md), Masse [DIMENSIONS](../design/DIMENSIONS.md) |
 
+## Übergabe P06-04/05 (Entwurf, nicht umgesetzt)
+
+- **HandMoves:** `Supplier` und `VehicleSlot` in `WORKSHOP_SLOTS` aufnehmen. Endpoint-Feld `anySide` überspringt die Seitenprüfung (Fahrzeugplätze, `stand` dann optional). Sichtprüfung: Treffer bis 0,5 Studs vom Zielpunkt gilt als frei, weil die Slotteile `CanQuery=false` haben.
+- **Neues Modul `Loading`:** Für `VehicleSlot` gilt Fahrzeug-Attribut `OwnerUserId == player.UserId`, Geschwindigkeit unter 0,5 m/s und beide Slots in einer `LoadZone`. Entladen nur mit freiem Ziel der Zone (Werkstatt: Rohstoff-/Fertiglager, Lieferant: Lieferantenplätze, Händler/Privat erst mit P07), sonst `NO_FREE_TARGET` und die Ware bleibt auf dem Fahrzeug. Danach `HandMoves.interact`.
+- **Probe:** Kauf per `Purchases.buy` (In-Memory), Fahrzeug per `PivotTo` in die Zonen. Prüffälle: fremdes Fahrzeug, fahrendes Fahrzeug, außerhalb der Zone, falscher Rohstoffplatz (`DELIVERY_TARGET_REQUIRED`), volles Ziel, doppeltes Entladen (`EMPTY`).
+
 ## P06-03 abgenommen (18.11.)
 
 - [Vehicles.luau](../../src/server/Vehicles.luau) bindet `Vehicle.Quad1.SlotA/B` (Kapazität 1, Holzpaket oder Karton), `LineView` kennt Mounts für fahrende Plätze. Die P02-04-Stellvertreterladung liegt in `ServerStorage.P02VehicleArchive`, das Fahrzeug trägt `VehicleId=Quad1` und `Revision=3`.
