@@ -1,12 +1,12 @@
 # Projektstatus
 
-Stand 18. November 2026. **P02, P04, P05, P06-01 und P06-02 sind abgenommen.** Die Handlinie steht in der Halle der Start-Tischlerei, und auf den vier Testhöfen sind Ladezonen und Annahmen abgesteckt. Das Gespann fährt die Teststrecke kontaktfrei und hält jeweils vollständig in der Ladezone. **Als Nächstes folgt P06-03 (Anhänger-Slots A/B als Bestandsorte).**
+Stand 18. November 2026. **P02, P04, P05 und P06-01 bis P06-03 sind abgenommen.** Die Handlinie steht in der Halle der Start-Tischlerei, Ladezonen und Annahmen sind abgesteckt, und das Gespann fährt kontaktfrei. Seine Anhängerplätze A/B sind Bestandsorte mit befestigter Ladung. **Als Nächstes folgen P06-04/05 (Beladen und Entladen mit Zonen-, Fahrzeug- und Eigentümerprüfung).**
 
 | Feld | Aktuell |
 |---|---|
-| Letzter abgeschlossener Schritt | **P06-02** – fünf Etappen ohne Kontakt, Slots und Hülle in jeder Ladezone, echte Fahrereingabe geprüft ([Beleg](../evidence/P06-02.md)) |
-| Davor | **P06-01** – `P02Line` in die Halle `Tischlerei_West` verschoben, `LoadZone` je Hof, Annahmen bei Händler und Privatkunde, Lieferantenplätze mit Bedienmarken ([Beleg](../evidence/P06-01.md)) |
-| Naechster Umsetzungsschritt | **P06-03** – Anhängerplätze `Trailer.Slots.SlotA/SlotB` als `VehicleSlot`-Bestandsorte mit Kapazität 1 binden (Holzpaket oder Karton), Ladung sichtbar und befestigt aus dem Bestand darstellen. Danach P06-04/05 (Beladen/Entladen mit Zonenprüfung) |
+| Letzter abgeschlossener Schritt | **P06-03** – `Vehicles`-Bindung `Vehicle.Quad1.SlotA/B`, `LineView`-Mounts, statische Ladung archiviert ([Beleg](../evidence/P06-03.md)) |
+| Davor | **P06-02** – fünf Etappen ohne Kontakt, Slots und Hülle in jeder Ladezone, echte Fahrereingabe geprüft ([Beleg](../evidence/P06-02.md)) |
+| Naechster Umsetzungsschritt | **P06-04/05** – HandMoves um Lieferanten-, Fahrzeug- und Annahmeplätze erweitern. Fahrzeugplätze nur, wenn beide Slots in der passenden `LoadZone` stehen und das Fahrzeug dem Spieler gehört. Spieler-Kaufbedienung am Lieferantenhof. Volle Ziele lassen Ware auf dem Fahrzeug |
 | Entscheidungen 18.11. (delegiert) | Hallentor: Laden nur auf dem Hof, Halle wird nicht befahren, Tor bleibt 4 m ([MAP](../design/MAP.md)). Oberfläche: eine Finish-Oberfläche in Hocker01 v1 ([PRODUCTION](../design/PRODUCTION.md)). P00-03: Zielprofil schwächeres Android-Phone 1600×720, Touch, Grafikstufe 1; bis zum echten Gerät Studio-Emulator als Stellvertreter, Checkbox bleibt offen ([P00](../plan/00-start.md)) |
 | Paralleles Paket | **P03-03** – Gebäude-Außenprobe lokal übernommen ([Beleg](../evidence/P03-03.md)), Abnahme und Roblox-Import stehen aus. **P03-05-Upload blockiert:** Der Nutzer muss unter `Assistant Settings > MCP Permissions` den Ordner `assets\p03-models\p03-05-import\exports` freigeben, das kann Claude nicht selbst tun. |
 | Planabschnitt | [Handbetrieb, P06](../plan/01-handbetrieb.md#p06--quad-ladung-und-echte-fahrten) |
@@ -20,9 +20,14 @@ Stand 18. November 2026. **P02, P04, P05, P06-01 und P06-02 sind abgenommen.** D
 | Vergleichsobjekt | `Workspace.FableWorkshop`, Asset `106051543998570`; kein vorgesehenes Spielgebaeude |
 | Technikproben | `Workspace.P02Greybox` und `Workspace.P02Line`; Prueftraeger in `ServerStorage.P02CarryProbe`, nicht im Spielstart |
 | Arbeitsbranch | `work/p00-studio-import`; jeder Abschluss wird gepusht (Nutzerauftrag vom 18.11.: fortlaufend committen und pushen) |
-| Speicherung | TeamCreate **Version 52**, privater Stand, Studio im Edit-Modus. |
-| Wiederherstellbare Staende | Version 48 = Labels/CartonView/`FactoryLabels`, Version 49 = zusätzlich Line/WareView/LineView (Linie noch auf der Testfläche), Version 52 = Linie in der Halle plus P06-01-Zonen. |
+| Speicherung | TeamCreate **Version 53**, privater Stand, Studio im Edit-Modus. |
+| Wiederherstellbare Staende | Version 49 = Line/WareView/LineView (Linie noch auf der Testfläche), Version 52 = Linie in der Halle plus P06-01-Zonen, Version 53 = zusätzlich Vehicles, Fahrzeug-Slot-Punkte, statische Ladung archiviert. |
 | Pruefbelege | [P02-06](../evidence/P02-06.md), [P02-05](../evidence/P02-05.md), [P02-04](../evidence/P02-04.md), [P02-03R](../evidence/P02-03R.md); Stadtentwurf [MAP](../design/MAP.md), Masse [DIMENSIONS](../design/DIMENSIONS.md) |
+
+## P06-03 abgenommen (18.11.)
+
+- [Vehicles.luau](../../src/server/Vehicles.luau) bindet `Vehicle.Quad1.SlotA/B` (Kapazität 1, Holzpaket oder Karton), `LineView` kennt Mounts für fahrende Plätze. Die P02-04-Stellvertreterladung liegt in `ServerStorage.P02VehicleArchive`, das Fahrzeug trägt `VehicleId=Quad1` und `Revision=3`.
+- Die [Serverprobe](../../tools/studio/test-p06-03-vehicle-slots.luau) bestand vier Gruppen: Bindung, Grenzen über die gemeinsamen Regeln, befestigte Ladung (0,005 Studs Drift nach 9,4 m), Wiederherstellung auf die Slot-Punkte. [Beleg](../evidence/P06-03.md)
 
 ## P06-02 abgenommen (18.11.)
 
@@ -186,7 +191,7 @@ Stand 18. November 2026. **P02, P04, P05, P06-01 und P06-02 sind abgenommen.** D
 
 **Naechste Schritte in Reihenfolge.**
 
-1. **P06**: feste Ladeplätze A/B als Bestandsorte (P06-03), Beladen und Entladen über die gemeinsamen Umbuchungen (P06-04/05), danach Fahrtnachweis und Wiederbeitritt. Spieler-Kaufbedienung am Lieferantenhof gehört zu P06-04.
+1. **P06**: Beladen und Entladen über die gemeinsamen Umbuchungen (P06-04/05), danach Fahrtnachweis und Wiederbeitritt. Spieler-Kaufbedienung am Lieferantenhof gehört zu P06-04.
 2. **P03-02/P03-05**: Nach ausstehender Exportordnerfreigabe die neutrale Kopie unter `assets/p03-models/p03-05-import/` einmalig hochladen/importieren; `label-p03-05-probe.luau` mit deren `labels.json` ausfuehren. 1-m-Koerper, Material/Normalen/Marker/Kollision und beide Sprachen pruefen. Aktive Saegeprozessdarstellung/Art bleiben offen, kein paralleler Studio-Schreiber. Fable 5.2 nicht als kostenlosen Dienst einplanen; Art-Vertrag beachten.
 3. Handgefahrene Runde mit dem Gespann als Gegenprobe zur automatischen Fahrt (in P06-08 per simulierter Eingabe möglich). P00-03 auf einem echten Gerät, sobald verfügbar.
 

@@ -17,6 +17,7 @@ local COLORS = {
 export type Places = {
 	points: {[string]: Attachment}, -- location id -> physical transfer point
 	carriers: {[string]: BasePart}?, -- carrier location id -> body part that holds the ware
+	mounts: {[string]: Attachment}?, -- moving location id (vehicle slot) -> attachment the ware is welded to
 	stationPads: {[string]: BasePart}, -- station id -> pad above which the sign floats
 	storeSlots: {string}?,
 	storePad: BasePart?,
@@ -50,7 +51,8 @@ function LineView.syncWares(root: Instance, state: State.Profile, places: Places
 	for _, batch in state.batches do
 		local point = places.points[batch.locationId]
 		local carrier = if places.carriers then places.carriers[batch.locationId] else nil
-		if not point and not carrier then continue end
+		local mount = if places.mounts then places.mounts[batch.locationId] else nil
+		if not point and not carrier and not mount then continue end
 		local signature = batch.stage .. "@" .. batch.locationId
 		local view = wares:FindFirstChild(batch.id)
 		if view and view:GetAttribute("Signature") ~= signature then
@@ -59,11 +61,16 @@ function LineView.syncWares(root: Instance, state: State.Profile, places: Places
 		end
 		if not view or not view:IsA("Model") then
 			local support = if point then point.WorldCFrame
+				elseif mount then mount.WorldCFrame
 				else (carrier :: BasePart).CFrame * CFrame.new(Vector3.new(0, -0.45, -0.55) * SCALE)
 			local created = WareView.create(wares, support, batch.id, batch.stage)
 			created.Name = batch.id
 			created:SetAttribute("Signature", signature)
-			if not point and carrier then holdOnCarrier(created, carrier) end
+			if not point and mount then
+				holdOnCarrier(created, mount.Parent :: BasePart)
+			elseif not point and carrier then
+				holdOnCarrier(created, carrier)
+			end
 			view = created
 		end
 		shown[batch.id] = view :: Model
