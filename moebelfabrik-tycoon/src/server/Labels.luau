@@ -12,6 +12,26 @@ Labels.entries = table.freeze({
 	table.freeze({key = "carton.name", en = "STOOL CARTON", de = "HOCKERKARTON"}),
 	table.freeze({key = "carton.count", en = "1 STOOL", de = "1 HOCKER"}),
 	table.freeze({key = "carton.batch", en = "BATCH", de = "CHARGE"}),
+	table.freeze({key = "package.name", en = "WOOD PACKAGE", de = "HOLZPAKET"}),
+	-- P05-08 station signs (PRODUCTION "Sichtbare Rückmeldung").
+	table.freeze({key = "process.Saege", en = "CUTTING", de = "ZUSCHNITT"}),
+	table.freeze({key = "process.Montage", en = "ASSEMBLY", de = "MONTAGE"}),
+	table.freeze({key = "process.Finish", en = "FINISHING", de = "FINISH"}),
+	table.freeze({key = "process.Packen", en = "PACKING", de = "VERPACKEN"}),
+	table.freeze({key = "status.starting", en = "STARTING", de = "STARTET"}),
+	table.freeze({key = "status.outputFull", en = "OUTPUT FULL", de = "AUSGANG VOLL"}),
+	table.freeze({key = "status.transport", en = "TRANSPORT RUNNING", de = "TRANSPORT LÄUFT"}),
+	table.freeze({key = "status.reserved", en = "OUTPUT RESERVED", de = "AUSGANG RESERVIERT"}),
+	table.freeze({key = "missing.Holzpaket", en = "WOOD PACKAGE MISSING", de = "HOLZPAKET FEHLT"}),
+	table.freeze({key = "missing.Bausatz", en = "PARTS KIT MISSING", de = "BAUSATZ FEHLT"}),
+	table.freeze({key = "missing.Rohhocker", en = "RAW STOOL MISSING", de = "ROHHOCKER FEHLT"}),
+	table.freeze({key = "missing.Fertig", en = "FINISHED STOOL MISSING", de = "FERTIGER HOCKER FEHLT"}),
+	table.freeze({key = "collect.Bausatz", en = "COLLECT PARTS KIT", de = "BAUSATZ ABHOLEN"}),
+	table.freeze({key = "collect.Rohhocker", en = "COLLECT RAW STOOL", de = "ROHHOCKER ABHOLEN"}),
+	table.freeze({key = "collect.Fertig", en = "COLLECT FINISHED STOOL", de = "FERTIGEN HOCKER ABHOLEN"}),
+	table.freeze({key = "collect.Karton", en = "COLLECT STOOL CARTON", de = "HOCKERKARTON ABHOLEN"}),
+	table.freeze({key = "store.name", en = "FINISHED STORE", de = "FERTIGLAGER"}),
+	table.freeze({key = "store.full", en = "STORE FULL – FREE A SLOT", de = "FERTIGLAGER VOLL – PLATZ FREIMACHEN"}),
 }) :: {Entry}
 
 local byKey: {[string]: Entry} = {}

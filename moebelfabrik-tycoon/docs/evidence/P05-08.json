@@ -1,0 +1,42 @@
+{
+  "date": "2026-11-18",
+  "task": "P05-08",
+  "status": "accepted",
+  "placeId": 79033653140107,
+  "baselineVersion": 48,
+  "savedVersion": 49,
+  "local": {
+    "suite": "tools/tests/p05-05-stations.luau",
+    "runner": "tools/tests/run-p05-05.mjs",
+    "result": "18/18",
+    "newCases": [
+      "15 the line finishes due runs and starts ready stations but never carries goods onward",
+      "16 station status follows the PRODUCTION priority without touching stock",
+      "17 a blocked output never consumes waiting input; freeing it resumes the line on the next tick",
+      "18 an unclear save stops the pass; after reconciliation the next tick neither repeats nor loses the run"
+    ],
+    "strictAnalysis": {"modules": ["State", "Actions", "Transfers", "Profiles", "Sessions", "Persistence", "Recovery", "Stations", "Sawmill", "Line"], "exit": 0},
+    "compiled": ["Labels", "KitView", "StoolView", "CartonView", "WareView", "LineView", "Recipe", "HandMoves", "Purchases"]
+  },
+  "integration": {
+    "changed": ["Labels"],
+    "added": ["Line", "WareView", "LineView"],
+    "labels": 25,
+    "verified": "19 Factory-Module per Prüfsumme gleich src/server; alle 25 Übersetzungen per Schlüssel und Quelltext geprüft"
+  },
+  "server": {
+    "status": "passed",
+    "probe": "tools/studio/test-p05-08-line.luau",
+    "store": "FactoryP0508_Test",
+    "scope": "P0508_57477df1487f42b0be106c94aa3f5d65",
+    "checks": [
+      "ready stations start and finish by themselves; every batch is shown at its confirmed place, the run on its process pad",
+      "with full outputs and a full store, repeated ticks consume no waiting input and write nothing",
+      "taking one carton out and storing the pack output lets packing resume on the next tick",
+      "a missing wood package is announced in EN/DE; carrying one from the raw store restarts the saw"
+    ],
+    "final": {"storageRevision": 17, "stateRevision": 23, "money": 17, "cartons": 6, "writes": 17}
+  },
+  "playerTrigger": "Line.tick ist der serverseitige Takt; die spielbare Demo mit Prompts folgt in P05-09",
+  "published": false
+}

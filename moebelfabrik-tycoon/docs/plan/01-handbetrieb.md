@@ -46,7 +46,7 @@
 - [x] **P05-05** Den Bausatz an der Montagebank zu einem erkennbaren Rohhocker verarbeiten.
 - [x] **P05-06** Den Rohhocker am Finishplatz bearbeiten und die gewählte Oberfläche sichtbar anwenden.
 - [x] **P05-07** Den fertigen Hocker am Packtisch in einen passenden Karton umwandeln und den Karton im Fertigwarenlager einlagern.
-- [ ] **P05-08** Die versorgten Stationen mit dem aktiven Rezept fortlaufend arbeiten lassen. Ein Maschinenlauf reserviert Platz für sein Ergebnis. Bei vollem Lager entsteht sichtbarer Rückstau, bevor weiterer Input verbraucht wird.
+- [x] **P05-08** Die versorgten Stationen mit dem aktiven Rezept fortlaufend arbeiten lassen. Ein Maschinenlauf reserviert Platz für sein Ergebnis. Bei vollem Lager entsteht sichtbarer Rückstau, bevor weiterer Input verbraucht wird.
 - [ ] **P05-09** Einkauf und komplette Handkette mit der [Prüfmatrix](../qa/TESTS.md) prüfen. Für den isolierten Stationstest gekennzeichneten Testbestand verwenden. Die reguläre Beschaffungsfahrt folgt in P06.
 
 **Abnahme** Ein Spieler kann Holz kaufen, Zwischenprodukte tragen und ohne vorherigen Kundenauftrag mehrere Hocker herstellen und lagern. Falsche Ablagen erhalten die Ware. Ein volles Lager stoppt die Linie verständlich. Der Kauf allein liefert kein Holz in die Fabrik.
@@ -64,6 +64,8 @@
 [P05-05-Beleg](../evidence/P05-05.md): `Stations` führt Start und Ende für alle vier Stationsregeln aus `State.STATIONS` aus. Der Montagelauf macht nach 8 s aus dem Bausatz einen vermessenen Rohhocker (0,40 × 0,45 × 0,40 m). Die Stationssuite (12 Fälle) und vier Serverprüfgruppen mit echtem Test-Save bestanden, private Version 47.
 
 [P05-06-Beleg](../evidence/P05-06.md) · [P05-07-Beleg](../evidence/P05-07.md): Der Finishlauf (6 s) wendet die eine Finish-Oberfläche von Hocker01 v1 sichtbar an. Der Packlauf (4 s) erzeugt einen beschrifteten Karton von 0,46 × 0,51 × 0,46 m. Nur dieser wird im Fertiglager eingelagert, ein volles Lager hält ihn getragen und staut die Linie zurück. Die Schilder sind zweisprachig über `FactoryLabels`. Stationssuite 14/14 und vier Serverprüfgruppen bestanden, private Version 48.
+
+[P05-08-Beleg](../evidence/P05-08.md): `Line.tick` beendet fällige Läufe und startet bereite Stationen ohne automatische Weitergabe. `LineView` zeigt jede Charge an ihrem bestätigten Ort sowie zweisprachige Stations- und Lagerschilder. Bei vollen Ausgängen und vollem Lager wird kein Input verbraucht und nichts gespeichert, ein freigegebener Platz setzt die Linie fort. Stationssuite 18/18 und vier Serverprüfgruppen nach QA-P05-03 bestanden, private Version 49.
 
 ## P06 · Quad, Ladung und echte Fahrten
 

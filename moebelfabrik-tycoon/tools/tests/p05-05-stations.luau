@@ -1,6 +1,6 @@
 --!strict
--- P05-05 station-run suite. In-memory atomic backend; no engine or external storage.
-return function(State: any, Transfers: any, Persistence: any, Stations: any, Sawmill: any): any
+-- P05-05..P05-08 station and line suite. In-memory atomic backend; no engine or external storage.
+return function(State: any, Transfers: any, Persistence: any, Stations: any, Sawmill: any, Line: any): any
 	local passed: {string} = {}
 	local failures: {{name: string, error: string}} = {}
 	local function test(name: string, body: () -> ())
@@ -343,6 +343,109 @@ return function(State: any, Transfers: any, Persistence: any, Stations: any, Saw
 		local state = h.state()
 		assert(state.batches.box.locationId == "Packen.Output" and state.batches.next.locationId == "Packen.Input"
 			and state.batches.old.locationId == "FinishedStore.Slot1" and State.validate(state))
+	end)
+
+	local function codes(events: any): string
+		local list = {}
+		for _, event in events do table.insert(list, event.stationId .. ":" .. event.code) end
+		return table.concat(list, ",")
+	end
+
+	test("15 the line finishes due runs and starts ready stations but never carries goods onward", function()
+		local p = profile()
+		p.batches.wood = State.newBatch("wood", 101, "Holzpaket", "Saege.Input")
+		p.batches.kit = State.newBatch("kit", 101, "Bausatz", "Montage.Input")
+		local h = harness(p)
+		local start = h.now
+		assert(codes(Line.tick(h.c, h.now, 600)) == "Saege:STARTED,Montage:STARTED")
+		local writes = h.writes
+		h.now = start + 5
+		assert(codes(Line.tick(h.c, h.now, 600)) == "" and h.writes == writes)
+		h.now = start + 6
+		assert(codes(Line.tick(h.c, h.now, 600)) == "Saege:FINISHED")
+		h.now = start + 8
+		assert(codes(Line.tick(h.c, h.now, 600)) == "Montage:FINISHED")
+		h.now = start + 60
+		assert(codes(Line.tick(h.c, h.now, 600)) == "")
+		local state = h.state()
+		assert(state.batches.wood.locationId == "Saege.Output" and state.batches.kit.locationId == "Montage.Output")
+		local status = Line.status(state, h.now)
+		assert(status.Saege.code == "OUTPUT_FULL" and status.Montage.code == "OUTPUT_FULL")
+		assert(status.Finish.code == "INPUT_MISSING" and status.Finish.inputStage == "Rohhocker")
+	end)
+
+	test("16 station status follows the PRODUCTION priority without touching stock", function()
+		local p = profile()
+		p.locations["FinishedStore.Slot1"] = State.newLocation("FinishedStore.Slot1", "FinishedStore", 1, {"Karton"})
+		p.batches.kit = State.newBatch("kit", 101, "Bausatz", "Montage.Process")
+		p.reservations["Montage.Output"] = {kind = "Production", batchId = "kit", finishAt = 1008}
+		p.batches.next = State.newBatch("next", 101, "Bausatz", "Montage.Input")
+		p.batches.stool = State.newBatch("stool", 101, "Rohhocker", "Finish.Input")
+		p.batches.box = State.newBatch("box", 101, "Karton", "Packen.Output")
+		local before = copy(p)
+		local status = Line.status(p, 1003)
+		assert(status.Montage.code == "RUNNING" and status.Montage.remaining == 5 and status.Montage.inputWaiting)
+		assert(status.Finish.code == "READY" and status.Packen.code == "OUTPUT_FULL" and status.Packen.batchId == "box")
+		assert(status.Saege.code == "INPUT_MISSING" and not status.Saege.inputWaiting)
+		assert(Line.status(p, 2000).Montage.remaining == 0 and equal(p, before))
+		local h = harness(p)
+		local store = h.store()
+		h.move(store, "box", "Packen.Output", "hand", "take-box")
+		assert(Line.status(store.profile, 1003).Packen.code == "OUTPUT_RESERVED")
+		assert(equal(Line.storeStatus(store.profile, {"FinishedStore.Slot1"}), {used = 0, capacity = 1, full = false}))
+		h.move(store, "box", "hand", "FinishedStore.Slot1", "store-box")
+		assert(equal(Line.storeStatus(store.profile, {"FinishedStore.Slot1"}), {used = 1, capacity = 1, full = true}))
+	end)
+
+	test("17 a blocked output never consumes waiting input; freeing it resumes the line on the next tick", function()
+		local p = profile()
+		p.locations["FinishedStore.Slot1"] = State.newLocation("FinishedStore.Slot1", "FinishedStore", 1, {"Karton"})
+		p.locations.trailer = State.newLocation("trailer", "VehicleSlot", 1, {"Karton"})
+		p.batches.old = State.newBatch("old", 101, "Karton", "FinishedStore.Slot1")
+		p.batches.box = State.newBatch("box", 101, "Karton", "Packen.Output")
+		p.batches.done = State.newBatch("done", 101, "Fertig", "Packen.Input")
+		p.batches.stool = State.newBatch("stool", 101, "Fertig", "Finish.Output")
+		p.batches.raw = State.newBatch("raw", 101, "Rohhocker", "Finish.Input")
+		local h = harness(p)
+		local writes = h.writes
+		for _ = 1, 3 do
+			h.now += 30
+			assert(codes(Line.tick(h.c, h.now, 600)) == "")
+		end
+		local state = h.state()
+		assert(h.writes == writes and state.batches.done.locationId == "Packen.Input" and state.batches.raw.locationId == "Finish.Input")
+		assert(Line.storeStatus(state, {"FinishedStore.Slot1"}).full and Line.status(state, h.now).Packen.code == "OUTPUT_FULL")
+		local store = h.store()
+		h.move(store, "old", "FinishedStore.Slot1", "hand", "load-old")
+		h.move(store, "old", "hand", "trailer", "stow-old")
+		h.move(store, "box", "Packen.Output", "hand", "take-box")
+		h.save(store)
+		assert(codes(Line.tick(h.c, h.now, 600)) == "" and Line.status(h.state(), h.now).Packen.code == "OUTPUT_RESERVED")
+		store = h.store()
+		h.move(store, "box", "hand", "FinishedStore.Slot1", "store-box")
+		h.save(store)
+		assert(codes(Line.tick(h.c, h.now, 600)) == "Packen:STARTED")
+		h.now += 4
+		assert(codes(Line.tick(h.c, h.now, 600)) == "Packen:FINISHED")
+		state = h.state()
+		assert(state.batches.done.stage == "Karton" and state.batches.done.locationId == "Packen.Output"
+			and state.batches.raw.locationId == "Finish.Input" and State.validate(state))
+	end)
+
+	test("18 an unclear save stops the pass; after reconciliation the next tick neither repeats nor loses the run", function()
+		local p = profile()
+		p.batches.wood = State.newBatch("wood", 101, "Holzpaket", "Saege.Input")
+		local h = harness(p)
+		h.drop = true
+		local events = Line.tick(h.c, h.now, 600)
+		assert(#events == 1 and events[1].code == "WRITE_UNKNOWN" and events[1].unknown)
+		local writes = h.writes
+		local blocked = Line.tick(h.c, h.now, 600)
+		assert(#blocked == 1 and blocked[1].code == "NOT_CONFIRMED" and h.writes == writes)
+		assert(h.c.reconcile().ok)
+		assert(codes(Line.tick(h.c, h.now, 600)) == "" and h.state().batches.wood.locationId == "Saege.Process")
+		h.now += 6
+		assert(codes(Line.tick(h.c, h.now, 600)) == "Saege:FINISHED")
 	end)
 
 	return {total = #passed + #failures, passed = passed, failures = failures}
