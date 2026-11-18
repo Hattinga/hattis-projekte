@@ -74,7 +74,7 @@
 **Voraussetzungen** P02, P04 und P05 sind abgenommen. Maße für Ladeplätze, Hockerkarton, Anhänger und Ladezonen sind abgestimmt.
 
 - [x] **P06-01** Eine kurze befahrbare Strecke mit Lieferant, Werkstatt, Händler und Privatkundenplatz als Testumgebung abstecken.
-- [ ] **P06-02** Ein steuerbares Quad und einen kleinen Anhänger zunächst mit maßhaltiger Stellvertretergeometrie bereitstellen. Wendeflächen und Anfahrt auf der tatsächlichen Strecke prüfen.
+- [x] **P06-02** Ein steuerbares Quad und einen kleinen Anhänger zunächst mit maßhaltiger Stellvertretergeometrie bereitstellen. Wendeflächen und Anfahrt auf der tatsächlichen Strecke prüfen.
 - [ ] **P06-03** Dem eigenen Fahrzeug feste Ladeplätze und nachvollziehbare Kapazitätsgrenzen zuweisen.
 - [ ] **P06-04** Physisches Beladen am Lieferanten und an der Werkstatt mit den Bestandsumbuchungen verbinden. Ware erscheint befestigt am bestätigten Ladeplatz.
 - [ ] **P06-05** Entladen am passenden physischen Ziel mit Prüfung von Fracht, Fahrzeug, Eigentümer und Ladezone umsetzen. Ein volles Ziel lässt die Ware auf dem Fahrzeug.
@@ -87,6 +87,8 @@
 **Nachweis** Fahrt und Übergabepunkte mit Video oder Screenshots festhalten. Bestände vor dem Beladen, nach dem Entladen und nach Wiederbeitritt protokollieren.
 
 [P06-01-Beleg](../evidence/P06-01.md): Die Handlinie steht in der Halle der Start-Tischlerei, der Lagerzugang liegt im Tor. Vier Ladezonen über die vollen Höfe, Annahmeplätze bei Händler und Privatkunde in der hinteren linken Hofecke, Lieferantenplätze 0,4 m nach außen verschoben. Freiraum zum Fahrmodell, Wegfindung durch das Tor und zweisprachige Schilder geprüft, private Version 52.
+
+[P06-02-Beleg](../evidence/P06-02.md): Das Gespann fuhr alle fünf Etappen ohne Kontakt zu Hindernissen oder P06-01-Teilen und ohne Rad neben dem Belag. Jede Haltestellung liegt vollständig in der Ladezone. Echte Fahrereingabe (E, W/A) steuert das Gespann.
 
 ## P07 · Händler, Privatverkauf und kompletter Kreislauf
 

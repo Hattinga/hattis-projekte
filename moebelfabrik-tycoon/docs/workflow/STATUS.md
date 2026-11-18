@@ -1,12 +1,12 @@
 # Projektstatus
 
-Stand 18. November 2026. **P02, P04, P05 und P06-01 sind abgenommen.** Die Handlinie steht jetzt in der Halle der Start-Tischlerei. Ladezonen und Annahmeplätze sind auf den vier Testhöfen abgesteckt. Die Entwurfsentscheidungen, die der Nutzer an Claude delegiert hat, sind in den Fachdateien festgehalten. **Als Nächstes folgt P06-02 (Gespann mit Ladeplätzen auf der echten Strecke).**
+Stand 18. November 2026. **P02, P04, P05, P06-01 und P06-02 sind abgenommen.** Die Handlinie steht in der Halle der Start-Tischlerei, und auf den vier Testhöfen sind Ladezonen und Annahmen abgesteckt. Das Gespann fährt die Teststrecke kontaktfrei und hält jeweils vollständig in der Ladezone. **Als Nächstes folgt P06-03 (Anhänger-Slots A/B als Bestandsorte).**
 
 | Feld | Aktuell |
 |---|---|
-| Letzter abgeschlossener Schritt | **P06-01** – `P02Line` in die Halle `Tischlerei_West` verschoben, `LoadZone` je Hof, Annahmen bei Händler und Privatkunde, Lieferantenplätze mit Bedienmarken ([Beleg](../evidence/P06-01.md)) |
-| Davor | **P05-09** – Linien-Demo, automatische Kette und Tastaturdurchlauf; Befund „Prompts nur in Blickrichtung“ korrigiert ([Beleg](../evidence/P05-09.md)) |
-| Naechster Umsetzungsschritt | **P06-02** – Gespann `Workspace.P02Vehicle` auf der Teststrecke zu den neuen Zonen fahren lassen. Haltestellung in der `LoadZone`, Wende und Anfahrt prüfen. Danach P06-03 (Ladeplätze A/B als Bestandsorte) |
+| Letzter abgeschlossener Schritt | **P06-02** – fünf Etappen ohne Kontakt, Slots und Hülle in jeder Ladezone, echte Fahrereingabe geprüft ([Beleg](../evidence/P06-02.md)) |
+| Davor | **P06-01** – `P02Line` in die Halle `Tischlerei_West` verschoben, `LoadZone` je Hof, Annahmen bei Händler und Privatkunde, Lieferantenplätze mit Bedienmarken ([Beleg](../evidence/P06-01.md)) |
+| Naechster Umsetzungsschritt | **P06-03** – Anhängerplätze `Trailer.Slots.SlotA/SlotB` als `VehicleSlot`-Bestandsorte mit Kapazität 1 binden (Holzpaket oder Karton), Ladung sichtbar und befestigt aus dem Bestand darstellen. Danach P06-04/05 (Beladen/Entladen mit Zonenprüfung) |
 | Entscheidungen 18.11. (delegiert) | Hallentor: Laden nur auf dem Hof, Halle wird nicht befahren, Tor bleibt 4 m ([MAP](../design/MAP.md)). Oberfläche: eine Finish-Oberfläche in Hocker01 v1 ([PRODUCTION](../design/PRODUCTION.md)). P00-03: Zielprofil schwächeres Android-Phone 1600×720, Touch, Grafikstufe 1; bis zum echten Gerät Studio-Emulator als Stellvertreter, Checkbox bleibt offen ([P00](../plan/00-start.md)) |
 | Paralleles Paket | **P03-03** – Gebäude-Außenprobe lokal übernommen ([Beleg](../evidence/P03-03.md)), Abnahme und Roblox-Import stehen aus. **P03-05-Upload blockiert:** Der Nutzer muss unter `Assistant Settings > MCP Permissions` den Ordner `assets\p03-models\p03-05-import\exports` freigeben, das kann Claude nicht selbst tun. |
 | Planabschnitt | [Handbetrieb, P06](../plan/01-handbetrieb.md#p06--quad-ladung-und-echte-fahrten) |
@@ -23,6 +23,11 @@ Stand 18. November 2026. **P02, P04, P05 und P06-01 sind abgenommen.** Die Handl
 | Speicherung | TeamCreate **Version 52**, privater Stand, Studio im Edit-Modus. |
 | Wiederherstellbare Staende | Version 48 = Labels/CartonView/`FactoryLabels`, Version 49 = zusätzlich Line/WareView/LineView (Linie noch auf der Testfläche), Version 52 = Linie in der Halle plus P06-01-Zonen. |
 | Pruefbelege | [P02-06](../evidence/P02-06.md), [P02-05](../evidence/P02-05.md), [P02-04](../evidence/P02-04.md), [P02-03R](../evidence/P02-03R.md); Stadtentwurf [MAP](../design/MAP.md), Masse [DIMENSIONS](../design/DIMENSIONS.md) |
+
+## P06-02 abgenommen (18.11.)
+
+- [drive-p06-02-route.luau](../../tools/studio/drive-p06-02-route.luau): P02-05-Fahrmodell plus Hüllenprüfung gegen alle P06-01-Teile und Zonenprüfung je Halt. Fünf Etappen, 730 m Straße: 0 Hindernisse, 0 Kontakte, 0 Räder neben dem Belag, Slots A/B und 12/12 Hüllenecken in jeder Zone. Das Gespann parkt mittiger als im Freiraummodell angenommen.
+- Echte Fahrereingabe per simulierter Tastatur: E steigt auf, W/A ergeben 18,7 m Fahrt und 96° Linksdrehung, danach steht das Gespann aufrecht. [Beleg](../evidence/P06-02.md)
 
 ## P06-01 abgenommen (18.11.)
 
@@ -181,7 +186,7 @@ Stand 18. November 2026. **P02, P04, P05 und P06-01 sind abgenommen.** Die Handl
 
 **Naechste Schritte in Reihenfolge.**
 
-1. **P06**: Gespannfahrt zu den neuen Zonen (P06-02), feste Ladeplätze A/B als Bestandsorte (P06-03), Beladen und Entladen über die gemeinsamen Umbuchungen (P06-04/05), danach Fahrtnachweis und Wiederbeitritt. Spieler-Kaufbedienung am Lieferantenhof gehört zu P06-04.
+1. **P06**: feste Ladeplätze A/B als Bestandsorte (P06-03), Beladen und Entladen über die gemeinsamen Umbuchungen (P06-04/05), danach Fahrtnachweis und Wiederbeitritt. Spieler-Kaufbedienung am Lieferantenhof gehört zu P06-04.
 2. **P03-02/P03-05**: Nach ausstehender Exportordnerfreigabe die neutrale Kopie unter `assets/p03-models/p03-05-import/` einmalig hochladen/importieren; `label-p03-05-probe.luau` mit deren `labels.json` ausfuehren. 1-m-Koerper, Material/Normalen/Marker/Kollision und beide Sprachen pruefen. Aktive Saegeprozessdarstellung/Art bleiben offen, kein paralleler Studio-Schreiber. Fable 5.2 nicht als kostenlosen Dienst einplanen; Art-Vertrag beachten.
 3. Handgefahrene Runde mit dem Gespann als Gegenprobe zur automatischen Fahrt (in P06-08 per simulierter Eingabe möglich). P00-03 auf einem echten Gerät, sobald verfügbar.
 
