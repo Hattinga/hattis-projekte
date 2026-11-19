@@ -11,6 +11,7 @@ export type Binding = {
 	zones: {[string]: BasePart},
 	destinations: {[string]: Attachment},
 	unloads: {[string]: Unload}, -- current hand unload per carrier, until the next vehicle pickup
+	recoveryPoints: {[string]: Attachment}?,
 }
 
 local Loading = {}
@@ -88,7 +89,14 @@ function Loading.check(
 	end
 
 	if location.kind == "VehicleSlot" then
-		if not binding or binding.slots.mounts[location.id] ~= point then return "UNKNOWN_LOCATION", nil end
+		if not binding then return "UNKNOWN_LOCATION", nil end
+		local recoveryPoint = if binding.recoveryPoints then binding.recoveryPoints[location.id] else nil
+		if recoveryPoint == point then
+			if direction == "Take" or originId == location.id then return nil, nil end
+			return "WRONG_LOADING_ROUTE", nil
+		end
+		if binding.slots.mounts[location.id] ~= point then return "UNKNOWN_LOCATION", nil end
+		if recoveryPoint and (direction == "Take" or originId ~= location.id) then return "RECOVERY_REQUIRED", nil end
 		local zone, problem = parkedIn(binding, location.id, profile.ownerUserId)
 		if not zone then return problem, nil end
 		if direction == "Take" then
@@ -98,7 +106,7 @@ function Loading.check(
 			return nil, kind
 		elseif not table.find(location.acceptedStages, batch.stage) then
 			return "WRONG_STAGE", nil
-		elseif originId == location.id and unloadKind(zone, batch.stage) then
+		elseif originId == location.id then
 			return nil, nil -- Return the hand load to its own slot.
 		elseif not ((zone == "Supplier" and originKind == "Supplier" and batch.stage == "Holzpaket")
 			or (zone == "Workshop" and originKind == "FinishedStore" and batch.stage == "Karton")) then

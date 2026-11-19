@@ -19,6 +19,7 @@ local LOADING_MESSAGES: {[string]: string} = {
 	WRONG_STAGE = "Diese Ware passt nicht auf den Anhänger.",
 	WRONG_LOADING_ROUTE = "Bringe die Charge zur passenden Ablage oder zum reservierten Rückgabeplatz.",
 	NO_FREE_TARGET = "Das Ziel hat keinen freien Ablageplatz. Die Ware bleibt auf dem Anhänger.",
+	RECOVERY_REQUIRED = "Hole die Ware am Bergungsplatz ab und lade sie dort auf den Anhänger.",
 }
 
 local function rejected(code: string, message: string): Result
@@ -82,7 +83,7 @@ function HandMoves.interact(
 	if not location or not HAND_SLOTS[location.kind] or not carrier or carrier.kind ~= "Carrier" or not endpoint then
 		return rejected("UNKNOWN_LOCATION", "Dieser Übergabeplatz ist nicht verfügbar.")
 	end
-	local reachProblem = HandMoves.checkReach(player, endpoint, location.kind == "VehicleSlot")
+	local reachProblem = HandMoves.checkReach(player, endpoint, location.kind == "VehicleSlot" and endpoint.stand == nil)
 	if reachProblem then return reachProblem end
 	local held: State.Batch? = nil
 	local stock: State.Batch? = nil

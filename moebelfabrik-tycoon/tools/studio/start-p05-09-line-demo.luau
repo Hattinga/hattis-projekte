@@ -1,6 +1,6 @@
 --!strict
 -- Studio-play demo: P05-09 with marked test stock, or P06-04/05 with purchases and the trailer.
--- Transient: in-memory persistence, no DataStore, everything disappears with Stop.
+-- In memory by default. P0607ResumeScope opts into an isolated save in the private test place.
 assert(game.PlaceId == 79033653140107 and game.GameId == 10776116608, "Wrong test place")
 local rs = game:GetService("RunService")
 assert(rs:IsStudio() and rs:IsServer() and rs:IsRunning(), "Studio Server only")
@@ -15,11 +15,14 @@ local Line = require(factory.Line)
 local LineView = require(factory.LineView)
 local Purchases = require(factory.Purchases)
 local Trips = require(factory.Trips)
+local VehicleRecovery = require(factory.VehicleRecovery)
 local Vehicles = require(factory.Vehicles)
+local players = game:GetService("Players")
+local serverStorage = game:GetService("ServerStorage")
 local collection = game:GetService("CollectionService")
 local http = game:GetService("HttpService")
 local line = workspace.P02Line
-local player = game:GetService("Players"):GetPlayers()[1]
+local player = players:GetPlayers()[1]
 assert(player and player.UserId > 0 and player.Character and player.Character:FindFirstChild("HumanoidRootPart"),
 	"Wait for a signed-in Studio test player")
 local playerGui = player:FindFirstChildOfClass("PlayerGui")
@@ -29,6 +32,11 @@ local body = character:FindFirstChild("HumanoidRootPart") :: BasePart
 local hand = "Demo.Hand"
 local TTL = 600
 local logisticsEnabled = workspace:GetAttribute("P06LoadingDemo") == true
+local resumeScope = workspace:GetAttribute("P0607ResumeScope")
+if resumeScope ~= nil then
+	assert(logisticsEnabled and type(resumeScope) == "string" and #resumeScope == 38
+		and resumeScope:match("^P0607_%x+$"), "Expected an isolated P0607 test scope")
+end
 
 -- Registry from the physical fixtures: hand-reachable places, transfer points and signs.
 local stations = assert(Recipe.bind(line.Stations))
@@ -69,18 +77,27 @@ profile.locations[hand] = State.newLocation(hand, "Carrier", 1, {"Holzpaket", "B
 local loading: Loading.Binding? = nil
 local purchaseSlots: Purchases.Slots? = nil
 local trips: Trips.Tracker? = nil
+local resumeRig: VehicleRecovery.Rig? = nil
+local yards = workspace.CityGreybox.DeliveryYards
+local recoveryPoints: {[string]: Attachment} = {}
+local recoveryEndpoints: {[string]: HandMoves.Endpoint} = {}
+local recoveryYard: string? = nil
 if logisticsEnabled then
-	local vehicle = workspace.P02Vehicle
-	local yards = workspace.CityGreybox.DeliveryYards
+	if resumeScope then
+		resumeRig = VehicleRecovery.rig(workspace:FindFirstChild("P02Vehicle"), serverStorage.P0607VehicleTemplate)
+	end
+	local vehicle = if resumeRig then resumeRig.model else workspace.P02Vehicle
 	local pickup = yards.Holzlieferant.P05Pickup
 	local purchase = assert(Purchases.bind(pickup, line.Stores.Rohstofflager))
-	local vehicleSlots = assert(Vehicles.bind(vehicle, vehicle:GetAttribute("VehicleId") :: string))
+	local vehicleSlots = if resumeRig then resumeRig.slots else assert(Vehicles.bind(vehicle, vehicle:GetAttribute("VehicleId") :: string))
 	local chassis = vehicle.Quad.Chassis :: BasePart
 	loading = {vehicle = vehicle, slots = vehicleSlots, chassis = chassis, destinations = places.points, unloads = {},
+		recoveryPoints = recoveryPoints,
 		zones = {Supplier = yards.Holzlieferant.LoadZone.Volume, Workshop = yards.Tischlerei_West.LoadZone.Volume}}
 	vehicle:SetAttribute("OwnerUserId", player.UserId)
 	Vehicles.useServerPhysics(vehicle)
 	trips = Trips.new({vehicle = vehicle, slots = vehicleSlots, chassis = chassis,
+		recoveryPoints = recoveryPoints,
 		zones = {Workshop = loading.zones.Workshop, Dealer = yards.Moebelhandel.LoadZone.Volume,
 			Private = yards.Privatkunden.LoadZone.Volume}})
 	purchaseSlots = purchase.slots
@@ -106,7 +123,7 @@ else
 	end
 end
 local stored: any = nil
-local backend = {
+local backend: Persistence.Backend = {
 	read = function(_: string): any return stored end,
 	update = function(_: string, transform: (any) -> any): any
 		local proposed = transform(stored)
@@ -114,11 +131,30 @@ local backend = {
 		return proposed
 	end,
 }
+if resumeScope then
+	local dataStore = game:GetService("DataStoreService"):GetDataStore("FactoryP0607_Test", resumeScope :: string)
+	backend = Persistence.dataStore(dataStore)
+end
 local controller = Persistence.new(player.UserId, backend)
-assert(controller.load("demo/" .. http:GenerateGUID(false), TTL, function(): any
+local loaded = controller.load("demo/" .. http:GenerateGUID(false), TTL, function(): any
 	return {profileVersion = 1, state = profile, progress = {version = 1, selectedRecipeId = "Hocker01", selectedRecipeVersion = 1}}
-end).ok)
+end)
+assert(loaded.ok, loaded.code)
 local function confirmed(): any return controller.snapshot().confirmed end
+if resumeRig then
+	local active, yardName = VehicleRecovery.restore(controller.snapshot(), player.UserId, os.time(), resumeRig,
+		yards, places.points, body, hand)
+	if not active then
+		controller.release()
+		error("Restore failed: " .. yardName)
+	end
+	recoveryYard = yardName
+	for id, endpoint in active do
+		recoveryEndpoints[id] = {point = endpoint.point, stand = endpoint.stand}
+		recoveryPoints[id] = endpoint.point
+		places.points[id] = endpoint.point
+	end
+end
 
 local demo = Instance.new("Folder")
 demo.Name = "P0509LineDemo"
@@ -147,6 +183,7 @@ local nextTarget = {Holzpaket = "Säge · Eingang", Bausatz = "Montagebank · Ei
 local prompts: {[string]: ProximityPrompt} = {}
 local lastMessage = if loading then "Beim Holzlieferanten mit R kaufen und mit E verladen."
 	else "Testholz am Rohstofflager mit E aufnehmen."
+if next(recoveryPoints) then lastMessage = "Fracht am Bergungsplatz abholen und auf den passenden Anhängerplatz laden." end
 local function heldBatch(state: any): any
 	for _, batch in state.batches do if batch.locationId == hand then return batch end end
 	return nil
@@ -196,7 +233,9 @@ local function render()
 end
 
 local busy = false
-local function interact(user: Player, id: string, direction: "Take" | "Put"): HandMoves.Result
+local closing = false
+local function interact(user: Player, id: string, direction: "Take" | "Put", fromRecovery: boolean?): HandMoves.Result
+	if closing then return {ok = false, code = "NOT_READY", message = "Spielstand wird geschlossen."} end
 	assert(not busy, "Interaction already running")
 	busy = true
 	local ran, outcome = pcall(function(): HandMoves.Result
@@ -206,13 +245,20 @@ local function interact(user: Player, id: string, direction: "Take" | "Put"): Ha
 			return {ok = false, code = "NOT_READY", message = "Speichern unklar – bitte warten."}
 		end
 		local store = Transfers.new(current.data.state)
-		local check = HandMoves.interact(store, user, true, hand, endpoints, id, direction, http:GenerateGUID(false), os.time(), loading)
+		local registry = if fromRecovery then recoveryEndpoints else endpoints
+		local check = HandMoves.interact(store, user, true, hand, registry, id, direction, http:GenerateGUID(false), os.time(), loading)
 		if check.ok then
 			local proposal = current.data
 			proposal.state = store.profile
 			local saved = controller.save(proposal, TTL)
 			if not saved.ok then
 				check = {ok = false, code = saved.code, message = "Speichern unklar – bitte warten."}
+			elseif not fromRecovery and direction == "Put" and recoveryPoints[id] then
+				recoveryPoints[id] = nil
+				recoveryEndpoints[id] = nil
+				places.points[id] = nil
+				local prompt = prompts["Recovery:" .. id]
+				if prompt then prompt:Destroy(); prompts["Recovery:" .. id] = nil end
 			end
 		end
 		return check
@@ -226,25 +272,27 @@ local function interact(user: Player, id: string, direction: "Take" | "Put"): Ha
 end
 
 local last = -math.huge
-for id, endpoint in endpoints do
+local function addPrompt(id: string, endpoint: HandMoves.Endpoint, fromRecovery: boolean)
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.Name = "P0509Line"
-	prompt.ObjectText = names[id]
+	prompt.ObjectText = if fromRecovery then "Bergung · Platz " .. id:sub(-1) else names[id]
 	prompt.ActionText = "Aufnehmen"
 	prompt.MaxActivationDistance = 6
-	local vehicleSlot = loading ~= nil and loading.slots.mounts[id] ~= nil
+	local vehicleSlot = not fromRecovery and loading ~= nil and loading.slots.mounts[id] ~= nil
 	prompt.RequiresLineOfSight = not vehicleSlot
 	if vehicleSlot then prompt:SetAttribute("TrailerSlot", true) end
 	prompt.KeyboardKeyCode = Enum.KeyCode.E
 	prompt.Parent = endpoint.point
 	collection:AddTag(prompt, "P0509FacingPrompt")
-	prompts[id] = prompt
+	prompts[if fromRecovery then "Recovery:" .. id else id] = prompt
 	prompt.Triggered:Connect(function(user)
-		if user ~= player or busy or os.clock() - last < 0.4 then return end
+		if user ~= player or busy or closing or os.clock() - last < 0.4 then return end
 		last = os.clock()
-		interact(user, id, if heldBatch(confirmed().data.state) then "Put" else "Take")
+		interact(user, id, if heldBatch(confirmed().data.state) then "Put" else "Take", fromRecovery)
 	end)
 end
+for id, endpoint in endpoints do addPrompt(id, endpoint, false) end
+for id, endpoint in recoveryEndpoints do addPrompt(id, endpoint, true) end
 
 if purchaseSlots then
 	local slots = purchaseSlots
@@ -253,7 +301,7 @@ if purchaseSlots then
 		SUPPLIER_FULL = "Beim Lieferanten ist kein Abholplatz frei.",
 		RAW_STORE_FULL = "Im Rohstofflager kann kein Platz für die Lieferung reserviert werden."}
 	local function buy(user: Player): HandMoves.Result
-		if user ~= player or busy then return {ok = false, code = "NOT_READY", message = "Kauf gerade nicht verfügbar."} end
+		if user ~= player or busy or closing then return {ok = false, code = "NOT_READY", message = "Kauf gerade nicht verfügbar."} end
 		local reachProblem = HandMoves.checkReach(user, endpoint)
 		if reachProblem then
 			lastMessage = reachProblem.message
@@ -341,7 +389,7 @@ local accumulated = 0
 local ticks = 0
 rs.Heartbeat:Connect(function(dt: number)
 	accumulated += dt
-	if accumulated < 0.25 or busy or not demo.Parent then return end
+	if accumulated < 0.25 or busy or closing or not demo.Parent then return end
 	accumulated = 0
 	busy = true
 	local ran, problem = pcall(function()
@@ -362,9 +410,9 @@ render()
 -- Server-only hook for the automated proof. Players use the native prompts.
 local hook = Instance.new("BindableFunction")
 hook.Name = "P0509LineTest"
-hook.OnInvoke = function(id: string, direction: "Take" | "Put"): any
+hook.OnInvoke = function(id: string, direction: "Take" | "Put", fromRecovery: boolean?): any
 	while busy do task.wait() end
-	local response = interact(player, id, direction)
+	local response = interact(player, id, direction, fromRecovery)
 	local state = confirmed().data.state
 	return {result = response, revision = state.revision, held = heldBatch(state), batches = state.batches,
 		reservations = state.reservations, banner = banner.Text, ticks = ticks}
@@ -383,10 +431,36 @@ reader.OnInvoke = function(): any
 	for _, view in demo.Wares:GetChildren() do
 		views[view.Name] = {signature = view:GetAttribute("Signature"), carried = view:FindFirstChildWhichIsA("WeldConstraint", true) ~= nil}
 	end
+	local arrivals: {[string]: Trips.Arrival} = {}
+	if trips then
+		local snapshot = controller.snapshot()
+		if snapshot.status == "Confirmed" and not snapshot.inFlight then
+			for _, id in trips.binding.slots.slotIds do
+				arrivals[id] = Trips.arrival(trips, state, id, "Dealer", os.clock())
+					or Trips.arrival(trips, state, id, "Private", os.clock())
+			end
+		end
+	end
 	return {batches = state.batches, reservations = state.reservations, money = state.money, revision = state.revision, valid = State.validate(state),
-		banner = banner.Text, ticks = ticks, signs = signs, views = views}
+		banner = banner.Text, ticks = ticks, signs = signs, views = views, recoverySlots = next(recoveryPoints) ~= nil, arrivals = arrivals}
 end
 reader.Parent = game:GetService("ServerStorage")
+if resumeRig then
+	local function release(): Persistence.Result
+		if closing then return controller.snapshot() end
+		closing = true
+		while busy do task.wait() end
+		return controller.release()
+	end
+	local releaseHook = Instance.new("BindableFunction")
+	releaseHook.Name = "P0607Release"
+	releaseHook.OnInvoke = release
+	releaseHook.Parent = serverStorage
+	players.PlayerRemoving:Connect(function(leaving)
+		if leaving == player then release() end
+	end)
+	game:BindToClose(function() release() end)
+end
 local entrance = line.Route:FindFirstChild("01_Eingang")
 if entrance and entrance:IsA("BasePart") then
 	local position = entrance.Position + Vector3.new(0, 3, 0)
@@ -395,5 +469,5 @@ if entrance and entrance:IsA("BasePart") then
 end
 local promptCount = 0
 for _ in prompts do promptCount += 1 end
-return {demo = "P0509LineDemo", playerReady = true, prompts = promptCount, storage = false,
-	logistics = logisticsEnabled, testStock = if loading then {} else {"Testholz-1", "Testholz-2"}}
+return {demo = "P0509LineDemo", playerReady = true, prompts = promptCount, storage = resumeRig ~= nil,
+	logistics = logisticsEnabled, recoveryYard = recoveryYard, testStock = if loading then {} else {"Testholz-1", "Testholz-2"}}

@@ -3,7 +3,10 @@
 local State = require(script.Parent.State)
 local Vehicles = require(script.Parent.Vehicles)
 
-export type Binding = {vehicle: Model, chassis: BasePart, slots: Vehicles.Binding, zones: {[string]: BasePart}}
+export type Binding = {
+	vehicle: Model, chassis: BasePart, slots: Vehicles.Binding, zones: {[string]: BasePart},
+	recoveryPoints: {[string]: Attachment}?,
+}
 export type Arrival = {
 	ownerUserId: number, vehicleId: string, slotId: string, batchId: string, destination: string,
 	departedAt: number, arrivedAt: number, travelledStuds: number,
@@ -56,7 +59,8 @@ function Trips.sample(tracker: Tracker, profile: State.Profile, now: number)
 	for _, slotId in binding.slots.slotIds do
 		local batch = profile.batches[cargo[slotId]]
 		local trace = tracker.traces[slotId]
-		if not batch or batch.stage ~= "Karton" or batch.ownerUserId ~= owner then
+		if not batch or batch.stage ~= "Karton" or batch.ownerUserId ~= owner
+			or (binding.recoveryPoints and binding.recoveryPoints[slotId]) then
 			tracker.traces[slotId] = nil
 			continue
 		end
@@ -95,6 +99,7 @@ function Trips.arrival(tracker: Tracker, profile: State.Profile, slotId: string,
 	local batch = profile.batches[arrival.batchId]
 	local binding = tracker.binding
 	if not batch or batch.stage ~= "Karton" or batch.locationId ~= slotId or batch.ownerUserId ~= arrival.ownerUserId
+		or (binding.recoveryPoints and binding.recoveryPoints[slotId])
 		or binding.vehicle:GetAttribute("OwnerUserId") ~= arrival.ownerUserId then return nil end
 	local still, serverOwned = Vehicles.motion(binding.vehicle, binding.slots, binding.chassis)
 	if still and serverOwned and Vehicles.zone(binding.slots, binding.zones) == destination then

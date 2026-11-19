@@ -1,12 +1,12 @@
 # Projektstatus
 
-Stand 19. November 2026. **P02, P04, P05 und P06-01 bis P06-06 sind abgenommen.** Die P06-Studio-Demo verbindet Holzkauf, physische Übergaben und serverseitige Fahrtnachweise mit demselben Bestand. **Als Nächstes folgt P06-07 (Fahrzeugladung nach Wiederbeitritt und physische Bergung).**
+Stand 19. November 2026. **P02, P04, P05 und P06-01 bis P06-07 sind abgenommen.** Fahrzeugladung erscheint nach Wiederbeitritt am Anhänger oder am zugeordneten Bergungsplatz. **Als Nächstes folgt P06-08 (zusammenhängende Runde vom Holzkauf bis zur Käuferzone).**
 
 | Feld | Aktuell |
 |---|---|
-| Letzter abgeschlossener Schritt | **P06-06** – Server bestätigt die Fahrt mit zwei Kartons zum Händler und Privatkunden ([Beleg](../evidence/P06-06.md)) |
-| Davor | **P06-04/05** – Kauf mit R, Verladen und Entladen mit E, Holz auf den reservierten Rohstoffplatz ([Beleg](../evidence/P06-04-05.md)) |
-| Naechster Umsetzungsschritt | **P06-07** – bestätigte Ladung beim Wiederbeitritt an den Anhängerplätzen oder an einer physischen Bergungsstelle darstellen |
+| Letzter abgeschlossener Schritt | **P06-07** – Ladung und Rückgabeplatz über drei Serverstarts wiederhergestellt ([Beleg](../evidence/P06-07.md)) |
+| Davor | **P06-06** – Server bestätigt die Fahrt mit zwei Kartons zum Händler und Privatkunden ([Beleg](../evidence/P06-06.md)) |
+| Naechster Umsetzungsschritt | **P06-08** – dieselbe Charge als Holz zur Werkstatt und als verpackten Hocker zur Käuferzone verfolgen |
 | Entscheidungen 18.11. (delegiert) | Hallentor: Laden nur auf dem Hof, Halle wird nicht befahren, Tor bleibt 4 m ([MAP](../design/MAP.md)). Oberfläche: eine Finish-Oberfläche in Hocker01 v1 ([PRODUCTION](../design/PRODUCTION.md)). P00-03: Zielprofil schwächeres Android-Phone 1600×720, Touch, Grafikstufe 1; bis zum echten Gerät Studio-Emulator als Stellvertreter, Checkbox bleibt offen ([P00](../plan/00-start.md)) |
 | Paralleles Paket | **P03-03** – Gebäude-Außenprobe lokal übernommen ([Beleg](../evidence/P03-03.md)), Abnahme und Roblox-Import stehen aus. **P03-05-Upload blockiert:** Der Nutzer muss unter `Assistant Settings > MCP Permissions` den Ordner `assets\p03-models\p03-05-import\exports` freigeben, das kann Claude nicht selbst tun. |
 | Planabschnitt | [Handbetrieb, P06](../plan/01-handbetrieb.md#p06--quad-ladung-und-echte-fahrten) |
@@ -20,9 +20,13 @@ Stand 19. November 2026. **P02, P04, P05 und P06-01 bis P06-06 sind abgenommen.*
 | Vergleichsobjekt | `Workspace.FableWorkshop`, Asset `106051543998570`; kein vorgesehenes Spielgebaeude |
 | Technikproben | `Workspace.P02Greybox` und `Workspace.P02Line`; Prueftraeger in `ServerStorage.P02CarryProbe`, nicht im Spielstart |
 | Arbeitsbranch | `work/p00-studio-import`; jeder Abschluss wird gepusht (Nutzerauftrag vom 18.11.: fortlaufend committen und pushen) |
-| Speicherung | TeamCreate **Version 60**, privater Stand, Studio im Edit-Modus. |
-| Wiederherstellbare Staende | Version 53 = Fahrzeug-Slot-Punkte, Version 57 = getestete Lademodule, Version 60 = Fahrtnachweis und Serverphysik. |
+| Speicherung | TeamCreate **Version 61**, privater Stand, Studio im Edit-Modus. |
+| Wiederherstellbare Staende | Version 57 = Lademodule, Version 60 = Fahrtnachweis, Version 61 = Fahrzeugwiederherstellung, Ersatzgespann und Bergungsplätze. |
 | Pruefbelege | [P02-06](../evidence/P02-06.md), [P02-05](../evidence/P02-05.md), [P02-04](../evidence/P02-04.md), [P02-03R](../evidence/P02-03R.md); Stadtentwurf [MAP](../design/MAP.md), Masse [DIMENSIONS](../design/DIMENSIONS.md) |
+
+## P06-07 abgenommen (19.11.)
+
+- [VehicleRecovery](../../src/server/VehicleRecovery.luau) verwendet bestätigte Ladeplatz-IDs und startet bezahltes Holz am Lieferantenhof. Bei fehlender Auflage zeigt die Demo Ware am exklusiven Bergungsplatz, bis sie der Spieler auf das Ersatzgespann lädt. Drei echte Backend-Rundläufe in getrennten Studio-Servern bestanden. [Beleg](../evidence/P06-07.md)
 
 ## P06-06 abgenommen (19.11.)
 

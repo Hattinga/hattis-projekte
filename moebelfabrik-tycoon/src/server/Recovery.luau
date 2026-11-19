@@ -63,8 +63,14 @@ function Recovery.plan(
 		local point = originalPoints[locationId]
 		if point and not bind(locationId, point) then return rejected("POINT_CONFLICT") end
 	end
-	for locationId in state.reservations do
-		if originalPoints[locationId] == nil then return rejected("PROMISED_POINT_MISSING") end
+	for locationId, reservation in state.reservations do
+		if originalPoints[locationId] then continue end
+		-- The alternate is the same physical return slot for a recovered vehicle, never a Delivery destination.
+		local alternate = recoveryPoints[locationId]
+		if reservation.kind ~= "Return" or state.locations[locationId].kind ~= "VehicleSlot" or not alternate then
+			return rejected("PROMISED_POINT_MISSING")
+		end
+		if not bind(locationId, alternate) then return rejected("POINT_CONFLICT") end
 	end
 	for batchId, batch in state.batches do
 		local locationId = batch.locationId
