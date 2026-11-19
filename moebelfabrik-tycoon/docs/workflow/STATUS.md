@@ -1,15 +1,15 @@
 # Projektstatus
 
-Stand 19. November 2026. **P02, P04, P05 und P06-01 bis P06-07 sind abgenommen.** Fahrzeugladung erscheint nach Wiederbeitritt am Anhänger oder am zugeordneten Bergungsplatz. **Als Nächstes folgt P06-08 (zusammenhängende Runde vom Holzkauf bis zur Käuferzone).**
+Stand 19. November 2026. **P02, P04, P05 und P06 sind abgenommen.** Dieselbe Charge fuhr als Holz zur Werkstatt, wurde zum Karton verarbeitet und erreichte per Fahrt den Händler. **Als Nächstes folgt P07-01, die Reservierung der bestätigten Fahrzeugladung für die Käuferübergabe.**
 
 | Feld | Aktuell |
 |---|---|
-| Letzter abgeschlossener Schritt | **P06-07** – Ladung und Rückgabeplatz über drei Serverstarts wiederhergestellt ([Beleg](../evidence/P06-07.md)) |
-| Davor | **P06-06** – Server bestätigt die Fahrt mit zwei Kartons zum Händler und Privatkunden ([Beleg](../evidence/P06-06.md)) |
-| Naechster Umsetzungsschritt | **P06-08** – dieselbe Charge als Holz zur Werkstatt und als verpackten Hocker zur Käuferzone verfolgen |
+| Letzter abgeschlossener Schritt | **P06-08** – durchgehende Runde Lieferant → Werkstatt → Händler mit einer Charge, 434 m, bestätigte Käuferankunft ([Beleg](../evidence/P06-08.md)) |
+| Davor | **P06-07** – Ladung und Rückgabeplatz über drei Serverstarts wiederhergestellt ([Beleg](../evidence/P06-07.md)) |
+| Naechster Umsetzungsschritt | **P07-01** – nur die bestätigte Menge aus passenden Fahrzeugladeplätzen reservieren und Käufer, Ladezone und Fahrtzustand serverseitig prüfen. Entwurf und Einbauhinweise: [Übergabe P07](HANDOFF-2026-11-19.md#p07--entwurf-für-die-nächste-phase) |
 | Entscheidungen 18.11. (delegiert) | Hallentor: Laden nur auf dem Hof, Halle wird nicht befahren, Tor bleibt 4 m ([MAP](../design/MAP.md)). Oberfläche: eine Finish-Oberfläche in Hocker01 v1 ([PRODUCTION](../design/PRODUCTION.md)). P00-03: Zielprofil schwächeres Android-Phone 1600×720, Touch, Grafikstufe 1; bis zum echten Gerät Studio-Emulator als Stellvertreter, Checkbox bleibt offen ([P00](../plan/00-start.md)) |
-| Paralleles Paket | **P03-03** – Gebäude-Außenprobe lokal übernommen ([Beleg](../evidence/P03-03.md)), Abnahme und Roblox-Import stehen aus. **P03-05-Upload blockiert:** Der Nutzer muss unter `Assistant Settings > MCP Permissions` den Ordner `assets\p03-models\p03-05-import\exports` freigeben, das kann Claude nicht selbst tun. |
-| Planabschnitt | [Handbetrieb, P06](../plan/01-handbetrieb.md#p06--quad-ladung-und-echte-fahrten) |
+| Paralleles Paket | **P03-05** – alle fünf freigegebenen FBX hochgeladen, in Studio eingefügt und kalibriert. `ServerStorage.P03ArtProbe` enthält die Prüfinstanzen. Beschriftung und Spielkamera bleiben offen. **P03-03** – die Gebäudeprobe benötigt eine eigene Upload-Freigabe. [Übergabe](HANDOFF-2026-11-19.md#p03-05--fünf-assets-importiert-und-kalibriert) |
+| Planabschnitt | [Handbetrieb, P07](../plan/01-handbetrieb.md#p07--händler-privatverkauf-und-kompletter-kreislauf) |
 | Handlinie | `Workspace.P02Line` steht seit P06-01 in der Halle `CityGreybox.Buildings.Tischlerei_West` (Pivot 169,29/3,85/376,50 Studs). Die alten Bodenstreifen liegen in `ServerStorage.P02LineArchive`. Proben und Demo binden über Namen. |
 | Zustaendigkeit | Lead integriert gemeinsame Dateien/Studio; Blender-Agent lieferte getrenntes P03-02-Paket, Lead hat Quelle/Exporte/Ansichten uebernommen. Kein paralleler Studio-Schreiber |
 | Aktueller Test-Place | Furniture Factory Tycoon, Place `79033653140107`, Universe `10776116608`, privat |
@@ -20,9 +20,14 @@ Stand 19. November 2026. **P02, P04, P05 und P06-01 bis P06-07 sind abgenommen.*
 | Vergleichsobjekt | `Workspace.FableWorkshop`, Asset `106051543998570`; kein vorgesehenes Spielgebaeude |
 | Technikproben | `Workspace.P02Greybox` und `Workspace.P02Line`; Prueftraeger in `ServerStorage.P02CarryProbe`, nicht im Spielstart |
 | Arbeitsbranch | `work/p00-studio-import`; jeder Abschluss wird gepusht (Nutzerauftrag vom 18.11.: fortlaufend committen und pushen) |
-| Speicherung | TeamCreate **Version 61**, privater Stand, Studio im Edit-Modus. |
-| Wiederherstellbare Staende | Version 57 = Lademodule, Version 60 = Fahrtnachweis, Version 61 = Fahrzeugwiederherstellung, Ersatzgespann und Bergungsplätze. |
+| Speicherung | TeamCreate **Version 67**, privater Stand, Studio im Edit-Modus. P06-08 lief nur in Play-Sitzungen und erzeugte keine neue Version. [Übergabe an Claude](HANDOFF-2026-11-19.md) |
+| Wiederherstellbare Staende | Version 60 = Fahrtnachweis, Version 61 = Fahrzeugwiederherstellung, Version 67 = korrigierte Bergungsmarker, sichtbare Gurte und kalibrierte Art-Prüfinstanzen. |
 | Pruefbelege | [P02-06](../evidence/P02-06.md), [P02-05](../evidence/P02-05.md), [P02-04](../evidence/P02-04.md), [P02-03R](../evidence/P02-03R.md); Stadtentwurf [MAP](../design/MAP.md), Masse [DIMENSIONS](../design/DIMENSIONS.md) |
+
+## P06-08 und Phase P06 abgenommen (19.11.)
+
+- [test-p06-08-route.luau](../../tools/studio/test-p06-08-route.luau) begleitete eine Charge über drei echte Fahrten: Holz auf A zur Werkstatt, Verarbeitung in allen vier Stationen, dann der Karton auf B zum Händler. Der Server bestätigte die Ankunft. Revision 41, Guthaben 120. Die Fahrten verliefen ohne Kontakt, mit 12 von 12 Hüllenecken in jeder Zone und einem Frachtversatz unter 0,0002 Studs. [Beleg](../evidence/P06-08.md)
+- Der sichtbare Gurt aus [LineView](../../src/server/LineView.luau) bestand die P06-03-Regression. Die P03-04-Art-Abnahme ist damit noch nicht abgeschlossen. Dafür fehlen das Kartonbild aus der Spielkamera und der zusammengeführte Maß- und Torbeleg.
 
 ## P06-07 abgenommen (19.11.)
 

@@ -5,6 +5,7 @@
 -- Result: JSON in ServerStorage.P0602Result (poll until status is "done" or "aborted").
 local S=25/7
 local Http=game:GetService("HttpService")
+local serverStorage=game:GetService("ServerStorage")
 local city=workspace.CityGreybox;local origin=city:GetAttribute("OriginStuds")
 local root=workspace.P02Vehicle;local quad,trailer=root.Quad,root.Trailer
 local ch,deck=quad.Chassis,trailer.Deck
@@ -15,6 +16,8 @@ local function toLocal(v) return Vector2.new((v.X-origin.X)/S,(v.Z-origin.Z)/S) 
 -- P06-01 items: made queryable for this Play session only.
 local items={}
 for _,yard in city.DeliveryYards:GetChildren() do
+	local recovery=yard:FindFirstChild("VehicleRecovery")
+	if recovery then for _,point in recovery:GetDescendants() do if point:IsA("BasePart") then table.insert(items,point) end end end
 	local acc=yard:FindFirstChild("Annahme")
 	if acc then for _,p in acc:GetChildren() do if p:IsA("BasePart") then table.insert(items,p) end end end
 	local pick=yard:FindFirstChild("P05Pickup")
@@ -124,9 +127,12 @@ local function zoneCheck(target)
 end
 local dest={}
 for _,m in city.Destinations:GetChildren() do local lp=m:GetAttribute("LocalPosition");dest[m.Name]=Vector2.new(lp.X,lp.Z) end
-local order=if workspace:GetAttribute("P0606TripProbe") then {"Tischlerei_West","Moebelhandel","Privatkunden"}
+local handoff=serverStorage:FindFirstChild("P0608Stop")
+local order=if handoff then {"Tischlerei_West","Holzlieferant","Tischlerei_West","Moebelhandel"}
+	elseif workspace:GetAttribute("P0606TripProbe") then {"Tischlerei_West","Moebelhandel","Privatkunden"}
 	else {"Tischlerei_West","Holzlieferant","Tischlerei_West","Moebelhandel","Privatkunden","Tischlerei_West"}
 local result={status="running",legs={}}
+store.Value=Http:JSONEncode(result)
 task.spawn(function()
 	task.wait(2)
 	for i=1,#order-1 do
@@ -136,6 +142,13 @@ task.spawn(function()
 		st.zone=zoneCheck(order[i+1])
 		table.insert(result.legs,st);store.Value=Http:JSONEncode(result)
 		if st.stuckAt or st.timeout then result.status="aborted";store.Value=Http:JSONEncode(result);return end
+		if handoff and handoff:IsA("BindableFunction") then
+			local ok,approved=pcall(handoff.Invoke,handoff,i,st)
+			if not ok or approved~=true then
+				result.status="aborted";st.handoffError=if ok then "Handoff refused" else tostring(approved)
+				store.Value=Http:JSONEncode(result);return
+			end
+		end
 	end
 	result.status="done";store.Value=Http:JSONEncode(result)
 end)

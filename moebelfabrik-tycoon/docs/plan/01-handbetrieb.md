@@ -80,7 +80,7 @@
 - [x] **P06-05** Entladen am passenden physischen Ziel mit Prüfung von Fracht, Fahrzeug, Eigentümer und Ladezone umsetzen. Ein volles Ziel lässt die Ware auf dem Fahrzeug.
 - [x] **P06-06** Für die spätere Verkaufsfreigabe serverseitig beobachtbare Fahrtmerkmale und bestätigte Ankunft erfassen. Eine bloße Berührung oder behauptete Zielposition genügt nicht.
 - [x] **P06-07** Fahrzeugladung beim Wiederbeitritt gemeinsam mit dem übrigen Bestand wiederherstellen. Einen physischen Bergungs- und Abholweg für technisch nicht wiederherstellbare Positionen vorsehen.
-- [ ] **P06-08** Die gesamte Fahrt mit Holz zur Werkstatt und einem Hockerkarton bis zur Käuferzone prüfen. Die eigentliche Verkaufsabrechnung folgt in P07.
+- [x] **P06-08** Die gesamte Fahrt mit Holz zur Werkstatt und einem Hockerkarton bis zur Käuferzone prüfen. Die eigentliche Verkaufsabrechnung folgt in P07.
 
 **Abnahme** Rohstoffe und Fertigware erreichen ihr Ziel über echte Fahrten. Sichtbare Ladung und bestätigte Ladeplätze stimmen überein. Doppeltes Entladen, falsche Zone, zu große Ladung und Wiederbeitritt führen zu eindeutigen, bestandsneutralen Ergebnissen.
 
@@ -97,6 +97,8 @@
 [P06-06-Beleg](../evidence/P06-06.md): Zwei Kartons erreichten Händler und Privatkunden über 335,57 m durchgehende Fahrt. Der Server bestätigte die jeweils aktuelle Käuferzone je Ladeplatz und Charge. Ein Positionssprung blieb ohne Nachweis. Private Version 60.
 
 [P06-07-Beleg](../evidence/P06-07.md): Drei frische Studio-Server mit demselben isolierten Testprofil stellten Ladeplätze, Ware am Lieferanten und reservierten Rückgabeplatz wieder her. Eine fehlende Anhängerauflage führte zum physischen Bergungsplatz. Private Version 61.
+
+[P06-08-Beleg](../evidence/P06-08.md): Eine Charge fuhr als Holz auf A vom Lieferanten zur Werkstatt, durchlief alle vier Stationen und erreichte als Karton auf B den Händler. Die Strecke betrug 434 m, ohne Kontakt und mit bestätigter Käuferankunft. Revision und Guthaben blieben bei jeder Fahrt unverändert. Fehlerfälle über P06-03 bis P06-07. **P06 ist abgenommen.** Private Version 67.
 
 ## P07 · Händler, Privatverkauf und kompletter Kreislauf
 

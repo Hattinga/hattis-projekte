@@ -43,7 +43,7 @@ for _, yard in sources do
 		local offset = along * (if i == 1 then -0.85 else 0.85)
 		local pad = part(root, name, offset + edge * 5.35 + Vector3.new(0, 0.04, 0),
 			Vector3.new(0.78, 0.08, 0.68), Color3.fromRGB(72, 119, 163))
-		part(stands, name, offset + edge * 4.45 + Vector3.new(0, 0.01, 0),
+		part(stands, name, offset + edge * 5.8 + Vector3.new(0, 0.01, 0),
 			Vector3.new(0.28, 0.02, 0.28), Color3.fromRGB(240, 200, 40))
 		local point = Instance.new("Attachment")
 		point.Name = "Transfer"

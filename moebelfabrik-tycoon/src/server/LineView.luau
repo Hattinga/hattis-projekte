@@ -44,6 +44,33 @@ local function holdOnCarrier(view: Model, carrier: BasePart)
 	end
 end
 
+local function addTrailerStrap(view: Model, support: CFrame, stage: State.Stage)
+	if stage ~= "Holzpaket" and stage ~= "Karton" then return end
+	local halfWidth = if stage == "Holzpaket" then 0.30 else 0.23
+	local top = if stage == "Holzpaket" then 0.15 else 0.496
+	local thickness, width, offset = 0.014, 0.048, 0.085
+	local function piece(name: string, size: Vector3, across: number, height: number, buckle: boolean?)
+		local part = Instance.new("Part")
+		part.Name = name
+		part.Size = size * SCALE
+		part.CFrame = support * CFrame.new(Vector3.new(across, height, offset) * SCALE)
+		part.Anchored = true
+		part.Massless = true
+		part.CanCollide = false
+		part.CanTouch = false
+		part.CanQuery = false
+		part.CastShadow = false
+		part.Color = if buckle then Color3.fromRGB(143, 149, 154) else Color3.fromRGB(39, 61, 90)
+		part.Material = if buckle then Enum.Material.Metal else Enum.Material.Fabric
+		part.Parent = view
+	end
+	local edge = halfWidth + thickness / 2
+	piece("LoadStrapTop", Vector3.new(2 * (halfWidth + thickness), thickness, width), 0, top + thickness / 2)
+	piece("LoadStrapLeft", Vector3.new(thickness, top, width), -edge, top / 2)
+	piece("LoadStrapRight", Vector3.new(thickness, top, width), edge, top / 2)
+	piece("LoadStrapBuckle", Vector3.new(thickness, 0.055, 0.061), halfWidth + thickness, top / 2, true)
+end
+
 -- Keeps one ware view per batch at its confirmed location; rebuilds only when stage or place changed.
 function LineView.syncWares(root: Instance, state: State.Profile, places: Places): {[string]: Model}
 	local wares = folder(root, "Wares")
@@ -67,6 +94,7 @@ function LineView.syncWares(root: Instance, state: State.Profile, places: Places
 			created.Name = batch.id
 			created:SetAttribute("Signature", signature)
 			if not point and mount then
+				addTrailerStrap(created, support, batch.stage)
 				holdOnCarrier(created, mount.Parent :: BasePart)
 			elseif not point and carrier then
 				holdOnCarrier(created, carrier)
