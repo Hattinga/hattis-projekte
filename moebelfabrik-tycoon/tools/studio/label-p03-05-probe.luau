@@ -26,16 +26,23 @@ return function(stage: Model, metadata: any): any
 	assert(stage.Name=="P03ArtProbe" and metadata.word_geometry_in_fbx==false,"Wrong import metadata")
 	local service=game:GetService("LocalizationService")
 	local existing=service:FindFirstChild("FactoryLabels")
-	assert(not existing or (existing:IsA("LocalizationTable") and existing:GetAttribute("OwnerTask")=="P03-05"),
-		"Existing localization table has another owner")
+	assert(not existing or existing:IsA("LocalizationTable"), "FactoryLabels has an incompatible type")
 	local localization=(existing or Instance.new("LocalizationTable")) :: LocalizationTable
 	localization.Name="FactoryLabels"
 	localization.SourceLocaleId="en-us"
-	localization:SetAttribute("OwnerTask","P03-05")
-	local entries={}
+	local entries=localization:GetEntries()
+	local existingKeys={}
+	for _,entry in entries do
+		if entry.Key then existingKeys[entry.Key]=entry end
+	end
 	for key,words in TRANSLATIONS do
-		table.insert(entries,{Key=key,Source=words.english,Context="",Values={
-			["en-us"]=words.english,["de-de"]=words.german,["de"]=words.german}})
+		local found=existingKeys[key]
+		if found then
+			assert(found.Source==words.english and found.Values["de-de"]==words.german, "Conflicting translation " .. key)
+		else
+			table.insert(entries,{Key=key,Source=words.english,Context="",Values={
+				["en-us"]=words.english,["de-de"]=words.german,["de"]=words.german}})
+		end
 	end
 	localization:SetEntries(entries)
 	localization.Parent=service
@@ -53,7 +60,6 @@ return function(stage: Model, metadata: any): any
 			assert(words,"Unknown label key " .. tostring(label.key))
 			local normal=root:VectorToWorldSpace(mapped(label.normal_root_blender))
 			local position=root:PointToWorldSpace(mapped(label.anchor_root_blender_m)*SCALE)
-			local right=root:VectorToWorldSpace(mapped(label.right_root_blender))
 			local up=root:VectorToWorldSpace(mapped(label.up_root_blender))
 			local anchor=Instance.new("Part")
 			anchor.Name=label.key
@@ -66,11 +72,13 @@ return function(stage: Model, metadata: any): any
 			anchor.Transparency=1
 			anchor.Size=Vector3.new(label.surface_area_width_height_m[1]*SCALE,
 				label.surface_area_width_height_m[2]*SCALE,0.0001*SCALE)
-			anchor.CFrame=CFrame.fromMatrix(position+normal*0.00015*SCALE,right,up,normal)
+			local front=position+normal*0.012
+			anchor.CFrame=CFrame.lookAt(front,front+normal,up)
 			anchor.Parent=folder
 			local gui=Instance.new("SurfaceGui")
 			gui.Name="LocalizedLabel"
-			gui.Face=Enum.NormalId.Back
+			gui.Adornee=anchor
+			gui.Face=Enum.NormalId.Front
 			gui.SizingMode=Enum.SurfaceGuiSizingMode.FixedSize
 			gui.CanvasSize=Vector2.new(768,math.max(96,768*anchor.Size.Y/anchor.Size.X))
 			gui.LightInfluence=0.4
