@@ -4,6 +4,7 @@ local State = require(script.Parent.State)
 local Vehicles = {}
 Vehicles.SLOTS = table.freeze({"SlotA", "SlotB"})
 Vehicles.STAGES = table.freeze({"Holzpaket", "Karton"}) :: {State.Stage}
+local PARKED_SPEED = 0.5 * (25 / 7)
 
 export type Binding = {vehicleId: string, slotIds: {string}, locations: {[string]: State.Location}, mounts: {[string]: Attachment}}
 export type Load = {used: number, capacity: number, full: boolean, batches: {[string]: string}}
@@ -31,6 +32,60 @@ function Vehicles.bind(vehicle: Instance, vehicleId: string): (Binding?, string?
 		binding.mounts[id] = mount
 	end
 	return binding, nil
+end
+
+function Vehicles.useServerPhysics(vehicle: Model)
+	local assigned: {[BasePart]: boolean} = {}
+	for _, item in vehicle:GetDescendants() do
+		if not item:IsA("BasePart") then continue end
+		local root = item.AssemblyRootPart
+		if root and not assigned[root] and root:CanSetNetworkOwnership() then
+			root:SetNetworkOwner(nil)
+			assigned[root] = true
+		end
+	end
+end
+
+-- Returns nil when the registered rig is missing. Both trailer mounts count for stillness.
+function Vehicles.motion(vehicle: Model, binding: Binding, chassis: BasePart): (boolean?, boolean)
+	local chassisRoot = chassis.AssemblyRootPart
+	if not vehicle:IsDescendantOf(workspace) or vehicle:GetAttribute("VehicleId") ~= binding.vehicleId
+		or not chassis:IsDescendantOf(vehicle) or not chassisRoot or chassisRoot.Anchored then
+		return nil, false
+	end
+	local still = chassis.AssemblyLinearVelocity.Magnitude < PARKED_SPEED
+	local serverOwned = chassis:GetNetworkOwner() == nil
+	for _, id in binding.slotIds do
+		local mount = binding.mounts[id]
+		local pad = mount.Parent
+		if not pad or not pad:IsA("BasePart") or not pad:IsDescendantOf(vehicle) then
+			return nil, false
+		end
+		local padRoot = pad.AssemblyRootPart
+		if not padRoot or padRoot.Anchored then
+			return nil, false
+		end
+		still = still and pad:GetVelocityAtPosition(mount.WorldPosition).Magnitude < PARKED_SPEED
+		serverOwned = serverOwned and pad:GetNetworkOwner() == nil
+	end
+	return still, serverOwned
+end
+
+function Vehicles.zone(binding: Binding, zones: {[string]: BasePart}): string?
+	for role, volume in zones do
+		if not volume:IsDescendantOf(workspace) then continue end
+		local inside = true
+		local half = volume.Size * 0.5
+		for _, id in binding.slotIds do
+			local offset = volume.CFrame:PointToObjectSpace(binding.mounts[id].WorldPosition)
+			if math.abs(offset.X) > half.X or math.abs(offset.Y) > half.Y or math.abs(offset.Z) > half.Z then
+				inside = false
+				break
+			end
+		end
+		if inside then return role end
+	end
+	return nil
 end
 
 -- A slot counts as used while it holds a batch or is promised to one (Return reservation).

@@ -1,12 +1,12 @@
 # Projektstatus
 
-Stand 19. November 2026. **P02, P04, P05 und P06-01 bis P06-05 sind abgenommen.** Die P06-Studio-Demo verbindet Holzkauf und physische Übergaben mit demselben Bestand. An den Anhängerplätzen A/B gelten Eigentümer-, Stillstands-, Zonen- und Zielprüfung. **Als Nächstes folgt P06-06 (serverseitiger Fahrtnachweis).**
+Stand 19. November 2026. **P02, P04, P05 und P06-01 bis P06-06 sind abgenommen.** Die P06-Studio-Demo verbindet Holzkauf, physische Übergaben und serverseitige Fahrtnachweise mit demselben Bestand. **Als Nächstes folgt P06-07 (Fahrzeugladung nach Wiederbeitritt und physische Bergung).**
 
 | Feld | Aktuell |
 |---|---|
-| Letzter abgeschlossener Schritt | **P06-04/05** – Kauf mit R, Verladen und Entladen mit E, Holz auf den reservierten Rohstoffplatz ([Beleg](../evidence/P06-04-05.md)) |
-| Davor | **P06-03** – `Vehicles`-Bindung `Vehicle.Quad1.SlotA/B`, `LineView`-Mounts, statische Ladung archiviert ([Beleg](../evidence/P06-03.md)) |
-| Naechster Umsetzungsschritt | **P06-06** – beobachtete Fahrt und Ankunft serverseitig erfassen, damit die Käuferübergabe darauf aufbauen kann |
+| Letzter abgeschlossener Schritt | **P06-06** – Server bestätigt die Fahrt mit zwei Kartons zum Händler und Privatkunden ([Beleg](../evidence/P06-06.md)) |
+| Davor | **P06-04/05** – Kauf mit R, Verladen und Entladen mit E, Holz auf den reservierten Rohstoffplatz ([Beleg](../evidence/P06-04-05.md)) |
+| Naechster Umsetzungsschritt | **P06-07** – bestätigte Ladung beim Wiederbeitritt an den Anhängerplätzen oder an einer physischen Bergungsstelle darstellen |
 | Entscheidungen 18.11. (delegiert) | Hallentor: Laden nur auf dem Hof, Halle wird nicht befahren, Tor bleibt 4 m ([MAP](../design/MAP.md)). Oberfläche: eine Finish-Oberfläche in Hocker01 v1 ([PRODUCTION](../design/PRODUCTION.md)). P00-03: Zielprofil schwächeres Android-Phone 1600×720, Touch, Grafikstufe 1; bis zum echten Gerät Studio-Emulator als Stellvertreter, Checkbox bleibt offen ([P00](../plan/00-start.md)) |
 | Paralleles Paket | **P03-03** – Gebäude-Außenprobe lokal übernommen ([Beleg](../evidence/P03-03.md)), Abnahme und Roblox-Import stehen aus. **P03-05-Upload blockiert:** Der Nutzer muss unter `Assistant Settings > MCP Permissions` den Ordner `assets\p03-models\p03-05-import\exports` freigeben, das kann Claude nicht selbst tun. |
 | Planabschnitt | [Handbetrieb, P06](../plan/01-handbetrieb.md#p06--quad-ladung-und-echte-fahrten) |
@@ -20,14 +20,18 @@ Stand 19. November 2026. **P02, P04, P05 und P06-01 bis P06-05 sind abgenommen.*
 | Vergleichsobjekt | `Workspace.FableWorkshop`, Asset `106051543998570`; kein vorgesehenes Spielgebaeude |
 | Technikproben | `Workspace.P02Greybox` und `Workspace.P02Line`; Prueftraeger in `ServerStorage.P02CarryProbe`, nicht im Spielstart |
 | Arbeitsbranch | `work/p00-studio-import`; jeder Abschluss wird gepusht (Nutzerauftrag vom 18.11.: fortlaufend committen und pushen) |
-| Speicherung | TeamCreate **Version 57**, privater Stand, Studio im Edit-Modus. |
-| Wiederherstellbare Staende | Version 52 = Linie in der Halle und Ladezonen, Version 53 = Fahrzeug-Slot-Punkte, Version 55 = Ausgangsstand P06-04/05, Version 57 = getestete Lademodule. |
+| Speicherung | TeamCreate **Version 60**, privater Stand, Studio im Edit-Modus. |
+| Wiederherstellbare Staende | Version 53 = Fahrzeug-Slot-Punkte, Version 57 = getestete Lademodule, Version 60 = Fahrtnachweis und Serverphysik. |
 | Pruefbelege | [P02-06](../evidence/P02-06.md), [P02-05](../evidence/P02-05.md), [P02-04](../evidence/P02-04.md), [P02-03R](../evidence/P02-03R.md); Stadtentwurf [MAP](../design/MAP.md), Masse [DIMENSIONS](../design/DIMENSIONS.md) |
+
+## P06-06 abgenommen (19.11.)
+
+- [Trips](../../src/server/Trips.luau) beobachtet die Fahrt im Server. Der Nachweis gilt je Ladung und Käuferzone. Beide Ziele wurden mit durchgehender Fahrt und zwei befestigten Kartons erreicht. Ein Positionssprung und eine Fahrtunterbrechung durch geänderte Ladung oder Eigentümerschaft entwerten den betroffenen Nachweis. [Beleg](../evidence/P06-06.md)
 
 ## P06-04/05 abgenommen (19.11.)
 
 - [Loading](../../src/server/Loading.luau) prüft Fahrzeug, Eigentümer, Stillstand und beide Ladepunkte. Bei einer Entnahme bleibt das geprüfte Ziel für diese Charge gültig, während der Spieler sie trägt.
-- [Studio-Demo und Prüfbeleg](../evidence/P06-04-05.md) dokumentieren den Tastaturdurchlauf, vier Gruppen von Serverprüfungen und die P05-Regression. Der Fahrtnachweis folgt mit P06-06.
+- [Studio-Demo und Prüfbeleg](../evidence/P06-04-05.md) dokumentieren den Tastaturdurchlauf, vier Gruppen von Serverprüfungen und die P05-Regression.
 
 ## P06-03 abgenommen (18.11.)
 

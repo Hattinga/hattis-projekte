@@ -124,7 +124,8 @@ local function zoneCheck(target)
 end
 local dest={}
 for _,m in city.Destinations:GetChildren() do local lp=m:GetAttribute("LocalPosition");dest[m.Name]=Vector2.new(lp.X,lp.Z) end
-local order={"Tischlerei_West","Holzlieferant","Tischlerei_West","Moebelhandel","Privatkunden","Tischlerei_West"}
+local order=if workspace:GetAttribute("P0606TripProbe") then {"Tischlerei_West","Moebelhandel","Privatkunden"}
+	else {"Tischlerei_West","Holzlieferant","Tischlerei_West","Moebelhandel","Privatkunden","Tischlerei_West"}
 local result={status="running",legs={}}
 task.spawn(function()
 	task.wait(2)

@@ -128,6 +128,8 @@ Beim Einkauf werden Spielgeld und neu bereitgestellte Ware gemeinsam verbucht. D
 
 Ein- und Ausladen prüfen Eigentümer, Ladezone, Kapazität des Zielorts und die physisch erreichbare Übergabestelle. Für Lieferungen prüft der Server, ob der beobachtete Fahrtverlauf plausibel ist und die Ware am passenden Ziel entladen wird. Ein behaupteter Standort, eine Berührung oder eine Clientmeldung allein ist für die Auszahlung unzureichend. Normale Beschaffungs- und Verkaufswege erfolgen als Fahrten.
 
+Der [Fahrtnachweis](../../src/server/Trips.luau) beginnt für einen bestätigten Karton am Werkstatthof. Der Server simuliert das Fahrzeug und beobachtet seine Bewegung bis zur Käuferzone. Nach mindestens 0,5 s Stillstand mit beiden Ladepunkten in der Zone kann der Server die Ankunft für Eigentümer, Fahrzeug, Ladeplatz, Charge und Käufer lesen. Bei Positionssprüngen, Beobachtungslücken oder geänderter Ladung verfällt der betreffende Nachweis. Die Abfrage prüft die aktuelle Zone und den bestätigten Bestand erneut.
+
 | Kanal | Preisbildung und Abschluss |
 | --- | --- |
 | Möbelhändler | Der Server berechnet den bekannten Modellpreis für die bestätigte Stückzahl. |

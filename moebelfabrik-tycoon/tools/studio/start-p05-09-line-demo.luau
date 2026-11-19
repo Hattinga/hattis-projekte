@@ -14,6 +14,7 @@ local Loading = require(factory.Loading)
 local Line = require(factory.Line)
 local LineView = require(factory.LineView)
 local Purchases = require(factory.Purchases)
+local Trips = require(factory.Trips)
 local Vehicles = require(factory.Vehicles)
 local collection = game:GetService("CollectionService")
 local http = game:GetService("HttpService")
@@ -67,6 +68,7 @@ end
 profile.locations[hand] = State.newLocation(hand, "Carrier", 1, {"Holzpaket", "Bausatz", "Rohhocker", "Fertig", "Karton"})
 local loading: Loading.Binding? = nil
 local purchaseSlots: Purchases.Slots? = nil
+local trips: Trips.Tracker? = nil
 if logisticsEnabled then
 	local vehicle = workspace.P02Vehicle
 	local yards = workspace.CityGreybox.DeliveryYards
@@ -77,6 +79,10 @@ if logisticsEnabled then
 	loading = {vehicle = vehicle, slots = vehicleSlots, chassis = chassis, destinations = places.points, unloads = {},
 		zones = {Supplier = yards.Holzlieferant.LoadZone.Volume, Workshop = yards.Tischlerei_West.LoadZone.Volume}}
 	vehicle:SetAttribute("OwnerUserId", player.UserId)
+	Vehicles.useServerPhysics(vehicle)
+	trips = Trips.new({vehicle = vehicle, slots = vehicleSlots, chassis = chassis,
+		zones = {Workshop = loading.zones.Workshop, Dealer = yards.Moebelhandel.LoadZone.Volume,
+			Private = yards.Privatkunden.LoadZone.Volume}})
 	purchaseSlots = purchase.slots
 	places.mounts = vehicleSlots.mounts
 	for _, id in purchase.slots.supplierIds do
@@ -145,9 +151,31 @@ local function heldBatch(state: any): any
 	for _, batch in state.batches do if batch.locationId == hand then return batch end end
 	return nil
 end
+local mountedCargo: {[string]: string} = {}
 local function render()
-	local state = confirmed().data.state
+	local snapshot = controller.snapshot()
+	local saved = snapshot.confirmed
+	if not saved then return end
+	local state = saved.data.state
 	LineView.syncWares(demo, state, places)
+	local load = if loading then Vehicles.load(state, loading.slots.slotIds) else nil
+	if load and loading then
+		-- Adding or removing view welds can rebuild the assembly and restore automatic ownership.
+		for _, slotId in loading.slots.slotIds do
+			if mountedCargo[slotId] ~= load.batches[slotId] then
+				Vehicles.useServerPhysics(loading.vehicle)
+				break
+			end
+		end
+		mountedCargo = load.batches
+	end
+	if trips then
+		if snapshot.status == "Confirmed" and not snapshot.inFlight then
+			Trips.sample(trips, state, os.clock())
+		else
+			trips = Trips.new(trips.binding)
+		end
+	end
 	LineView.syncSigns(demo, state, os.time(), places)
 	local held = heldBatch(state)
 	local store = Line.storeStatus(state, storeSlots)
@@ -160,7 +188,6 @@ local function render()
 			if origin == "VehicleSlot" then target = if held.stage == "Karton" then "Fertiglager" else "Passende Holzablage" end
 		end
 	end
-	local load = if loading then Vehicles.load(state, loading.slots.slotIds) else nil
 	banner.Text = (if held then "In der Hand: " .. Recipe.stageNames[held.stage] .. " · Ziel: " .. (target or "Auflage")
 		else "Hand frei · E an einer Auflage drücken") .. " · Fertiglager " .. store.used .. "/" .. store.capacity
 		.. (if load then " · Anhänger " .. load.used .. "/" .. load.capacity .. " · Guthaben " .. state.money else "")

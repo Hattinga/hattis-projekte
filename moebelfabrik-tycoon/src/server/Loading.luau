@@ -14,42 +14,17 @@ export type Binding = {
 }
 
 local Loading = {}
-local MAX_SPEED = 0.5 * (25 / 7) -- 0.5 m/s in studs/s
-
-local function contains(volume: BasePart, position: Vector3): boolean
-	local offset = volume.CFrame:PointToObjectSpace(position)
-	local half = volume.Size * 0.5
-	return math.abs(offset.X) <= half.X and math.abs(offset.Y) <= half.Y and math.abs(offset.Z) <= half.Z
-end
 
 local function parkedIn(binding: Binding?, slotId: string, userId: number): (string?, string?)
-	if not binding or not binding.vehicle:IsDescendantOf(workspace)
-		or binding.vehicle:GetAttribute("VehicleId") ~= binding.slots.vehicleId
-		or not binding.slots.mounts[slotId] or not binding.chassis:IsDescendantOf(binding.vehicle) then
+	if not binding or not binding.slots.mounts[slotId] then
 		return nil, "UNKNOWN_LOCATION"
 	end
 	if binding.vehicle:GetAttribute("OwnerUserId") ~= userId then return nil, "NOT_VEHICLE_OWNER" end
-	if not (binding.chassis.AssemblyLinearVelocity.Magnitude < MAX_SPEED) then return nil, "VEHICLE_MOVING" end
-	local mounts = binding.slots.mounts
-	for _, id in binding.slots.slotIds do
-		local mount = mounts[id]
-		local pad = mount.Parent
-		if not pad or not pad:IsA("BasePart") or not pad:IsDescendantOf(binding.vehicle) then
-			return nil, "UNKNOWN_LOCATION"
-		end
-		if not (pad:GetVelocityAtPosition(mount.WorldPosition).Magnitude < MAX_SPEED) then
-			return nil, "VEHICLE_MOVING"
-		end
-	end
-	for role, volume in binding.zones do
-		if not volume:IsDescendantOf(workspace) then continue end
-		local inside = true
-		for _, id in binding.slots.slotIds do
-			if not contains(volume, mounts[id].WorldPosition) then inside = false; break end
-		end
-		if inside then return role, nil end
-	end
-	return nil, "WRONG_ZONE"
+	local still = Vehicles.motion(binding.vehicle, binding.slots, binding.chassis)
+	if still == nil then return nil, "UNKNOWN_LOCATION" end
+	if not still then return nil, "VEHICLE_MOVING" end
+	local zone = Vehicles.zone(binding.slots, binding.zones)
+	return zone, if zone then nil else "WRONG_ZONE"
 end
 
 local function unloadKind(zone: string, stage: State.Stage): string?
