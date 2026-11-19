@@ -20,9 +20,15 @@ Stand 19. November 2026. **P02, P04, P05, P06 und P07-01 bis P07-06 sind abgenom
 | Vergleichsobjekt | `Workspace.FableWorkshop`, Asset `106051543998570`; kein vorgesehenes Spielgebaeude |
 | Technikproben | `Workspace.P02Greybox` und `Workspace.P02Line`; Prueftraeger in `ServerStorage.P02CarryProbe`, nicht im Spielstart |
 | Arbeitsbranch | `work/p00-studio-import`; jeder Abschluss wird gepusht (Nutzerauftrag vom 18.11.: fortlaufend committen und pushen) |
-| Speicherung | TeamCreate **Version 76** (75 plus P03-05-Labelkorrektur), privater Stand, Studio im Edit-Modus. Die P07-Module `Sales`, `State` und `Trips` stimmen per Prüfsumme mit dem Repo überein. `ServerStorage.ToolRun` enthält Werkzeugkopien. [Übergabe an Claude](HANDOFF-2026-11-19.md) |
+| Speicherung | TeamCreate **Version 77** (76 plus Werkzeugkopien `Drive` und `P0708Loop` in `ToolRun`), privater Stand, Studio im Edit-Modus. Die P07-Module `Sales`, `State` und `Trips` stimmen per Prüfsumme mit dem Repo überein. `ServerStorage.ToolRun` enthält Werkzeugkopien. [Übergabe an Claude](HANDOFF-2026-11-19.md) |
 | Wiederherstellbare Staende | Version 61 = Fahrzeugwiederherstellung, Version 67 = korrigierte Bergungsmarker, sichtbare Gurte und kalibrierte Art-Prüfinstanzen, Version 75 = P07-Verkauf (Händler, Privat, Wiederbeitritt), Version 76 = lesbare P03-05-Labels. |
 | Pruefbelege | [P02-06](../evidence/P02-06.md), [P02-05](../evidence/P02-05.md), [P02-04](../evidence/P02-04.md), [P02-03R](../evidence/P02-03R.md); Stadtentwurf [MAP](../design/MAP.md), Masse [DIMENSIONS](../design/DIMENSIONS.md) |
+
+## Stand beim Stopp (19.11., Nutzungsgrenze)
+
+- **P07-07 läuft als Subagent-Auftrag** in einem eigenen Git-Worktree auf dem Branch `work/p07-07-vorschuss` (Basis `562758b`). Das Ergebnis ist weder geprüft noch gemergt. Der Branch kann unvollständig sein oder fehlen. Vorgabe: `Purchases.advance` als Materialvorschuss über ein Holzpaket ohne Geldzufluss, nur bei Guthaben unter 60 und ohne Bestand. Der Vorschuss wird mit dem Verkauf genau dieser Charge verrechnet (`repaid` im Sale-Beleg). Dazu kommen Demo-Prompt, Hook `P0707Advance`, Attribut `P0707Broke` und die Doku in STATE/ECONOMY. Vor dem Merge den Branch prüfen, die lokalen Suiten laufen lassen und die Studio-Abnahme nach QA-P07-05 durchführen. Mit Repayment reicht bei Startgeld 0 ein Zyklus nicht für den nächsten regulären Kauf (100 − 60 = 40). Für den Nachweis z. B. mit Startgeld 30 testen.
+- **P07-08 vorbereitet, nicht abgenommen.** [test-p07-08-loop.luau](../../tools/studio/test-p07-08-loop.luau) mit Routenhalt `P0708Stop` (Werkstatt → Lieferant → Werkstatt → Händler → Privatkunde): zwei Käufe, zwei Chargen bis zum Karton, Händler 100, Privat 80 (erzwungen), danach regulärer Neukauf. Endstand soll 180 sein. Der erste Lauf wurde beim Stopp abgebrochen, ein Ergebnis gibt es nicht. Start: Play → `P06LoadingDemo=true` → `require(ServerStorage.ToolRun.LineDemo)` → `require(ToolRun.P0708Loop)` → `require(ToolRun.Drive)` → `ServerStorage.P0708Result` abfragen (etwa 3 min).
+- Danach steht P08 an (erster Mitarbeiter). P03-02/03/06/07 warten auf Jonas: Upload-Freigabe der Gebäudeprobe und Art-Freigabe. P00-03 braucht das echte Android-Gerät.
 
 ## P07-01 bis P07-06 abgenommen (19.11.)
 
