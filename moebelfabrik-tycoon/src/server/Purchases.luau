@@ -10,7 +10,7 @@ export type Slots = {supplierIds: {string}, rawIds: {string}}
 export type Binding = {slots: Slots, locations: {[string]: State.Location}, points: {[string]: Attachment}}
 
 local Purchases = {}
-local PRICE = 60 -- Prototype test economy; only new purchases use the current price.
+Purchases.PRICE = 60 -- Prototype test economy; only new purchases use the current price.
 local MAX_INTEGER = 9007199254740991
 
 -- Build the trusted slot list from the physical fixtures, once per workshop.
@@ -83,7 +83,7 @@ function Purchases.buy(controller: Persistence.Controller, actor: any, request: 
 	if revision == MAX_INTEGER then return rejected("REVISION_OVERFLOW") end
 	local batchId = "purchase/" .. operationId
 	if state.batches[batchId] then return rejected("OPERATION_CONFLICT") end
-	if state.money < PRICE then return rejected("NOT_ENOUGH_MONEY") end
+	if state.money < Purchases.PRICE then return rejected("NOT_ENOUGH_MONEY") end
 	local unavailable: {[string]: boolean} = {}
 	for locationId, reservation in state.reservations do
 		if reservation.kind == "Delivery" and reservation.purchaseOperationId == operationId then
@@ -101,8 +101,8 @@ function Purchases.buy(controller: Persistence.Controller, actor: any, request: 
 	if not rawSlotId then return rejected("RAW_STORE_FULL") end
 
 	local receipt: Receipt = {ok = true, code = "PURCHASED", message = "Holzpaket beim Lieferanten bereit.",
-		revision = revision + 1, supplierId = supplierId, rawSlotId = rawSlotId, batchId = batchId, price = PRICE}
-	state.money -= PRICE
+		revision = revision + 1, supplierId = supplierId, rawSlotId = rawSlotId, batchId = batchId, price = Purchases.PRICE}
+	state.money -= Purchases.PRICE
 	state.revision += 1
 	state.batches[batchId] = State.newBatch(batchId, state.ownerUserId, "Holzpaket", supplierId)
 	state.reservations[rawSlotId] = {kind = "Delivery", batchId = batchId, purchaseOperationId = operationId}
