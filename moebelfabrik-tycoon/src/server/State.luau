@@ -17,9 +17,16 @@ export type ProductionReservation = {kind: "Production", batchId: string, finish
 export type Reservation = ReturnReservation | DeliveryReservation | ProductionReservation
 export type Receipt = {actorId: string, actorKind: string, ownerUserId: number, carrierId: string?,
 	action: string, request: any, result: any}
+-- P07: at most one open sale. Its carton is in the player's hand with an exact Return to its trailer slot.
+export type Buyer = "Dealer" | "Private"
+export type PendingSale = {id: string, buyer: Buyer, vehicleId: string, slotId: string, batchId: string,
+	carrierId: string, quoteMin: number, quoteMax: number, dealerValue: number, seed: number}
+export type SaleResult = {ok: boolean, code: string, message: string, revision: number, buyer: Buyer,
+	vehicleId: string, slotId: string, batchId: string, quantity: number, amount: number,
+	quoteMin: number, quoteMax: number, dealerValue: number}
 export type Profile = {schemaVersion: number, ownerUserId: number, revision: number, money: number,
 	locations: {[string]: Location}, batches: {[string]: Batch}, claims: {[string]: Claim},
-	reservations: {[string]: Reservation}, receipts: {[string]: Receipt}}
+	reservations: {[string]: Reservation}, receipts: {[string]: Receipt}, pendingSale: PendingSale?}
 
 export type StationRule = {read id: string, read input: string, read process: string, read output: string,
 	read inputStage: Stage, read outputStage: Stage, read durationSeconds: number}
@@ -52,7 +59,14 @@ local KINDS: {[string]: boolean} = {Supplier=true,RawStore=true,FinishedStore=tr
 	Band=true,Recovery=true}
 local ACTOR_KINDS: {[string]: boolean} = {Player=true,Worker=true,Band=true}
 local PROFILE_FIELDS = {schemaVersion=true,ownerUserId=true,revision=true,money=true,locations=true,
-	batches=true,claims=true,reservations=true,receipts=true}
+	batches=true,claims=true,reservations=true,receipts=true,pendingSale=true}
+State.MAX_SALE_SEED = 16777215
+State.MAX_SALE_ID_LENGTH = 88 -- Leaves room for the derived transfer operation IDs.
+local BUYERS: {[string]: boolean} = {Dealer=true,Private=true}
+local PENDING_SALE_FIELDS = {id=true,buyer=true,vehicleId=true,slotId=true,batchId=true,carrierId=true,
+	quoteMin=true,quoteMax=true,dealerValue=true,seed=true}
+local SALE_RESULT_FIELDS = {ok=true,code=true,message=true,revision=true,buyer=true,vehicleId=true,slotId=true,
+	batchId=true,quantity=true,amount=true,quoteMin=true,quoteMax=true,dealerValue=true}
 local LOCATION_FIELDS = {id=true,kind=true,capacity=true,acceptedStages=true}
 local BATCH_FIELDS = {id=true,ownerUserId=true,recipeId=true,recipeVersion=true,stage=true,quantity=true,locationId=true}
 local CLAIM_FIELDS = {id=true,actorId=true,actorKind=true,carrierId=true,batchId=true,sourceId=true,
@@ -101,6 +115,23 @@ local function sameReturn(reservation: any, claim: any, batch: any): boolean
 		and reservation.carrierId==claim.carrierId and reservation.recipeId==batch.recipeId
 		and reservation.recipeVersion==batch.recipeVersion and reservation.stage==batch.stage
 		and reservation.quantity==batch.quantity
+end
+
+local function saleIdentifier(value: any): boolean
+	return identifier(value) and #value<=State.MAX_SALE_ID_LENGTH
+end
+local function vehicleSlotOf(profile: any, vehicleId: any, slotId: any): boolean
+	if not identifier(vehicleId) or #vehicleId>32 or not identifier(slotId) then return false end
+	local slot=profile.locations[slotId]
+	local prefix="Vehicle."..vehicleId.."."
+	return slot~=nil and slot.kind=="VehicleSlot" and slotId:sub(1,#prefix)==prefix
+end
+local function quote(buyer: any, quoteMin: any, quoteMax: any, dealerValue: any): boolean
+	return BUYERS[buyer]==true and integer(quoteMin,0) and integer(quoteMax,0) and quoteMin<=quoteMax
+		and integer(dealerValue,0) and (buyer~="Dealer" or (quoteMin==dealerValue and quoteMax==dealerValue))
+end
+local function playerActor(profile: any): string
+	return "Player/"..string.format("%.0f",profile.ownerUserId)
 end
 
 -- Empty artificial schema specimen. P04-04 must confirm absence before any real new profile.
@@ -233,6 +264,18 @@ function State.validate(profile: any): (boolean, string?)
 	local receiptRevisions: {[number]: boolean} = {}
 	local purchasesByBatch: {[string]: any} = {}
 	local deliveriesCompleted: {[string]: boolean} = {}
+	-- A sold carton leaves the stock; its earlier purchase and transfer receipts stay valid history.
+	local soldBatches: {[string]: string} = {}
+	for operationId,receipt in profile.receipts do
+		if plainTable(receipt) and receipt.action=="Sale" and plainTable(receipt.result)
+			and identifier(receipt.result.batchId) then
+			if soldBatches[receipt.result.batchId] then return false,"DUPLICATE_SALE" end
+			soldBatches[receipt.result.batchId]=operationId
+		end
+	end
+	local function known(batchId: any): boolean
+		return profile.batches[batchId]~=nil or soldBatches[batchId]~=nil
+	end
 	for operationId,receipt in profile.receipts do
 		if not identifier(operationId) or not record(receipt,RECEIPT_FIELDS)
 			or not identifier(receipt.actorId) or receipt.ownerUserId~=profile.ownerUserId then
@@ -240,9 +283,15 @@ function State.validate(profile: any): (boolean, string?)
 		end
 		local request,result=receipt.request,receipt.result
 		local purchase=receipt.action=="Purchase"
+		local sale=receipt.action=="Sale"
 		if purchase then
 			if receipt.actorKind~="Player" or receipt.carrierId~=nil
 				or receipt.actorId~="Player/"..string.format("%.0f",profile.ownerUserId) then
+				return false,"INVALID_RECEIPT"
+			end
+		elseif sale then
+			if receipt.actorKind~="Player" or receipt.actorId~=playerActor(profile) or not saleIdentifier(operationId)
+				or not carrierMatches(profile,receipt.carrierId,"Player") or deliveriesByOperation[operationId] then
 				return false,"INVALID_RECEIPT"
 			end
 		elseif not carrierMatches(profile,receipt.carrierId,receipt.actorKind) or deliveriesByOperation[operationId] then
@@ -250,24 +299,27 @@ function State.validate(profile: any): (boolean, string?)
 		end
 		local reserve=receipt.action=="Reserve"
 		local commit=receipt.action=="Commit"
-		if not purchase and not reserve and not commit and receipt.action~="Cancel" then return false,"INVALID_RECEIPT_ACTION" end
-		if not record(request,if purchase then PURCHASE_REQUEST_FIELDS elseif reserve then RESERVE_REQUEST_FIELDS else CLAIM_REQUEST_FIELDS)
+		if not purchase and not sale and not reserve and not commit and receipt.action~="Cancel" then
+			return false,"INVALID_RECEIPT_ACTION"
+		end
+		if not record(request,if purchase or sale then PURCHASE_REQUEST_FIELDS elseif reserve then RESERVE_REQUEST_FIELDS else CLAIM_REQUEST_FIELDS)
 			or request.operationId~=operationId or not integer(request.expectedRevision,0)
 			or request.expectedRevision==MAX_INTEGER then return false,"INVALID_RECEIPT_REQUEST" end
 		if reserve then
 			if not identifier(request.batchId) or not identifier(request.sourceId) or not identifier(request.targetId)
 				or request.sourceId==request.targetId or request.quantity~=1
 				or not profile.locations[request.sourceId] or not profile.locations[request.targetId]
-				or not profile.batches[request.batchId]
+				or not known(request.batchId)
 				or (request.sourceId~=receipt.carrierId and request.targetId~=receipt.carrierId) then
 				return false,"INVALID_RECEIPT_REQUEST"
 			end
-		elseif not purchase and not identifier(request.claimId) then
+		elseif not purchase and not sale and not identifier(request.claimId) then
 			return false,"INVALID_RECEIPT_REQUEST"
 		end
-		local fields=if purchase then PURCHASE_RESULT_FIELDS elseif reserve then RESERVE_RESULT_FIELDS
-			elseif commit then COMMIT_RESULT_FIELDS else CANCEL_RESULT_FIELDS
-		local code=if purchase then "PURCHASED" elseif reserve then "RESERVED" elseif commit then "COMMITTED" else "CANCELLED"
+		local fields=if purchase then PURCHASE_RESULT_FIELDS elseif sale then SALE_RESULT_FIELDS
+			elseif reserve then RESERVE_RESULT_FIELDS elseif commit then COMMIT_RESULT_FIELDS else CANCEL_RESULT_FIELDS
+		local code=if purchase then "PURCHASED" elseif sale then "SOLD" elseif reserve then "RESERVED"
+			elseif commit then "COMMITTED" else "CANCELLED"
 		if not record(result,fields) or result.ok~=true or result.code~=code or not message(result.message)
 			or not integer(result.revision,1) or result.revision~=request.expectedRevision+1
 			or result.revision>profile.revision or receiptRevisions[result.revision] then
@@ -276,7 +328,7 @@ function State.validate(profile: any): (boolean, string?)
 		receiptRevisions[result.revision]=true
 		if purchase then
 			if not identifier(result.batchId) or not identifier(result.supplierId) or not identifier(result.rawSlotId)
-				or result.batchId~="purchase/"..operationId or not profile.batches[result.batchId] or not integer(result.price,1)
+				or result.batchId~="purchase/"..operationId or not known(result.batchId) or not integer(result.price,1)
 				or not profile.locations[result.supplierId] or profile.locations[result.supplierId].kind~="Supplier"
 				or not profile.locations[result.rawSlotId] or profile.locations[result.rawSlotId].kind~="RawStore" then
 				return false,"INVALID_RECEIPT_RESULT"
@@ -288,6 +340,13 @@ function State.validate(profile: any): (boolean, string?)
 				return false,"INVALID_DELIVERY_RESERVATION"
 			end
 			purchasesByBatch[result.batchId]={receipt=receipt, promised=promised~=nil}
+		elseif sale then
+			if not vehicleSlotOf(profile,result.vehicleId,result.slotId) or not identifier(result.batchId)
+				or profile.batches[result.batchId] or soldBatches[result.batchId]~=operationId or result.quantity~=1
+				or not quote(result.buyer,result.quoteMin,result.quoteMax,result.dealerValue)
+				or not integer(result.amount,result.quoteMin) or result.amount>result.quoteMax then
+				return false,"INVALID_RECEIPT_RESULT"
+			end
 		elseif reserve then
 			if result.claimId~=operationId or not finite(result.expiresAt,0) or result.expiresAt==0 then
 				return false,"INVALID_RECEIPT_RESULT"
@@ -296,7 +355,7 @@ function State.validate(profile: any): (boolean, string?)
 			return false,"INVALID_RECEIPT_RESULT"
 		end
 		if commit and (not identifier(result.batchId) or not identifier(result.sourceId) or not identifier(result.targetId)
-			or result.sourceId==result.targetId or not profile.batches[result.batchId]
+			or result.sourceId==result.targetId or not known(result.batchId)
 			or not profile.locations[result.sourceId] or not profile.locations[result.targetId]
 			or (result.sourceId~=receipt.carrierId and result.targetId~=receipt.carrierId)) then
 			return false,"INVALID_RECEIPT_RESULT"
@@ -305,7 +364,7 @@ function State.validate(profile: any): (boolean, string?)
 	-- Historical completions bind the original Reserve, not today's stock location.
 	local completedClaims: {[string]: boolean} = {}
 	for _,receipt in profile.receipts do
-		if receipt.action=="Reserve" or receipt.action=="Purchase" then continue end
+		if receipt.action=="Reserve" or receipt.action=="Purchase" or receipt.action=="Sale" then continue end
 		local claimId=receipt.request.claimId
 		local reserved=profile.receipts[claimId]
 		if not reserved or reserved.action~="Reserve" or reserved.actorId~=receipt.actorId
@@ -363,6 +422,22 @@ function State.validate(profile: any): (boolean, string?)
 			or receipt.result.expiresAt~=claim.expiresAt then return false,"INVALID_CLAIM_RECEIPT" end
 		lockedSlots[source.id]=true
 		lockedSlots[target.id]=true
+	end
+	local sale=profile.pendingSale
+	if sale~=nil then
+		if not record(sale,PENDING_SALE_FIELDS) or not saleIdentifier(sale.id) or profile.receipts[sale.id]
+			or not vehicleSlotOf(profile,sale.vehicleId,sale.slotId)
+			or not quote(sale.buyer,sale.quoteMin,sale.quoteMax,sale.dealerValue)
+			or not integer(sale.seed,0) or sale.seed>State.MAX_SALE_SEED then
+			return false,"INVALID_PENDING_SALE"
+		end
+		local batch=profile.batches[sale.batchId]
+		local promise=profile.reservations[sale.slotId]
+		if not carrierMatches(profile,sale.carrierId,"Player") or not batch or batch.stage~="Karton"
+			or batch.locationId~=sale.carrierId or not promise or promise.kind~="Return" or promise.batchId~=batch.id
+			or promise.carrierId~=sale.carrierId or promise.actorKind~="Player" or promise.actorId~=playerActor(profile) then
+			return false,"INVALID_PENDING_SALE"
+		end
 	end
 	return true,nil
 end

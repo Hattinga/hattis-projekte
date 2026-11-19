@@ -56,9 +56,16 @@ function Trips.sample(tracker: Tracker, profile: State.Profile, now: number)
 		- (flat(origin.Size).Magnitude + flat(target.Size).Magnitude) / 2 - 2 * SCALE else math.huge
 	local cargo = Vehicles.load(profile, binding.slots.slotIds).batches
 
+	local sale = profile.pendingSale
 	for _, slotId in binding.slots.slotIds do
 		local batch = profile.batches[cargo[slotId]]
 		local trace = tracker.traces[slotId]
+		if not batch and trace and sale and sale.slotId == slotId and sale.batchId == trace.batchId then
+			-- An open sale holds this carton. A cancel returns it to the same slot with the same trip,
+			-- which must settle again in the current zone before it counts as an arrival.
+			trace.stoppedAt, trace.arrival = nil, nil
+			continue
+		end
 		if not batch or batch.stage ~= "Karton" or batch.ownerUserId ~= owner
 			or (binding.recoveryPoints and binding.recoveryPoints[slotId]) then
 			tracker.traces[slotId] = nil

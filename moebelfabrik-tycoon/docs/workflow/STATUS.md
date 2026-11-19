@@ -1,12 +1,12 @@
 # Projektstatus
 
-Stand 19. November 2026. **P02, P04, P05 und P06 sind abgenommen.** Dieselbe Charge fuhr als Holz zur Werkstatt, wurde zum Karton verarbeitet und erreichte per Fahrt den Händler. **Als Nächstes folgt P07-01, die Reservierung der bestätigten Fahrzeugladung für die Käuferübergabe.**
+Stand 19. November 2026. **P02, P04, P05, P06 und P07-01 bis P07-06 sind abgenommen.** Kartons werden nach echter Fahrt beim Händler (100) oder Privatkunden (80–120) bindend übergeben und einmal abgerechnet. **Als Nächstes folgt P07-07, die Wiederanlaufhilfe bei fehlendem Kapital, danach P07-08 mit dem kompletten Kreislauf.**
 
 | Feld | Aktuell |
 |---|---|
-| Letzter abgeschlossener Schritt | **P06-08** – durchgehende Runde Lieferant → Werkstatt → Händler mit einer Charge, 434 m, bestätigte Käuferankunft ([Beleg](../evidence/P06-08.md)) |
-| Davor | **P06-07** – Ladung und Rückgabeplatz über drei Serverstarts wiederhergestellt ([Beleg](../evidence/P06-07.md)) |
-| Naechster Umsetzungsschritt | **P07-01** – nur die bestätigte Menge aus passenden Fahrzeugladeplätzen reservieren und Käufer, Ladezone und Fahrtzustand serverseitig prüfen. Entwurf und Einbauhinweise: [Übergabe P07](HANDOFF-2026-11-19.md#p07--entwurf-für-die-nächste-phase) |
+| Letzter abgeschlossener Schritt | **P07-01 bis P07-06** – Verkauf mit Ankunftsprüfung, Angebot vor Bindung, Abbruch, Händler 100 und Privat 120 in Studio, Wiederbeitritt mit DataStore, lokal 12/12 ([Beleg](../evidence/P07.md)) |
+| Davor | **P06-08** – durchgehende Runde Lieferant → Werkstatt → Händler mit einer Charge, 434 m, bestätigte Käuferankunft ([Beleg](../evidence/P06-08.md)) |
+| Naechster Umsetzungsschritt | **P07-07** – zweckgebundener Materialvorschuss bei fehlendem Kapital mit Missbrauchsprüfung, danach **P07-08** beide Kanäle als kompletter Kreislauf mit der Prüfmatrix |
 | Entscheidungen 18.11. (delegiert) | Hallentor: Laden nur auf dem Hof, Halle wird nicht befahren, Tor bleibt 4 m ([MAP](../design/MAP.md)). Oberfläche: eine Finish-Oberfläche in Hocker01 v1 ([PRODUCTION](../design/PRODUCTION.md)). P00-03: Zielprofil schwächeres Android-Phone 1600×720, Touch, Grafikstufe 1; bis zum echten Gerät Studio-Emulator als Stellvertreter, Checkbox bleibt offen ([P00](../plan/00-start.md)) |
 | Paralleles Paket | **P03-05** – alle fünf freigegebenen FBX hochgeladen, in Studio eingefügt und kalibriert. `ServerStorage.P03ArtProbe` enthält die Prüfinstanzen. Beschriftung und Spielkamera bleiben offen. **P03-03** – die Gebäudeprobe benötigt eine eigene Upload-Freigabe. [Übergabe](HANDOFF-2026-11-19.md#p03-05--fünf-assets-importiert-und-kalibriert) |
 | Planabschnitt | [Handbetrieb, P07](../plan/01-handbetrieb.md#p07--händler-privatverkauf-und-kompletter-kreislauf) |
@@ -20,9 +20,14 @@ Stand 19. November 2026. **P02, P04, P05 und P06 sind abgenommen.** Dieselbe Cha
 | Vergleichsobjekt | `Workspace.FableWorkshop`, Asset `106051543998570`; kein vorgesehenes Spielgebaeude |
 | Technikproben | `Workspace.P02Greybox` und `Workspace.P02Line`; Prueftraeger in `ServerStorage.P02CarryProbe`, nicht im Spielstart |
 | Arbeitsbranch | `work/p00-studio-import`; jeder Abschluss wird gepusht (Nutzerauftrag vom 18.11.: fortlaufend committen und pushen) |
-| Speicherung | TeamCreate **Version 67**, privater Stand, Studio im Edit-Modus. P06-08 lief nur in Play-Sitzungen und erzeugte keine neue Version. [Übergabe an Claude](HANDOFF-2026-11-19.md) |
-| Wiederherstellbare Staende | Version 60 = Fahrtnachweis, Version 61 = Fahrzeugwiederherstellung, Version 67 = korrigierte Bergungsmarker, sichtbare Gurte und kalibrierte Art-Prüfinstanzen. |
+| Speicherung | TeamCreate **Version 75**, privater Stand, Studio im Edit-Modus. Die P07-Module `Sales`, `State` und `Trips` stimmen per Prüfsumme mit dem Repo überein. `ServerStorage.ToolRun` enthält Werkzeugkopien. [Übergabe an Claude](HANDOFF-2026-11-19.md) |
+| Wiederherstellbare Staende | Version 61 = Fahrzeugwiederherstellung, Version 67 = korrigierte Bergungsmarker, sichtbare Gurte und kalibrierte Art-Prüfinstanzen, Version 75 = P07-Verkauf (Händler, Privat, Wiederbeitritt). |
 | Pruefbelege | [P02-06](../evidence/P02-06.md), [P02-05](../evidence/P02-05.md), [P02-04](../evidence/P02-04.md), [P02-03R](../evidence/P02-03R.md); Stadtentwurf [MAP](../design/MAP.md), Masse [DIMENSIONS](../design/DIMENSIONS.md) |
+
+## P07-01 bis P07-06 abgenommen (19.11.)
+
+- [Sales](../../src/server/Sales.luau) öffnet einen Verkauf nur mit `Trips.arrival` für genau diesen Platz und Karton. Der Karton geht dabei in die Hand, der Abschluss an der Annahme entfernt ihn und schreibt in einer Speicherung gut. Der Privatwert wird beim Öffnen verborgen festgelegt. Studio: 30 Prüfungen auf der Route Werkstatt → Händler → Privatkunde, dazu ein Wiederbeitritt über zwei Server mit DataStore-Scope (7 + 10 Prüfungen). Lokal: 12/12. Ein Review-Subagent fand drei Lücken im Weltanschluss, alle behoben. Der DataStore-Lauf deckte einen älteren Fehler in der Fahrtbeobachtung auf, auch der ist behoben. [Beleg](../evidence/P07.md) · [Datenregeln](../technical/STATE.md#verkauf-p07)
+- Studio-Werkzeugkopien liegen unter `ServerStorage.ToolRun` (Demo, P07-Probe, Routenläufer). Im Play-Server per `require` starten. Vor Gebrauch die Prüfsumme gegen das Repo abgleichen.
 
 ## P06-08 und Phase P06 abgenommen (19.11.)
 

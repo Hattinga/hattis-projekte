@@ -1,5 +1,7 @@
 --!strict
 -- Studio-play demo: P05-09 with marked test stock, or P06-04/05 with purchases and the trailer.
+-- P07: in a buyer yard, E at the trailer opens a sale; the buyer pad confirms it (hold E).
+-- P07SaleStock=true starts with one marked test carton on each trailer slot.
 -- In memory by default. P0607ResumeScope opts into an isolated save in the private test place.
 assert(game.PlaceId == 79033653140107 and game.GameId == 10776116608, "Wrong test place")
 local rs = game:GetService("RunService")
@@ -17,6 +19,7 @@ local Purchases = require(factory.Purchases)
 local Trips = require(factory.Trips)
 local VehicleRecovery = require(factory.VehicleRecovery)
 local Vehicles = require(factory.Vehicles)
+local Sales = require(factory.Sales)
 local players = game:GetService("Players")
 local serverStorage = game:GetService("ServerStorage")
 local collection = game:GetService("CollectionService")
@@ -82,6 +85,18 @@ local yards = workspace.CityGreybox.DeliveryYards
 local recoveryPoints: {[string]: Attachment} = {}
 local recoveryEndpoints: {[string]: HandMoves.Endpoint} = {}
 local recoveryYard: string? = nil
+local buyerZones: {[string]: BasePart} = {Dealer = yards.Moebelhandel.LoadZone.Volume,
+	Private = yards.Privatkunden.LoadZone.Volume}
+local buyerNames: {[string]: string} = {Dealer = "Möbelhandel", Private = "Privatkunde"}
+local buyerPads: {[string]: HandMoves.Endpoint} = {}
+for buyer, yardName in {Dealer = "Moebelhandel", Private = "Privatkunden"} do
+	local annahme = yards[yardName].Annahme
+	buyerPads[buyer] = {point = annahme.Pad.Transfer, stand = annahme.Standpoint}
+end
+local salePrompts: {[string]: ProximityPrompt} = {}
+local openedHere: {[string]: boolean} = {} -- Sales whose carton left the trailer in this live session.
+local unclearSale: string? = nil -- A settlement whose save outcome is still being clarified.
+local lastReconcile = -math.huge
 if logisticsEnabled then
 	if resumeScope then
 		resumeRig = VehicleRecovery.rig(workspace:FindFirstChild("P02Vehicle"), serverStorage.P0607VehicleTemplate)
@@ -116,6 +131,12 @@ if logisticsEnabled then
 		profile.locations[id] = vehicleSlots.locations[id]
 	end
 	profile.money = 180 -- Only the in-memory test bankroll.
+	if workspace:GetAttribute("P07SaleStock") == true then -- With a resume scope only the first start seeds it.
+		for index, id in vehicleSlots.slotIds do
+			local stockId = "Testkarton-" .. index
+			profile.batches[stockId] = State.newBatch(stockId, player.UserId, "Karton", id)
+		end
+	end
 else
 	for i = 1, 2 do
 		local id = "Testholz-" .. i
@@ -184,6 +205,12 @@ local prompts: {[string]: ProximityPrompt} = {}
 local lastMessage = if loading then "Beim Holzlieferanten mit R kaufen und mit E verladen."
 	else "Testholz am Rohstofflager mit E aufnehmen."
 if next(recoveryPoints) then lastMessage = "Fracht am Bergungsplatz abholen und auf den passenden Anhängerplatz laden." end
+if confirmed().data.state.pendingSale then lastMessage = "Offener Verkauf: Lege den Karton zurück auf seinen Anhängerplatz." end
+local function offerText(sale: any): string
+	local name = buyerNames[sale.buyer]
+	if sale.buyer == "Dealer" then return name .. ": 1 Hocker · Erlös " .. sale.dealerValue end
+	return name .. ": 1 Hocker · " .. sale.quoteMin .. "–" .. sale.quoteMax .. " (Händler " .. sale.dealerValue .. ")"
+end
 local function heldBatch(state: any): any
 	for _, batch in state.batches do if batch.locationId == hand then return batch end end
 	return nil
@@ -209,7 +236,7 @@ local function render()
 	if trips then
 		if snapshot.status == "Confirmed" and not snapshot.inFlight then
 			Trips.sample(trips, state, os.clock())
-		else
+		elseif snapshot.unknown then
 			trips = Trips.new(trips.binding)
 		end
 	end
@@ -225,16 +252,90 @@ local function render()
 			if origin == "VehicleSlot" then target = if held.stage == "Karton" then "Fertiglager" else "Passende Holzablage" end
 		end
 	end
+	local sale = state.pendingSale
+	local selling = sale ~= nil and held ~= nil and held.id == sale.batchId
+	if sale and selling then target = buyerNames[sale.buyer] .. " · Annahme" end
 	banner.Text = (if held then "In der Hand: " .. Recipe.stageNames[held.stage] .. " · Ziel: " .. (target or "Auflage")
 		else "Hand frei · E an einer Auflage drücken") .. " · Fertiglager " .. store.used .. "/" .. store.capacity
 		.. (if load then " · Anhänger " .. load.used .. "/" .. load.capacity .. " · Guthaben " .. state.money else "")
-		.. "\n" .. lastMessage
+		.. "\n" .. (if sale then offerText(sale) .. "\n" else "") .. lastMessage
+	for buyer, prompt in salePrompts do
+		prompt.Enabled = selling and sale ~= nil and sale.buyer == buyer
+		if sale and sale.buyer == buyer then prompt.ObjectText = offerText(sale) end
+	end
 	for _, prompt in prompts do prompt.ActionText = if held then "Ablegen" else "Aufnehmen" end
 end
 
 local busy = false
 local closing = false
-local function interact(user: Player, id: string, direction: "Take" | "Put", fromRecovery: boolean?): HandMoves.Result
+local saleActor = {ready = true, kind = "Player", ownerUserId = player.UserId,
+	actorId = "Player/" .. string.format("%.0f", player.UserId), carrierLocationId = hand}
+local function saleResponse(result: Sales.Result): HandMoves.Result
+	return {ok = result.ok, code = result.code, message = result.message}
+end
+-- Trailer slots in a buyer yard and the sale carton's way back use the sales path instead of unloading.
+-- seed and force come only from the server test hook.
+local function saleMove(user: Player, state: any, id: string, direction: "Take" | "Put", fromRecovery: boolean?,
+	seed: number?, force: boolean?): HandMoves.Result?
+	if not loading or not trips then return nil end
+	local sale = state.pendingSale
+	local held = heldBatch(state)
+	if direction == "Put" then
+		if not sale or not held or held.id ~= sale.batchId then return nil end
+		-- The sale carton leaves the hand only back onto its own slot (trailer mount or its recovery pad) or at the buyer.
+		if id ~= sale.slotId then
+			return {ok = false, code = "WRONG_LOADING_ROUTE",
+				message = "Lege den Karton auf seinen Anhängerplatz zurück oder bestätige den Verkauf an der Annahme."}
+		end
+		local recovery = recoveryPoints[id]
+		local endpoint: HandMoves.Endpoint? = if fromRecovery then recoveryEndpoints[id] else {point = loading.slots.mounts[id]}
+		if not endpoint or not endpoint.point then
+			return {ok = false, code = "UNKNOWN_LOCATION", message = "Dieser Übergabeplatz ist nicht verfügbar."}
+		end
+		if not fromRecovery then
+			if loading.vehicle:GetAttribute("OwnerUserId") ~= user.UserId then
+				return {ok = false, code = "NOT_VEHICLE_OWNER", message = "Dieses Fahrzeug gehört dir nicht."}
+			end
+			if not Vehicles.motion(loading.vehicle, loading.slots, loading.chassis) then
+				return {ok = false, code = "VEHICLE_MOVING", message = "Halte vor dem Be- oder Entladen an."}
+			end
+		end
+		local reach = HandMoves.checkReach(user, endpoint, not fromRecovery)
+		if reach then return reach end
+		local result = Sales.cancel(controller, saleActor, sale.id, os.time(), TTL)
+		if result.ok then
+			openedHere[sale.id] = nil
+			if recovery and not fromRecovery then -- Back on the real trailer: the recovery pad has done its job.
+				recoveryPoints[id] = nil
+				recoveryEndpoints[id] = nil
+				places.points[id] = nil
+				local prompt = prompts["Recovery:" .. id]
+				if prompt then prompt:Destroy(); prompts["Recovery:" .. id] = nil end
+			end
+		end
+		return saleResponse(result)
+	end
+	if fromRecovery or recoveryPoints[id] or not loading.slots.mounts[id] then return nil end
+	local mount = loading.slots.mounts[id]
+	local zone = Vehicles.zone(loading.slots, buyerZones)
+	if not zone then
+		return if force then {ok = false, code = "NOT_AT_BUYER", message = "Parke beide Anhängerplätze im Hof des Käufers."}
+			else nil
+	end
+	if held then return {ok = false, code = "HANDS_FULL", message = "Lege zuerst deine getragene Charge ab."} end
+	local reach = HandMoves.checkReach(user, {point = mount}, true)
+	if reach then return reach end
+	local stock: any = nil
+	for _, batch in state.batches do if batch.locationId == id then stock = batch end end
+	if not stock then return {ok = false, code = "EMPTY", message = "An dieser Auflage liegt keine Charge."} end
+	local arrival = if trips then Trips.arrival(trips, state, id, zone, os.clock()) else nil
+	local result = Sales.open(controller, saleActor, {id = "sale/" .. http:GenerateGUID(false), buyer = zone :: any,
+		vehicleId = loading.slots.vehicleId, slotId = id, batchId = stock.id}, arrival, os.time(), TTL, seed)
+	if result.ok and result.offer then openedHere[result.offer.saleId] = true end
+	return saleResponse(result)
+end
+local function interact(user: Player, id: string, direction: "Take" | "Put", fromRecovery: boolean?, seed: number?,
+	force: boolean?): HandMoves.Result
 	if closing then return {ok = false, code = "NOT_READY", message = "Spielstand wird geschlossen."} end
 	assert(not busy, "Interaction already running")
 	busy = true
@@ -244,6 +345,8 @@ local function interact(user: Player, id: string, direction: "Take" | "Put", fro
 		if not current or snapshot.status ~= "Confirmed" or snapshot.inFlight then
 			return {ok = false, code = "NOT_READY", message = "Speichern unklar – bitte warten."}
 		end
+		local selling = saleMove(user, current.data.state, id, direction, fromRecovery, seed, force)
+		if selling then return selling end
 		local store = Transfers.new(current.data.state)
 		local registry = if fromRecovery then recoveryEndpoints else endpoints
 		local check = HandMoves.interact(store, user, true, hand, registry, id, direction, http:GenerateGUID(false), os.time(), loading)
@@ -293,6 +396,63 @@ local function addPrompt(id: string, endpoint: HandMoves.Endpoint, fromRecovery:
 end
 for id, endpoint in endpoints do addPrompt(id, endpoint, false) end
 for id, endpoint in recoveryEndpoints do addPrompt(id, endpoint, true) end
+
+-- Binding handoff at the buyer pad. The price stays hidden until the settlement save is confirmed.
+local function settleSale(user: Player, buyer: string): HandMoves.Result
+	if user ~= player or busy or closing then return {ok = false, code = "NOT_READY", message = "Verkauf gerade nicht verfügbar."} end
+	busy = true
+	local ran, outcome = pcall(function(): HandMoves.Result
+		local state = confirmed().data.state
+		local sale = state.pendingSale
+		local held = heldBatch(state)
+		if not sale or not held or held.id ~= sale.batchId then
+			return {ok = false, code = "SALE_NOT_FOUND", message = "Nimm zuerst im Käuferhof einen Karton vom Anhänger."}
+		end
+		if sale.buyer ~= buyer then
+			return {ok = false, code = "WRONG_BUYER", message = "Dieser Karton ist für " .. buyerNames[sale.buyer] .. " bestimmt."}
+		end
+		if not openedHere[sale.id] then
+			return {ok = false, code = "PICKUP_REQUIRED", message = "Lege den Karton zurück auf den Anhänger und liefere ihn erneut an."}
+		end
+		local reach = HandMoves.checkReach(user, buyerPads[buyer])
+		if reach then return reach end
+		local result = Sales.settle(controller, saleActor, sale.id, TTL)
+		if result.unknown then unclearSale = sale.id end
+		local receipt = result.receipt
+		if result.ok and receipt then
+			openedHere[sale.id] = nil
+			return {ok = true, code = result.code,
+				message = "Verkauft an " .. buyerNames[buyer] .. ": 1 Hocker für " .. receipt.amount .. "."}
+		end
+		return saleResponse(result)
+	end)
+	busy = false
+	local response: HandMoves.Result = if ran then outcome
+		else {ok = false, code = "ERROR", message = "Interner Fehler: " .. tostring(outcome)}
+	lastMessage = response.message
+	render()
+	return response
+end
+if loading then
+	for buyer, endpoint in buyerPads do
+		local prompt = Instance.new("ProximityPrompt")
+		prompt.Name = "P07Sell"
+		prompt.ObjectText = buyerNames[buyer] .. " · Annahme"
+		prompt.ActionText = "Verkauf bestätigen"
+		prompt.HoldDuration = 1
+		prompt.MaxActivationDistance = 6
+		prompt.KeyboardKeyCode = Enum.KeyCode.E
+		prompt.Enabled = false
+		prompt.Parent = endpoint.point
+		salePrompts[buyer] = prompt
+		prompt.Triggered:Connect(function(user)
+			if user ~= player or busy or os.clock() - last < 0.4 then return end
+			last = os.clock()
+			settleSale(user, buyer)
+		end)
+	end
+	render()
+end
 
 if purchaseSlots then
 	local slots = purchaseSlots
@@ -393,6 +553,21 @@ rs.Heartbeat:Connect(function(dt: number)
 	accumulated = 0
 	busy = true
 	local ran, problem = pcall(function()
+		local state = controller.snapshot()
+		if state.unknown and not state.inFlight then
+			-- Clarify an unclear write before any further action; a landed settlement shows its stored receipt.
+			if os.clock() - lastReconcile < 2 then return end
+			lastReconcile = os.clock()
+			local resumed = Sales.resume(controller, saleActor, unclearSale)
+			if resumed.ok then
+				local receipt = resumed.receipt
+				lastMessage = if receipt then "Verkauf bestätigt: 1 Hocker für " .. receipt.amount .. "." else "Spielstand geklärt."
+				unclearSale = nil
+			else
+				lastMessage = "Speichern unklar – bitte warten."
+			end
+			return
+		end
 		local now = os.time()
 		local saved = confirmed()
 		if saved and saved.expiresAt - now < 120 then controller.save(saved.data, TTL) end
@@ -404,6 +579,20 @@ rs.Heartbeat:Connect(function(dt: number)
 	ticks += 1
 	busy = false
 	render()
+end)
+-- Trip evidence keeps observing while a save is in flight: a slow DataStore write must not open a gap
+-- that clears every slot's trip. Only an unclear save outcome resets the evidence.
+local tripClock = 0
+rs.Heartbeat:Connect(function(dt: number)
+	tripClock += dt
+	if tripClock < 0.25 or not trips or closing or not demo.Parent then return end
+	tripClock = 0
+	local snapshot = controller.snapshot()
+	if snapshot.unknown then
+		trips = Trips.new(trips.binding)
+	elseif snapshot.status == "Confirmed" and snapshot.confirmed then
+		Trips.sample(trips, snapshot.confirmed.data.state, os.clock())
+	end
 end)
 render()
 
@@ -418,6 +607,25 @@ hook.OnInvoke = function(id: string, direction: "Take" | "Put", fromRecovery: bo
 		reservations = state.reservations, banner = banner.Text, ticks = ticks}
 end
 hook.Parent = game:GetService("ServerStorage")
+if loading then
+	local saleHook = Instance.new("BindableFunction")
+	saleHook.Name = "P07SaleTest"
+	saleHook.OnInvoke = function(action: string, arg: any, seed: number?): any
+		while busy do task.wait() end
+		local response: any
+		if action == "open" then
+			response = interact(player, arg, "Take", false, seed, true)
+		elseif action == "settle" then
+			response = settleSale(player, arg)
+		elseif action == "replay" then
+			response = Sales.settle(controller, saleActor, arg, TTL)
+		else
+			error("Unknown sale test action " .. tostring(action))
+		end
+		return {result = response, banner = banner.Text}
+	end
+	saleHook.Parent = serverStorage
+end
 local reader = Instance.new("BindableFunction")
 reader.Name = "P0509LineState"
 reader.OnInvoke = function(): any
@@ -441,8 +649,13 @@ reader.OnInvoke = function(): any
 			end
 		end
 	end
+	local saleReceipts = {}
+	for id, receipt in state.receipts do if receipt.action == "Sale" then saleReceipts[id] = receipt.result end end
+	local sellPrompts = {}
+	for buyer, prompt in salePrompts do sellPrompts[buyer] = {enabled = prompt.Enabled, text = prompt.ObjectText} end
 	return {batches = state.batches, reservations = state.reservations, money = state.money, revision = state.revision, valid = State.validate(state),
-		banner = banner.Text, ticks = ticks, signs = signs, views = views, recoverySlots = next(recoveryPoints) ~= nil, arrivals = arrivals}
+		banner = banner.Text, ticks = ticks, signs = signs, views = views, recoverySlots = next(recoveryPoints) ~= nil, arrivals = arrivals,
+		pendingSale = state.pendingSale, saleReceipts = saleReceipts, sellPrompts = sellPrompts}
 end
 reader.Parent = game:GetService("ServerStorage")
 if resumeRig then

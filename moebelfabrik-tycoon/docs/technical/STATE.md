@@ -14,7 +14,7 @@ Seit [P04-03](../evidence/P04-03.md) gilt **Schema 2**, ohne produktive Migratio
 
 | Record | Verbindliche Felder im aktuellen Schema 2 |
 | --- | --- |
-| Profil | `schemaVersion`, `ownerUserId`, `revision`, `money`, `locations`, `batches`, `claims`, `reservations`, `receipts` |
+| Profil | `schemaVersion`, `ownerUserId`, `revision`, `money`, `locations`, `batches`, `claims`, `reservations`, `receipts`; optional `pendingSale` ([P07](#verkauf-p07)) |
 | Warenort | `id`, `kind`, `capacity=1`, `acceptedStages` |
 | Charge | `id`, `ownerUserId`, `recipeId=Hocker01`, `recipeVersion=1`, `stage`, `quantity=1`, `locationId` |
 
@@ -136,6 +136,37 @@ Der [Fahrtnachweis](../../src/server/Trips.luau) beginnt für einen bestätigten
 | Privatkunde | Die mögliche Erlösspanne und der Händlervergleich sind vor der bindenden Wahl sichtbar. Der Server legt das Zufallsergebnis nach Bestätigung einmal für die Verkaufs-ID fest. |
 
 Eine verbindliche Verkaufs-ID referenziert die reservierte Ware und den festgelegten Preis. Schreibwiederholungen und Wiederbeitritt verwenden denselben gespeicherten Betrag. Das endgültige Ergebnis wird erst nach bestätigter Speicherung gezeigt. Warenabgang, Geldgutschrift und Abschlussstatus gehören in dieselbe geprüfte Änderung desselben Spielerprofils. Bei unklarem Schreibausgang wird der gespeicherte Vorgang vor einem erneuten Versuch geprüft. Ein bereits abgeschlossener Verkauf liefert den vorhandenen Beleg. Die Transaktion ist auf ein Spielerprofil begrenzt.
+
+### Verkauf P07
+
+[Sales.luau](../../src/server/Sales.luau) verkauft genau einen Karton je Vorgang und ändert Bestand und Geld ausschließlich über bestätigte Saves des Eigentümerprofils. Die Weltanbindung besteht bisher nur im Studio-Demo [start-p05-09-line-demo.luau](../../tools/studio/start-p05-09-line-demo.luau). [12 lokale Fälle](../../tools/tests/p07-sales.luau) laufen über [run-p07.mjs](../../tools/tests/run-p07.mjs) mit speicherinternem atomarem Backend.
+
+[State](../../src/server/State.luau) führt höchstens einen offenen Verkauf im optionalen Profilfeld `pendingSale`: `id`, `buyer` (`Dealer`, `Private`), `vehicleId`, `slotId`, `batchId`, `carrierId`, `quoteMin`, `quoteMax`, `dealerValue` und verborgener `seed`. Der Validator verlangt einen Karton an der Spielerhand mit exaktem Return an `slotId`, einen Platz mit Präfix `Vehicle.<vehicleId>.`, `seed` von 0 bis `MAX_SALE_SEED=16777215` und noch keinen Beleg unter derselben ID. Beim Händler gilt `quoteMin = quoteMax = dealerValue`.
+
+Der Abschluss schreibt `receipts[saleId]` mit `action=Sale`, Request `{operationId, expectedRevision}` und `SaleResult` (`revision`, Käufer, Fahrzeug, Platz, Charge, `quantity=1`, `amount`, Spanne, Händlerwert). `amount` liegt in der Spanne, die Charge fehlt danach im Bestand. Je Charge ist höchstens ein Sale-Beleg zulässig, sonst `DUPLICATE_SALE`. Purchase-, Reserve- und Commit-Belege verkaufter Chargen bleiben gültige Historie. Verkaufs-IDs haben höchstens 88 Bytes (`MAX_SALE_ID_LENGTH`), damit abgeleitete Umbuchungs-IDs wie `<saleId>/cancel/reserve` die ID-Grenze von 128 einhalten. Wie der Kaufbeleg erweitert dies Schema 2 ohne Versionswechsel; ältere Validatoren weisen beides ab.
+
+| API | Vertrag |
+| --- | --- |
+| `open(controller, actor, request, arrival, now, lease, seedOverride?)` | Request genau `id`, `buyer`, `vehicleId`, `slotId`, `batchId`. `arrival` muss in Eigentümer, Fahrzeug, Platz, Charge und Käufer übereinstimmen. Reserve und Commit bringen den Karton vom Anhängerplatz in die Hand; Spanne, Händlerwert und Seed werden mitgespeichert. `OPEN` mit Angebot ohne Seed und Betrag. |
+| `cancel(controller, actor, saleId, now, lease)` | Vor der Bindung: Karton über Reserve und Commit zurück auf seinen eigenen Platz, keine Zahlung. `CANCELLED`; eine Wiederholung erkennt den Beleg `<saleId>/cancel/commit`. |
+| `settle(controller, actor, saleId, lease)` | Bindende Übergabe in einer Profiländerung: Charge und Return entfernen, `amount` gutschreiben, Sale-Beleg speichern, Revision +1. `SOLD` mit Beleg erst nach bestätigtem Save. Claims auf Charge, Platz oder Hand ergeben `SALE_TRANSFER_PENDING`. |
+| `resume(controller, actor, saleId?)` | Klärt einen unklaren Schreibausgang zuerst über `reconcile`, meldet dann `SOLD` mit Beleg, `OPEN` mit Angebot oder `NONE`. |
+
+Alle Aufrufe liefern `{ok, code, message, unknown, offer?, receipt?}`. `Sales.PRICES` enthält für `Hocker01` den Händlerwert 100 und die Privatspanne 80–120. `seedOverride` ist ausschließlich ein Server-Testeingang, nie ein Spielerwert.
+
+Ablauf: Öffnen → Tragen → Bestätigen oder Abbrechen. Im Käuferhof öffnet E am Anhängerplatz den Verkauf. Der Spieler trägt den Karton zur Annahme und bestätigt dort mit gehaltenem E. Legt er ihn auf seinen eigenen Anhängerplatz zurück, bricht der Verkauf ab; andere Plätze lehnt die Weltanbindung ab. Solange `pendingSale` besteht, verlässt der Karton die Hand nur über `cancel` oder `settle`; eine gewöhnliche Umbuchung scheitert an der Validierung. Die Hand hat Kapazität 1, daher gilt ein Karton je Verkauf. Ein zweiter Verkauf ergibt `SALE_BUSY`.
+
+Der private Zufallswert gehört zu Karton und Käufer: `Sales.seedFor(batchId, buyer)` leitet ihn per FNV-1a aus einem serverseitigen Schlüssel ab, `open` speichert ihn verborgen. Abbrechen und erneutes Öffnen, Wiederbeitritt oder eine neue Anlieferung desselben Kartons zum selben Käufer ergeben deshalb immer denselben Betrag. `settle` berechnet `amount = quoteMin + seed % (quoteMax − quoteMin + 1)`; beim Händler ergibt das 100. Weil der Wert vor der Bindung feststeht, liefern Wiederholungen, unklare Writes und Wiederbeitritt denselben Betrag; kein Versuch würfelt neu. Der Spieler sieht vor der Bindung nur Spanne und Händlerwert, den Betrag erst nach bestätigtem Abschluss.
+
+Ein vorhandener Sale-Beleg beantwortet `open`, `cancel` und `settle` vor jeder Bestandsprüfung mit `SOLD`. Anderer Akteur oder andere Angaben unter derselben ID ergeben `OPERATION_CONFLICT`, auch ein nachträglicher Wechsel zum Händler. `open` mit der offenen ID liefert dasselbe Angebot ohne Schreibzugriff. Nach unklarem Save antworten `open`, `cancel` und `settle` mit `NOT_CONFIRMED`, bis `resume` den Stand geklärt hat; gutgeschrieben wird genau einmal.
+
+Das Modul prüft bereiten Spielerakteur mit eigenem bestätigtem Sitzungsbesitz, geschlossenen Request, Serverzeit, den übergebenen Ankunftsnachweis, Karton mit Menge 1 auf dem Platz dieses Fahrzeugs, Preis sowie Revisions- und Geldüberlauf. Die Weltanbindung prüft vorher beide Ladepunkte in der Käuferzone, freie Hand, Reichweite zum bewegten Ladeplatz und `Trips.arrival` für genau diesen Platz. Beim Abbruch prüft sie Eigentümer und Stillstand des Gespanns sowie die Reichweite zum eigenen Platz, nach einem Gespannersatz alternativ zu dessen Bergungsauflage. Beim Abschluss prüft sie den richtigen Käufer, die Reichweite zur Annahme und eine Abholung in derselben Live-Sitzung (`openedHere`).
+
+[Trips](../../src/server/Trips.luau) behält bei offenem Verkauf die Fahrtspur des Platzes, setzt Stillstand und Ankunft aber zurück. Nach einem Abbruch liegt der Karton mit derselben Fahrt wieder auf dem Platz. Er gilt erst nach erneutem Stillstand in der aktuellen Zone wieder als angekommen. Die Demo beobachtet die Fahrt in einem eigenen 0,25-s-Takt, der auch während laufender Speicherungen weiterläuft. Sonst hätte eine langsame DataStore-Antwort von über 1 s alle Fahrtspuren verworfen. Nur ein unklarer Schreibausgang setzt die Beobachtung zurück. Diesen klärt der Takt alle 2 s über `Sales.resume`.
+
+Bekannte Grenze: `openedHere` lebt nur im Speicher der Live-Sitzung. Nach Wiederbeitritt bleibt der offene Verkauf mit Karton in der Hand im Profil erhalten, die Weltanbindung verweigert den Abschluss aber mit `PICKUP_REQUIRED`. Der Karton muss zurück auf seinen Anhängerplatz und erneut angeliefert werden. Ein vor dem Wiederbeitritt geöffneter Verkauf ist daher ohne neue Lieferung nicht abschließbar. Der Preis ändert sich dabei nicht. In Studio mit DataStore-Scope über einen Serverwechsel geprüft ([P07-Beleg](../evidence/P07.md)).
+
+Die lokalen Fälle decken ab: keine Reservierung oder Zahlung ohne passende Ankunft, für fremde oder nicht bereite Akteure, für Holz oder bei Zusatzfeldern; Öffnen mit Return und Händlerwert ohne offengelegten Seed; Replay und `SALE_BUSY`; Abbruch ohne Zahlung mit wieder verkaufbarem Karton; Händlerabschluss mit 100 genau einmal; erzwungene Privatwerte 80 und 120 ohne Neuwurf oder Käuferwechsel; unklaren Abschluss mit Klärung über `resume`; Fortsetzung in neuer Sitzung mit gleichem Seed; gesperrte Umbuchung aus der Hand und `SALE_TRANSFER_PENDING`; gültige Kauf- und Transferhistorie verkaufter Chargen; Abweisung beschädigter Verkaufsrecords; derselbe Zufallswert nach Abbruch, neuer Sitzung und erneuter Anlieferung sowie Streuung über die ganze Spanne.
 
 ## Speichern und Wiederherstellen
 

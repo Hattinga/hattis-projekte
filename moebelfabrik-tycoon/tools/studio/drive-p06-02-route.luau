@@ -127,8 +127,9 @@ local function zoneCheck(target)
 end
 local dest={}
 for _,m in city.Destinations:GetChildren() do local lp=m:GetAttribute("LocalPosition");dest[m.Name]=Vector2.new(lp.X,lp.Z) end
-local handoff=serverStorage:FindFirstChild("P0608Stop")
-local order=if handoff then {"Tischlerei_West","Holzlieferant","Tischlerei_West","Moebelhandel"}
+local handoff=serverStorage:FindFirstChild("P0608Stop") or serverStorage:FindFirstChild("P07Stop")
+local order=if handoff and handoff.Name=="P07Stop" then {"Tischlerei_West","Moebelhandel","Privatkunden"}
+	elseif handoff then {"Tischlerei_West","Holzlieferant","Tischlerei_West","Moebelhandel"}
 	elseif workspace:GetAttribute("P0606TripProbe") then {"Tischlerei_West","Moebelhandel","Privatkunden"}
 	else {"Tischlerei_West","Holzlieferant","Tischlerei_West","Moebelhandel","Privatkunden","Tischlerei_West"}
 local result={status="running",legs={}}
@@ -144,6 +145,7 @@ task.spawn(function()
 		if st.stuckAt or st.timeout then result.status="aborted";store.Value=Http:JSONEncode(result);return end
 		if handoff and handoff:IsA("BindableFunction") then
 			local ok,approved=pcall(handoff.Invoke,handoff,i,st)
+			if ok and approved=="stop" then result.status="done";store.Value=Http:JSONEncode(result);return end
 			if not ok or approved~=true then
 				result.status="aborted";st.handoffError=if ok then "Handoff refused" else tostring(approved)
 				store.Value=Http:JSONEncode(result);return
