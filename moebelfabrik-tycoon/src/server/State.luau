@@ -9,7 +9,7 @@ export type Location = {id: string, kind: string, capacity: number, acceptedStag
 export type Batch = {id: string, ownerUserId: number, recipeId: string, recipeVersion: number, stage: Stage,
 	quantity: number, locationId: string}
 export type Claim = {id: string, actorId: string, actorKind: string, carrierId: string, batchId: string,
-	sourceId: string, targetId: string, nextTargetId: string?, quantity: number, expiresAt: number}
+	sourceId: string, targetId: string, nextTargetId: string?, recoverWorker: boolean?, quantity: number, expiresAt: number}
 export type ReturnReservation = {kind: "Return", batchId: string, actorId: string, actorKind: string,
 	carrierId: string, recipeId: string, recipeVersion: number, stage: Stage, quantity: number}
 export type DeliveryReservation = {kind: "Delivery", batchId: string, purchaseOperationId: string}
@@ -77,14 +77,14 @@ local ADVANCE_FIELDS = {operationId=true,batchId=true,amount=true}
 local LOCATION_FIELDS = {id=true,kind=true,capacity=true,acceptedStages=true}
 local BATCH_FIELDS = {id=true,ownerUserId=true,recipeId=true,recipeVersion=true,stage=true,quantity=true,locationId=true}
 local CLAIM_FIELDS = {id=true,actorId=true,actorKind=true,carrierId=true,batchId=true,sourceId=true,
-	targetId=true,nextTargetId=true,quantity=true,expiresAt=true}
+	targetId=true,nextTargetId=true,recoverWorker=true,quantity=true,expiresAt=true}
 local RETURN_FIELDS = {kind=true,batchId=true,actorId=true,actorKind=true,carrierId=true,recipeId=true,
 	recipeVersion=true,stage=true,quantity=true}
 local DELIVERY_FIELDS = {kind=true,batchId=true,purchaseOperationId=true}
 local PRODUCTION_FIELDS = {kind=true,batchId=true,finishAt=true}
 local RECEIPT_FIELDS = {actorId=true,actorKind=true,ownerUserId=true,carrierId=true,action=true,request=true,result=true}
 local RESERVE_REQUEST_FIELDS = {operationId=true,expectedRevision=true,batchId=true,sourceId=true,targetId=true,
-	nextTargetId=true,quantity=true}
+	nextTargetId=true,recoverWorker=true,quantity=true}
 local CLAIM_REQUEST_FIELDS = {operationId=true,expectedRevision=true,claimId=true}
 local PURCHASE_REQUEST_FIELDS = {operationId=true,expectedRevision=true}
 local PURCHASE_RESULT_FIELDS = {ok=true,code=true,message=true,revision=true,batchId=true,supplierId=true,rawSlotId=true,price=true}
@@ -148,6 +148,23 @@ function State.isFirstWorkerPickup(actorKind: string, carrierId: string, sourceI
 	local route=State.FIRST_WORKER
 	return actorKind=="Worker" and carrierId==route.carrier and sourceId==route.source
 		and targetId==route.carrier and nextTargetId==route.target
+end
+
+function State.isWorkerRecovery(profile: Profile, actorKind: string, actorId: string, carrierId: string,
+	sourceId: string, targetId: string): boolean
+	return actorKind=="Player" and actorId==playerActor(profile) and sourceId==State.FIRST_WORKER.carrier
+		and targetId==carrierId and sourceId~=targetId and profile.locations[sourceId].kind=="Carrier"
+end
+
+-- Used after the ordinary stock and Return invariants have been checked.
+function State.hasWorkerRecoveryReturn(profile: Profile, batch: Batch): boolean
+	local route=State.FIRST_WORKER
+	local origin=profile.locations[route.source]
+	local reservation=profile.reservations[route.source]
+	return batch.locationId==route.carrier and batch.stage==route.stage and origin~=nil
+		and origin.kind=="StationOutput" and reservation~=nil and reservation.kind=="Return"
+		and reservation.batchId==batch.id and reservation.actorKind=="Worker"
+		and reservation.actorId==route.carrier and reservation.carrierId==route.carrier
 end
 
 function State.claimTouches(claim: Claim, locationId: string): boolean
@@ -355,6 +372,9 @@ function State.validate(profile: any): (boolean, string?)
 					return false,"INVALID_RECEIPT_REQUEST"
 				end
 			end
+			if request.recoverWorker~=nil and (request.recoverWorker~=true or request.nextTargetId~=nil
+				or not State.isWorkerRecovery(profile,receipt.actorKind,receipt.actorId,receipt.carrierId,
+					request.sourceId,request.targetId)) then return false,"INVALID_RECEIPT_REQUEST" end
 		elseif not supply and not sale and not identifier(request.claimId) then
 			return false,"INVALID_RECEIPT_REQUEST"
 		end
@@ -460,7 +480,7 @@ function State.validate(profile: any): (boolean, string?)
 			or source.kind=="StationProcess" or target.kind=="StationProcess"
 			or source.kind=="Machine" or target.kind=="Machine"
 			or (source.id~=claim.carrierId and target.id~=claim.carrierId)
-			or ((source.kind=="Carrier" or source.kind=="Band") and source.id~=claim.carrierId)
+			or ((source.kind=="Carrier" or source.kind=="Band") and source.id~=claim.carrierId and claim.recoverWorker~=true)
 			or ((target.kind=="Carrier" or target.kind=="Band") and target.id~=claim.carrierId)
 			or counts[target.id]~=0 or not table.find(target.acceptedStages,batch.stage)
 			or lockedSlots[source.id] or lockedSlots[target.id] then return false,"INVALID_CLAIM_LOCATIONS" end
@@ -477,7 +497,11 @@ function State.validate(profile: any): (boolean, string?)
 			or receipt.request.batchId~=claim.batchId or receipt.request.sourceId~=claim.sourceId
 			or receipt.request.targetId~=claim.targetId or receipt.request.quantity~=claim.quantity
 			or receipt.request.nextTargetId~=claim.nextTargetId
+			or receipt.request.recoverWorker~=claim.recoverWorker
 			or receipt.result.expiresAt~=claim.expiresAt then return false,"INVALID_CLAIM_RECEIPT" end
+		if claim.recoverWorker and not State.hasWorkerRecoveryReturn(profile,batch) then
+			return false,"INVALID_CLAIM_RESERVATION"
+		end
 		local nextTargetId=claim.nextTargetId
 		if nextTargetId~=nil then
 			if batch.stage~=State.FIRST_WORKER.stage or counts[nextTargetId]~=0 or lockedSlots[nextTargetId]

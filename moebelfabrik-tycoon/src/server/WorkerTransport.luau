@@ -133,4 +133,27 @@ function WorkerTransport.restore(controller: Persistence.Controller, operationId
 	return save(controller, profile, store, lease, {ok = true, code = "RETURNED", batchId = held.batchId})
 end
 
+-- Used only by the world adapter after checking the stopped worker and the owner's physical reach.
+function WorkerTransport.recover(controller: Persistence.Controller, userId: number, hand: string,
+	operationId: string, now: number, lease: number): Result
+	local profile, problem = load(controller)
+	if not profile then return {ok = false, code = problem :: string} end
+	local state = profile.state
+	if state.ownerUserId ~= userId then return {ok = false, code = "NOT_AUTHORIZED"} end
+	local held = state.reservations[route.source]
+	if not held or held.kind ~= "Return" or held.carrierId ~= route.carrier or held.actorId ~= route.carrier then
+		return {ok = false, code = "NOT_CARRYING"}
+	end
+	local store = Transfers.new(state)
+	local player = {ready = true, kind = "Player", ownerUserId = userId,
+		actorId = "Player/" .. string.format("%.0f", userId), carrierLocationId = hand}
+	local claim = Transfers.reserve(store, player, {operationId = operationId, expectedRevision = state.revision,
+		batchId = held.batchId, sourceId = route.carrier, targetId = hand, recoverWorker = true, quantity = 1}, now, 5)
+	if not claim.ok then return {ok = false, code = claim.code} end
+	local taken = Transfers.commit(store, player, {operationId = operationId .. "/commit",
+		expectedRevision = store.profile.revision, claimId = claim.claimId}, now)
+	if not taken.ok then return {ok = false, code = taken.code} end
+	return save(controller, profile, store, lease, {ok = true, code = "RECOVERED", batchId = held.batchId})
+end
+
 return table.freeze(WorkerTransport)

@@ -1,15 +1,15 @@
 # Projektstatus
 
-Stand 20. November 2026. **P02, P04, P05, P06, P07 sowie P08-01 bis P08-03 und P08-06 sind abgenommen.** Der erste Mitarbeiter trägt einen Bausatz von der Säge zur Montage. **Als Nächstes folgt P08-04, die Prüfung der Zustandsanzeigen.**
+Stand 20. November 2026. **P02 und P04 bis P08 sind abgenommen.** Der erste Mitarbeiter transportiert Bausätze von der Säge zur Montagebank. Blockaden und Wiederbeitritt erhalten die Ware. **Als Nächstes folgt P09-01, das erste feste Förderband.**
 
 | Feld | Aktuell |
 |---|---|
-| Letzter abgeschlossener Schritt | **P08-03 und P08-06** – tatsächlicher Warentransport von der Säge zur Montage, konkurrierende Handaufnahme abgewiesen ([Beleg](../evidence/P08.md#p08-03-und-p08-06--transport-und-konkurrenz)). |
-| Davor | **P08-01 und P08-02** – Anstellung, Wiederbeitritt und feste Strecke ([Beleg](../evidence/P08.md)). |
-| Naechster Umsetzungsschritt | **P08-04** – Materialmangel, belegten Zielplatz, Bewegung und Wegblockade in Spiel und HUD prüfen. |
+| Letzter abgeschlossener Schritt | **P08** – Mitarbeiter anstellen, zuweisen und mit Ware prüfen. Manuelle Konkurrenz, Blockaden, körperliche Bergung und DataStore-Wiederbeitritt bestanden ([Beleg](../evidence/P08.md)). |
+| Davor | **P07** – vollständiger Handbetrieb über Händler und Privatkunde, Wiederanlauf aus 0 Guthaben ([Beleg](../evidence/P07.md)). |
+| Naechster Umsetzungsschritt | **P09-01** – festes Förderband mit registriertem Eingang und Ausgang freischalten und im Profil speichern. |
 | Entscheidungen 18.11. (delegiert) | Hallentor: Laden nur auf dem Hof, Halle wird nicht befahren, Tor bleibt 4 m ([MAP](../design/MAP.md)). Oberfläche: eine Finish-Oberfläche in Hocker01 v1 ([PRODUCTION](../design/PRODUCTION.md)). P00-03: Zielprofil schwächeres Android-Phone 1600×720, Touch, Grafikstufe 1; bis zum echten Gerät Studio-Emulator als Stellvertreter, Checkbox bleibt offen ([P00](../plan/00-start.md)) |
 | Paralleles Paket | **P03-04 abgenommen (19.11.)**: Karton liegt auf, Last im Fahrzeugprofil, Torfahrt, Bild aus der Spielkamera ([Beleg](../evidence/P03-04.md)). **P03-05 abgenommen (19.11.)**: Die fünf FBX sind kalibriert in `ServerStorage.P03ArtProbe`, die Labels sind im Play-Client in DE und EN geprüft, `TextScaled` ist korrigiert ([Beleg](../evidence/P03-05.md)). Offen sind P03-06 (Spielkamera-Ansichten) und P03-07 (Art-Freigabe durch Jonas). **P03-03** – die Gebäudeprobe benötigt eine eigene Upload-Freigabe. [Übergabe](HANDOFF-2026-11-19.md#p03-05--fünf-assets-importiert-und-kalibriert) |
-| Planabschnitt | [Automatisierung, P08](../plan/02-automatisierung.md#p08--erster-mitarbeiter) |
+| Planabschnitt | [Automatisierung, P09](../plan/02-automatisierung.md#p09--erstes-festes-förderband) |
 | Handlinie | `Workspace.P02Line` steht seit P06-01 in der Halle `CityGreybox.Buildings.Tischlerei_West` (Pivot 169,29/3,85/376,50 Studs). Die alten Bodenstreifen liegen in `ServerStorage.P02LineArchive`. Proben und Demo binden über Namen. |
 | Zustaendigkeit | Lead integriert gemeinsame Dateien/Studio; Blender-Agent lieferte getrenntes P03-02-Paket, Lead hat Quelle/Exporte/Ansichten uebernommen. Kein paralleler Studio-Schreiber |
 | Aktueller Test-Place | Furniture Factory Tycoon, Place `79033653140107`, Universe `10776116608`, privat |
@@ -20,8 +20,8 @@ Stand 20. November 2026. **P02, P04, P05, P06, P07 sowie P08-01 bis P08-03 und P
 | Vergleichsobjekt | `Workspace.FableWorkshop`, Asset `106051543998570`; kein vorgesehenes Spielgebaeude |
 | Technikproben | `Workspace.P02Greybox` und `Workspace.P02Line`; Prueftraeger in `ServerStorage.P02CarryProbe`, nicht im Spielstart |
 | Arbeitsbranch | `work/p00-studio-import`; jeder Abschluss wird gepusht (Nutzerauftrag vom 18.11.: fortlaufend committen und pushen) |
-| Speicherung | TeamCreate **Version 83**, privater Stand im Edit-Modus. Neun Quellen für Mitarbeitertransport, Bestandsregeln, Demo und Prüfwerkzeug abgeglichen. |
-| Wiederherstellbare Staende | Version 82 = P08-Strecke, Version 81 = P08-Anstellung, Version 80 = P07 abgeschlossen, Version 78 = vor P07-07/08, Version 76 = lesbare P03-05-Labels, Version 75 = P07-Verkauf, Version 67 = Bergungsmarker, Gurte und Art-Prüfinstanzen, Version 61 = Fahrzeugwiederherstellung. |
+| Speicherung | TeamCreate **Version 85**, privater Stand im Edit-Modus. Zehn Quellen für Blockaden, Mitarbeiterbergung, Wiederbeitritt und Prüfwerkzeuge abgeglichen. |
+| Wiederherstellbare Staende | Version 83 = stabiler Mitarbeitertransport, Version 82 = P08-Strecke, Version 81 = P08-Anstellung, Version 80 = P07 abgeschlossen, Version 78 = vor P07-07/08, Version 76 = lesbare P03-05-Labels, Version 75 = P07-Verkauf, Version 67 = Bergungsmarker, Gurte und Art-Prüfinstanzen, Version 61 = Fahrzeugwiederherstellung. |
 | Pruefbelege | [P02-06](../evidence/P02-06.md), [P02-05](../evidence/P02-05.md), [P02-04](../evidence/P02-04.md), [P02-03R](../evidence/P02-03R.md); Stadtentwurf [MAP](../design/MAP.md), Masse [DIMENSIONS](../design/DIMENSIONS.md) |
 
 ## P07-07 und P07-08 abgenommen (20.11.)

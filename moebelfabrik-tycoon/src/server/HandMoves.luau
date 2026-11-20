@@ -26,7 +26,7 @@ local function rejected(code: string, message: string): Result
 	return {ok = false, code = code, message = message}
 end
 
-function HandMoves.checkReach(player: Player, endpoint: Endpoint, vehicleSlot: boolean?): Result?
+function HandMoves.checkReach(player: Player, endpoint: Endpoint, vehicleSlot: boolean?, receiver: Model?): Result?
 	local stand = endpoint.stand
 	if not endpoint.point:IsDescendantOf(workspace)
 		or (not vehicleSlot and (not stand or not stand:IsDescendantOf(workspace))) then
@@ -56,7 +56,8 @@ function HandMoves.checkReach(player: Player, endpoint: Endpoint, vehicleSlot: b
 	params.FilterType = Enum.RaycastFilterType.Exclude
 	params.FilterDescendantsInstances = {character}
 	local hit = workspace:Raycast(head.Position, point.WorldPosition - head.Position, params)
-	if hit and hit.Instance ~= point.Parent and not (vehicleSlot and (hit.Position - point.WorldPosition).Magnitude <= 0.5) then
+	if hit and hit.Instance ~= point.Parent and not (receiver and hit.Instance:IsDescendantOf(receiver))
+		and not (vehicleSlot and (hit.Position - point.WorldPosition).Magnitude <= 0.5) then
 		return rejected("OBSTRUCTED", "Der Weg zur Auflage ist versperrt.")
 	end
 	return nil

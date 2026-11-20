@@ -29,7 +29,7 @@ local MESSAGES={
 	DELIVERY_TARGET_REQUIRED="Diese bezahlte Lieferung gehört auf ihren garantierten Rohstoffplatz.",
 }
 local REQUEST_FIELDS={operationId=true,expectedRevision=true,batchId=true,sourceId=true,targetId=true,
-	nextTargetId=true,quantity=true}
+	nextTargetId=true,recoverWorker=true,quantity=true}
 local ACTOR_KINDS={Player=true,Worker=true,Band=true}
 local function result(code: string): Result
 	return {ok=code=="OK",code=code,message=MESSAGES[code]}
@@ -72,8 +72,14 @@ function Actions.checkTransfer(profile: any, actor: any, request: any, now: numb
 	local carrier=profile.locations[actor.carrierLocationId]
 	local carrierKind=actor.kind=="Band" and "Band" or "Carrier"
 	if not carrier or carrier.kind~=carrierKind then return result("WRONG_CARRIER") end
+	local recoverWorker=request.recoverWorker
+	if recoverWorker~=nil and (recoverWorker~=true or request.nextTargetId~=nil
+		or not State.isWorkerRecovery(profile,actor.kind,actor.actorId,carrier.id,source.id,target.id)) then
+		return result("INVALID_REQUEST")
+	end
 	for _,location in {source,target} do
-		if (location.kind=="Carrier" or location.kind=="Band") and location.id~=carrier.id then
+		if (location.kind=="Carrier" or location.kind=="Band") and location.id~=carrier.id
+			and not (recoverWorker and location==source) then
 			return result("WRONG_CARRIER")
 		end
 	end
@@ -100,7 +106,7 @@ function Actions.checkTransfer(profile: any, actor: any, request: any, now: numb
 		local own=claimId==ownClaimId and claim.actorId==actor.actorId and claim.actorKind==actor.kind
 			and claim.carrierId==carrier.id and claim.batchId==batch.id
 			and claim.sourceId==source.id and claim.targetId==target.id and claim.quantity==request.quantity
-			and claim.nextTargetId==nextTargetId
+			and claim.nextTargetId==nextTargetId and claim.recoverWorker==recoverWorker
 		if not own and (now==nil or now<claim.expiresAt) then
 			if State.claimTouches(claim,source.id) then return result("SOURCE_RESERVED") end
 			if State.claimTouches(claim,target.id) or (nextTargetId~=nil and State.claimTouches(claim,nextTargetId)) then
@@ -119,7 +125,10 @@ function Actions.checkTransfer(profile: any, actor: any, request: any, now: numb
 			return result("DELIVERY_TARGET_REQUIRED")
 		end
 	end
-	if source.id==carrier.id then
+	if recoverWorker then
+		if not returnReservation then return result("RETURN_REQUIRED") end
+		if not State.hasWorkerRecoveryReturn(profile,batch) then return result("RETURN_MISMATCH") end
+	elseif source.id==carrier.id then
 		if not returnReservation then return result("RETURN_REQUIRED") end
 		if returnReservation.actorId~=actor.actorId or returnReservation.actorKind~=actor.kind
 			or returnReservation.carrierId~=carrier.id then return result("RETURN_MISMATCH") end

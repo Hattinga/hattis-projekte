@@ -25,6 +25,7 @@ local Sales = require(factory.Sales)
 local Workers = require(factory.Workers)
 local WorkerRoute = require(factory.WorkerRoute)
 local WorkerShift = require(factory.WorkerShift)
+local WorkerTransport = require(factory.WorkerTransport)
 local players = game:GetService("Players")
 local serverStorage = game:GetService("ServerStorage")
 local collection = game:GetService("CollectionService")
@@ -146,6 +147,10 @@ if logisticsEnabled then
 	end
 	if workspace:GetAttribute("P0803WorkerStock") == true then
 		profile.batches.Testbausatz = State.newBatch("Testbausatz", player.UserId, "Bausatz", WorkerRoute.SOURCE)
+		if workspace:GetAttribute("P0804WorkerTargetFull") == true then
+			profile.batches.TestMontageInput = State.newBatch("TestMontageInput", player.UserId, "Bausatz", WorkerRoute.TARGET)
+			profile.batches.TestMontageOutput = State.newBatch("TestMontageOutput", player.UserId, "Rohhocker", "Montage.Output")
+		end
 	end
 else
 	for i = 1, 2 do
@@ -172,10 +177,25 @@ local loaded = controller.load("demo/" .. http:GenerateGUID(false), TTL, functio
 end)
 assert(loaded.ok, loaded.code)
 local function confirmed(): any return controller.snapshot().confirmed end
+local demo = Instance.new("Folder")
+demo.Name = "P0509LineDemo"
+demo.Parent = workspace
+local restoredWorker: WorkerRoute.Rig? = nil
 if resumeRig then
+	local hire = confirmed().data.progress.firstWorker
+	if workerRoute and hire and hire.assigned then
+		local ok, rig = pcall(WorkerRoute.spawn, workerRoute, demo)
+		if not ok then
+			demo:Destroy()
+			controller.release()
+			error("Worker restore failed: " .. tostring(rig))
+		end
+		restoredWorker = rig
+	end
 	local active, yardName = VehicleRecovery.restore(controller.snapshot(), player.UserId, os.time(), resumeRig,
-		yards, places.points, body, hand)
+		yards, places.points, body, hand, if restoredWorker then restoredWorker.root else nil)
 	if not active then
+		demo:Destroy()
 		controller.release()
 		error("Restore failed: " .. yardName)
 	end
@@ -187,9 +207,6 @@ if resumeRig then
 	end
 end
 
-local demo = Instance.new("Folder")
-demo.Name = "P0509LineDemo"
-demo.Parent = workspace
 local gui = Instance.new("ScreenGui")
 gui.Name = "P0509LineDemo"
 gui.ResetOnSpawn = false
@@ -217,6 +234,7 @@ local assignPrompt: ProximityPrompt? = nil
 local workerStarted = false
 local workerShift: WorkerShift.Shift? = nil
 local workerCargo: string? = nil
+local workerRecoveryPrompt: ProximityPrompt? = nil
 local busy = false
 local closing = false
 local lastMessage = if loading then "Beim Holzlieferanten mit R kaufen und mit E verladen."
@@ -259,15 +277,63 @@ local function render()
 	if assigned and route and not workerStarted then
 		workerStarted = true
 		task.spawn(function()
-			local ok, workerRig = pcall(WorkerRoute.spawn, route, demo)
-			if not ok then
-				lastMessage = "Der Mitarbeiter konnte nicht erscheinen."
-				warn(workerRig)
-				return
+			local workerRig = restoredWorker
+			if not workerRig then
+				local ok, rig = pcall(WorkerRoute.spawn, route, demo)
+				if not ok then
+					lastMessage = "Der Mitarbeiter konnte nicht erscheinen."
+					warn(rig)
+					return
+				end
+				workerRig = rig
 			end
-			local shift = WorkerShift.new(route, workerRig)
+			if closing then return end
+			local shift = WorkerShift.new(route, workerRig, restoredWorker ~= nil)
 			workerShift = shift
 			places.carriers[State.FIRST_WORKER.carrier] = workerRig.root
+			local point = Instance.new("Attachment")
+			point.Name = "WorkerRecoveryPoint"
+			point.Position = Vector3.new(0, 0.25, -0.9)
+			point.Parent = workerRig.root
+			local prompt = Instance.new("ProximityPrompt")
+			prompt.Name = "P0805RecoverWorker"
+			prompt.ObjectText = "Bausatz beim Mitarbeiter"
+			prompt.ActionText = "Übernehmen"
+			prompt.KeyboardKeyCode = Enum.KeyCode.G
+			prompt.GamepadKeyCode = Enum.KeyCode.ButtonB
+			prompt.MaxActivationDistance = 6
+			prompt.Enabled = false
+			prompt.Parent = point
+			workerRecoveryPrompt = prompt
+			local function recover(user: Player): HandMoves.Result
+				if user ~= player or busy or closing or not shift.paused or not workerCargo then
+					return {ok = false, code = "NOT_READY", message = "Bergung derzeit nicht verfügbar."}
+				end
+				local reach = HandMoves.checkReach(user, {point = point}, true, workerRig.model)
+				if reach then
+					lastMessage = reach.message
+					return reach
+				end
+				busy = true
+				local ran, result = pcall(WorkerTransport.recover, controller, user.UserId, hand,
+					"worker/recover/" .. http:GenerateGUID(false), os.time(), TTL)
+				busy = false
+				local recovered = ran and result.ok
+				if recovered then shift.status = "Bausatz übernommen" end
+				local code = if ran then result.code else "ERROR"
+				lastMessage = if recovered then "Bausatz übernommen. Lege ihn an der Montage ab."
+					elseif code == "TARGET_FULL" then "Lege zuerst die Ware in deiner Hand ab."
+					else "Bausatz gerade nicht übernehmbar."
+				return {ok = recovered, code = code, message = lastMessage}
+			end
+			prompt.Triggered:Connect(recover)
+			local hook = Instance.new("BindableFunction")
+			hook.Name = "P0805Recover"
+			hook.OnInvoke = function(): HandMoves.Result
+				while busy do task.wait() end
+				return recover(player)
+			end
+			hook.Parent = serverStorage
 			while not closing and demo.Parent and workerRig.model.Parent do
 				if not busy then WorkerShift.tick(shift, controller, TTL) end
 				task.wait(0.25)
@@ -282,6 +348,7 @@ local function render()
 			workerShift.rig.root:SetNetworkOwner(nil)
 			workerCargo = cargo
 		end
+		if workerRecoveryPrompt then workerRecoveryPrompt.Enabled = workerShift.paused and cargo ~= nil end
 	end
 	local load = if loading then Vehicles.load(state, loading.slots.slotIds) else nil
 	if load and loading then
@@ -823,14 +890,16 @@ reader.OnInvoke = function(): any
 		pendingSale = state.pendingSale, saleReceipts = saleReceipts, sellPrompts = sellPrompts,
 		advance = state.advance, advanceReceipts = advanceReceipts, firstWorker = confirmed().data.progress.firstWorker,
 		workerStatus = if workerShift then workerShift.status else nil,
-		workerPaused = workerShift ~= nil and workerShift.paused, workerReceipts = workerReceipts, claims = state.claims}
+		workerPaused = workerShift ~= nil and workerShift.paused, workerAttempts = if workerShift then workerShift.attempts else 0,
+		workerReceipts = workerReceipts, claims = state.claims}
 end
 reader.Parent = game:GetService("ServerStorage")
 if resumeRig then
 	local function release(): Persistence.Result
 		if closing then return controller.snapshot() end
 		closing = true
-		while busy do task.wait() end
+		if workerShift then WorkerShift.stop(workerShift) end
+		while busy or controller.snapshot().inFlight do task.wait() end
 		return controller.release()
 	end
 	local releaseHook = Instance.new("BindableFunction")

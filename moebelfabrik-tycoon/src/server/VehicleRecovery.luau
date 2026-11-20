@@ -46,7 +46,8 @@ function VehicleRecovery.restore(
 	yards: Instance,
 	fixedPoints: {[string]: Attachment},
 	carrier: BasePart,
-	carrierId: string
+	carrierId: string,
+	workerCarrier: BasePart?
 ): ({[string]: RecoveryPoint}?, string)
 	local saved = snapshot.confirmed
 	if not snapshot.ok or snapshot.status ~= "Confirmed" or snapshot.inFlight or snapshot.unknown or not saved then
@@ -65,6 +66,9 @@ function VehicleRecovery.restore(
 		return nil, "RECOVERY_FIXTURE_MISSING"
 	end
 	local original: {[string]: string} = {[carrierId] = carrier:GetFullName()}
+	if workerCarrier and workerCarrier:IsDescendantOf(workspace) then
+		original[State.FIRST_WORKER.carrier] = workerCarrier:GetFullName()
+	end
 	for id, point in fixedPoints do
 		if point:IsDescendantOf(workspace) then original[id] = point:GetFullName() end
 	end
