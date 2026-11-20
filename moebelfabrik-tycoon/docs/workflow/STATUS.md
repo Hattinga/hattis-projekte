@@ -1,12 +1,12 @@
 # Projektstatus
 
-Stand 20. November 2026. **P02 und P04 bis P08 sind abgenommen.** Der erste Mitarbeiter transportiert Bausätze von der Säge zur Montagebank. Blockaden und Wiederbeitritt erhalten die Ware. **Als Nächstes folgt P09-01, das erste feste Förderband.**
+Stand 20. November 2026. **P02, P04 bis P08 sowie P09-01 und P09-02 sind abgenommen.** Das erste Förderband ist zwischen Säge und Montagebank freischaltbar und puffert baulich einen Bausatz. **Als Nächstes folgt P09-03, die Umbuchung der Ware über den Bandplatz.**
 
 | Feld | Aktuell |
 |---|---|
-| Letzter abgeschlossener Schritt | **P08** – Mitarbeiter anstellen, zuweisen und mit Ware prüfen. Manuelle Konkurrenz, Blockaden, körperliche Bergung und DataStore-Wiederbeitritt bestanden ([Beleg](../evidence/P08.md)). |
-| Davor | **P07** – vollständiger Handbetrieb über Händler und Privatkunde, Wiederanlauf aus 0 Guthaben ([Beleg](../evidence/P07.md)). |
-| Naechster Umsetzungsschritt | **P09-01** – festes Förderband mit registriertem Eingang und Ausgang freischalten und im Profil speichern. |
+| Letzter abgeschlossener Schritt | **P09-01/02** – Kauf und Wiederbeitritt des geraden Bands, ein vermessener Bausatzpuffer (`Band.First`). B-Prompt im Client sichtbar, direkte Tastatureingabe noch offen. [Beleg](../evidence/P09.md) |
+| Davor | **P08** – Mitarbeitertransport, Konkurrenz, Blockaden, Bergung und Wiederbeitritt ([Beleg](../evidence/P08.md)). |
+| Naechster Umsetzungsschritt | **P09-03** – Bausatz über den gemeinsamen Bestand vom Sägeausgang auf das Band und an den Montageeingang umbuchen. |
 | Entscheidungen 18.11. (delegiert) | Hallentor: Laden nur auf dem Hof, Halle wird nicht befahren, Tor bleibt 4 m ([MAP](../design/MAP.md)). Oberfläche: eine Finish-Oberfläche in Hocker01 v1 ([PRODUCTION](../design/PRODUCTION.md)). P00-03: Zielprofil schwächeres Android-Phone 1600×720, Touch, Grafikstufe 1; bis zum echten Gerät Studio-Emulator als Stellvertreter, Checkbox bleibt offen ([P00](../plan/00-start.md)) |
 | Paralleles Paket | **P03-04 abgenommen (19.11.)**: Karton liegt auf, Last im Fahrzeugprofil, Torfahrt, Bild aus der Spielkamera ([Beleg](../evidence/P03-04.md)). **P03-05 abgenommen (19.11.)**: Die fünf FBX sind kalibriert in `ServerStorage.P03ArtProbe`, die Labels sind im Play-Client in DE und EN geprüft, `TextScaled` ist korrigiert ([Beleg](../evidence/P03-05.md)). Offen sind P03-06 (Spielkamera-Ansichten) und P03-07 (Art-Freigabe durch Jonas). **P03-03** – die Gebäudeprobe benötigt eine eigene Upload-Freigabe. [Übergabe](HANDOFF-2026-11-19.md#p03-05--fünf-assets-importiert-und-kalibriert) |
 | Planabschnitt | [Automatisierung, P09](../plan/02-automatisierung.md#p09--erstes-festes-förderband) |
@@ -20,8 +20,8 @@ Stand 20. November 2026. **P02 und P04 bis P08 sind abgenommen.** Der erste Mita
 | Vergleichsobjekt | `Workspace.FableWorkshop`, Asset `106051543998570`; kein vorgesehenes Spielgebaeude |
 | Technikproben | `Workspace.P02Greybox` und `Workspace.P02Line`; Prueftraeger in `ServerStorage.P02CarryProbe`, nicht im Spielstart |
 | Arbeitsbranch | `work/p00-studio-import`; jeder Abschluss wird gepusht (Nutzerauftrag vom 18.11.: fortlaufend committen und pushen) |
-| Speicherung | TeamCreate **Version 85**, privater Stand im Edit-Modus. Zehn Quellen für Blockaden, Mitarbeiterbergung, Wiederbeitritt und Prüfwerkzeuge abgeglichen. |
-| Wiederherstellbare Staende | Version 83 = stabiler Mitarbeitertransport, Version 82 = P08-Strecke, Version 81 = P08-Anstellung, Version 80 = P07 abgeschlossen, Version 78 = vor P07-07/08, Version 76 = lesbare P03-05-Labels, Version 75 = P07-Verkauf, Version 67 = Bergungsmarker, Gurte und Art-Prüfinstanzen, Version 61 = Fahrzeugwiederherstellung. |
+| Speicherung | TeamCreate **Version 86**, privater Stand im Edit-Modus. Sechs Quellen für Band-Freischaltung, Puffer, Demo und Prüfung abgeglichen. |
+| Wiederherstellbare Staende | Version 85 = P08 abgeschlossen, Version 83 = Mitarbeitertransport, Version 82 = P08-Strecke, Version 81 = P08-Anstellung, Version 80 = P07 abgeschlossen, Version 78 = vor P07-07/08, Version 76 = lesbare P03-05-Labels, Version 67 = Art-Prüfinstanzen. |
 | Pruefbelege | [P02-06](../evidence/P02-06.md), [P02-05](../evidence/P02-05.md), [P02-04](../evidence/P02-04.md), [P02-03R](../evidence/P02-03R.md); Stadtentwurf [MAP](../design/MAP.md), Masse [DIMENSIONS](../design/DIMENSIONS.md) |
 
 ## P07-07 und P07-08 abgenommen (20.11.)

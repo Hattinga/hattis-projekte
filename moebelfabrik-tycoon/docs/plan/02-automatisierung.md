@@ -24,8 +24,8 @@
 
 **Voraussetzungen** P08 ist abgenommen. Der Mitarbeitertransport nutzt die gemeinsame Reservierung und Umbuchung. Die vorgesehene Bandstrecke besitzt passende Stationsanschlüsse.
 
-- [ ] **P09-01** Ein gerades Band mit einem festen Eingabe- und Ausgabeanschluss freischaltbar machen. Die Verbindung bleibt im Werkstattprofil gespeichert.
-- [ ] **P09-02** Ein definiertes Transportformat und einen sichtbaren Zwischenpuffer festlegen. Quellstation, Band und Zielstation akzeptieren dieselbe Größe und Verarbeitungsstufe.
+- [x] **P09-01** Ein gerades Band mit einem festen Eingabe- und Ausgabeanschluss freischaltbar machen. Die Verbindung bleibt im Werkstattprofil gespeichert.
+- [x] **P09-02** Ein definiertes Transportformat und einen sichtbaren Zwischenpuffer festlegen. Quellstation, Band und Zielstation akzeptieren dieselbe Größe und Verarbeitungsstufe.
 - [ ] **P09-03** Eine Charge über die gemeinsame Reservierung vom Quellausgang auf den Bandabschnitt und anschließend zum Zieleingang umbuchen.
 - [ ] **P09-04** Die sichtbare Bewegung der Charge am verbindlichen Transportzustand ausrichten. Beim Wiederbeitritt den bestätigten Band- oder Pufferzustand wiederherstellen.
 - [ ] **P09-05** Das Band bei vollem Ziel anhalten und nach freiem Platz fortsetzen. Der Stillstand wird bis zur Quelle als kontrollierter Rückstau sichtbar.
@@ -37,3 +37,5 @@
 **Abnahme** Das Band übernimmt eine bisher manuelle oder personelle Strecke. Puffer und Lage der Ware bleiben bei vollem Ziel und Wiederbeitritt nachvollziehbar. In Konkurrenzfällen erfolgt jede Umbuchung einmal. Weitere Rezepte und freie Bandnetze erhalten ihre eigene spätere Abnahme.
 
 **Nachweis** Aufnahme eines laufenden und gestauten Bands, Bestandsprotokoll bei Konkurrenz und Wiederbeitritt sowie das Ergebnis der Geräteprüfung festhalten.
+
+[P09-Prüfbelege](../evidence/P09.md)

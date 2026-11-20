@@ -182,6 +182,10 @@ J am Sägeausgang speichert `firstWorker.assigned=true` mit neuer Bestandsrevisi
 
 Nach zwei erfolglosen Wegversuchen gibt der Mitarbeiter den Claim frei und pausiert. Getragene Ware geht bei erreichbarem Rückweg physisch an den zugesagten Sägeausgang. Bei versperrtem Rückweg bleibt sie sichtbar beim Mitarbeiter. Der Eigentümer kann sie dort mit G übernehmen. Der gemeinsame Übergabekern bindet die bestehende Rückgabezusage an die Spielerhand, ohne einen Zwischenort zu buchen. Bei Wiederbeitritt erscheint der bereits angestellte Träger am Wartepunkt. Die Demo prüft seinen realen Trägerpunkt beim Wiederaufbau, löst den alten Auftrag und versucht die physische Rückgabe. [Prüfbeleg](../evidence/P08.md#p08-07--wiederbeitritt-und-prüfung-der-linie)
 
+### Erstes Förderband P09-01/02
+
+[`Belts.install`](../../src/server/Belts.luau) speichert den Spielgeldabzug, `progress.firstBelt` mit Kaufrevision und fester Quelle/Ziel-Verbindung sowie den registrierten Pufferplatz `Band.First` gemeinsam. Der Puffer hat Kapazität 1 und akzeptiert nur `Bausatz`. Alte Profile ohne Freischaltung starten ohne Band. [Prüfbeleg](../evidence/P09.md)
+
 ## Speichern und Wiederherstellen
 
 Persistenz gehört zum ersten Bestandsnachweis. Das Profil trennt bestätigte Speicherdaten von laufender Darstellung. Revision und Sitzungszuordnung schützen vor verspäteten Schreibvorgängen älterer Sitzungen. Startdaten entstehen ausschließlich nach einer erfolgreichen Prüfung, dass für den Spieler noch kein Profil existiert. Kann das Profil nicht geladen werden, bleiben wirtschaftliche Aktionen gesperrt. Bei unklarem Ergebnis bleibt der betroffene Verkauf bis zur Prüfung offen.

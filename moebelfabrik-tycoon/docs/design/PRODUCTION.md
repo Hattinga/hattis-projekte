@@ -70,6 +70,8 @@ Die zulässige Handfolge ist Rohstoffablage → Hand → `Saege.Input`, anschlie
 
 Mitarbeiter verwenden dieselbe Folge mit einem sichtbaren Träger. Der erste Mitarbeiter übernimmt die feste Strecke von `Saege.Output` nach `Montage.Input`. Der Spieler weist sie mit J am Sägeausgang zu. Im Prototyp liegen die beiden Bedienpunkte im selben Gang und einen Meter auseinander. Der Mitarbeiter wartet westlich der Arbeitsplätze. Ein Förderband verbindet einen bestehenden Ausgang mit dem nächsten Eingang über einen sichtbaren Bandabschnitt. Diese Transportarten ändern weder Rezept, akzeptierte Warenzustände noch Stationskapazität. Aufnahme und Ablage verwenden für alle Akteure die gemeinsamen Reservierungen und Umbuchungen aus STATE.
 
+Das erste Band verbindet dieselben Transferpunkte in einer geraden, bündigen Strecke neben dem Bediengang. Installation mit B am Sägeausgang. Der markierte Puffer `Band.First` trägt genau einen Hocker01-Bausatz mit 0,60 × 0,18 × 0,50 m. Sein Mittelpunkt liegt näher am Sägeausgang, damit neben einem belegten Montageeingang Platz für diese Charge bleibt.
+
 | Situation | Sichtbarer Zustand und Rückmeldung | Aufenthaltsort und Fortsetzung |
 | --- | --- | --- |
 | Passende Ware wird abgelegt | Eingangsplatz zeigt die bestätigte Charge; bei freiem Ausgang beginnt die Bearbeitung | Ware wechselt einmal vom Träger zum Eingang und anschließend zum Lauf |

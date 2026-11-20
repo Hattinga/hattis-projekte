@@ -26,6 +26,8 @@ local Workers = require(factory.Workers)
 local WorkerRoute = require(factory.WorkerRoute)
 local WorkerShift = require(factory.WorkerShift)
 local WorkerTransport = require(factory.WorkerTransport)
+local Belts = require(factory.Belts)
+local BeltRoute = require(factory.BeltRoute)
 local players = game:GetService("Players")
 local serverStorage = game:GetService("ServerStorage")
 local collection = game:GetService("CollectionService")
@@ -42,6 +44,7 @@ local hand = "Demo.Hand"
 local TTL = 600
 local logisticsEnabled = workspace:GetAttribute("P06LoadingDemo") == true
 local workerRoute = if logisticsEnabled then WorkerRoute.bind(line.Stations) else nil
+local beltRoute = if logisticsEnabled then BeltRoute.bind(line.Stations) else nil
 local resumeScope = workspace:GetAttribute("P0607ResumeScope")
 if resumeScope ~= nil then
 	assert(logisticsEnabled and type(resumeScope) == "string" and #resumeScope == 38
@@ -138,7 +141,8 @@ if logisticsEnabled then
 		profile.locations[id] = vehicleSlots.locations[id]
 	end
 	-- Only the in-memory test bankroll (with a resume scope only on the first start). P0707Broke tests the advance.
-	profile.money = if workspace:GetAttribute("P0707Broke") == true then 0 else 180
+	profile.money = if workspace:GetAttribute("P0707Broke") == true then 0
+		elseif workspace:GetAttribute("P0901Funds") == true then 260 else 180
 	if workspace:GetAttribute("P07SaleStock") == true then -- With a resume scope only the first start seeds it.
 		for index, id in vehicleSlots.slotIds do
 			local stockId = "Testkarton-" .. index
@@ -231,6 +235,8 @@ local nextTarget = {Holzpaket = "Säge · Eingang", Bausatz = "Montagebank · Ei
 local prompts: {[string]: ProximityPrompt} = {}
 local hirePrompt: ProximityPrompt? = nil
 local assignPrompt: ProximityPrompt? = nil
+local beltPrompt: ProximityPrompt? = nil
+local beltFixture: BeltRoute.Fixture? = nil
 local workerStarted = false
 local workerShift: WorkerShift.Shift? = nil
 local workerCargo: string? = nil
@@ -266,6 +272,12 @@ local function render()
 	if not saved then return end
 	local state = saved.data.state
 	local worker = saved.data.progress.firstWorker
+	local installedBelt = saved.data.progress.firstBelt ~= nil
+	if beltPrompt then beltPrompt.ActionText = if installedBelt then "Förderband ansehen" else "Installieren · " .. Belts.PRICE end
+	if installedBelt and beltRoute and not beltFixture then
+		beltFixture = BeltRoute.spawn(beltRoute, demo)
+		places.points[State.FIRST_BELT.carrier] = beltFixture.buffer
+	end
 	local hired = worker ~= nil
 	local assigned = worker ~= nil and worker.assigned == true
 	if hirePrompt then hirePrompt.ActionText = if hired then "Anstellung ansehen" else "Anstellen · " .. Workers.PRICE end
@@ -387,6 +399,7 @@ local function render()
 		else "Hand frei · E an einer Auflage drücken") .. " · Fertiglager " .. store.used .. "/" .. store.capacity
 		.. (if load then " · Anhänger " .. load.used .. "/" .. load.capacity .. " · Guthaben " .. state.money else "")
 		.. (if state.advance then " · Vorschuss offen: " .. state.advance.amount else "")
+		.. (if installedBelt then " · Förderband" else "")
 		.. (if assigned then " · Mitarbeiter: " .. (if workerShift then workerShift.status else "Startet")
 			elseif hired then " · 1 Mitarbeiter" else "")
 		.. "\n" .. (if sale then offerText(sale) .. "\n" else "") .. lastMessage
@@ -673,14 +686,18 @@ if logisticsEnabled then
 		ASSIGNED = "Arbeitsweg zugewiesen: Sägeausgang → Montageeingang.",
 		ALREADY_ASSIGNED = "Dein Mitarbeiter hat bereits den Weg von der Säge zur Montage.",
 		NOT_HIRED = "Stelle zuerst am Fertiglager einen Mitarbeiter an.",
+		BELT_INSTALLED = "Förderband zwischen Säge und Montage installiert.",
+		BELT_OWNED = "Dieses Förderband ist bereits installiert.",
+		NOT_ENOUGH_FOR_BELT = "Das Förderband kostet " .. Belts.PRICE .. " Spielgeld.",
 		NOT_ENOUGH_MONEY = "Die Anstellung kostet " .. Workers.PRICE .. " Spielgeld.",
 		NOT_CONFIRMED = "Speichern unklar – bitte warten.",
 		WRITE_UNKNOWN = "Speichern unklar – bitte warten.",
 	} :: {[string]: string}
-	local function workerPrompt(name: string, label: string, key: Enum.KeyCode, gamepad: Enum.KeyCode,
-		endpoint: HandMoves.Endpoint, action: typeof(Workers.hire)): ProximityPrompt
-		local fallback = "Mitarbeiteraktion gerade nicht verfügbar."
-		local function interactWorker(user: Player): HandMoves.Result
+	local function workshopPrompt(name: string, label: string, key: Enum.KeyCode, gamepad: Enum.KeyCode,
+		endpoint: HandMoves.Endpoint, action: (Persistence.Controller, number, number, number) -> {ok: boolean, code: string},
+		promptName: string): ProximityPrompt
+		local fallback = "Diese Aktion ist gerade nicht verfügbar."
+		local function interactWorkshop(user: Player): HandMoves.Result
 			if user ~= player or busy or closing then
 				return {ok = false, code = "NOT_READY", message = fallback}
 			end
@@ -703,26 +720,28 @@ if logisticsEnabled then
 			return {ok = ran and result.ok, code = code, message = lastMessage}
 		end
 		local prompt = Instance.new("ProximityPrompt")
-		prompt.Name = name .. "Worker"
+		prompt.Name = promptName
 		prompt.ObjectText = label
 		prompt.KeyboardKeyCode, prompt.GamepadKeyCode = key, gamepad
 		prompt.MaxActivationDistance = 6
 		prompt.Parent = endpoint.point
 		collection:AddTag(prompt, "P0509FacingPrompt")
-		prompt.Triggered:Connect(interactWorker)
+		prompt.Triggered:Connect(interactWorkshop)
 		local hook = Instance.new("BindableFunction")
 		hook.Name = name
 		hook.OnInvoke = function(): HandMoves.Result
 			while busy do task.wait() end
-			return interactWorker(player)
+			return interactWorkshop(player)
 		end
 		hook.Parent = serverStorage
 		return prompt
 	end
-	hirePrompt = workerPrompt("P0801Hire", "Erster Mitarbeiter", Enum.KeyCode.H, Enum.KeyCode.ButtonL1,
-		endpoints["FinishedStore.Slot2"], Workers.hire)
-	assignPrompt = workerPrompt("P0802Assign", "Sägeausgang → Montageeingang", Enum.KeyCode.J, Enum.KeyCode.ButtonR1,
-		endpoints[WorkerRoute.SOURCE], Workers.assign)
+	hirePrompt = workshopPrompt("P0801Hire", "Erster Mitarbeiter", Enum.KeyCode.H, Enum.KeyCode.ButtonL1,
+		endpoints["FinishedStore.Slot2"], Workers.hire, "P0801HireWorker")
+	assignPrompt = workshopPrompt("P0802Assign", "Sägeausgang → Montageeingang", Enum.KeyCode.J, Enum.KeyCode.ButtonR1,
+		endpoints[WorkerRoute.SOURCE], Workers.assign, "P0802AssignWorker")
+	beltPrompt = workshopPrompt("P0901Belt", "Förderband · Säge → Montage", Enum.KeyCode.B, Enum.KeyCode.ButtonL2,
+		endpoints[State.FIRST_BELT.source], Belts.install, "P0901InstallBelt")
 end
 
 -- Facing station rows share one aisle stand marker (e.g. Montage.Output / Finish.Input, both 4.3 studs away).
@@ -891,7 +910,8 @@ reader.OnInvoke = function(): any
 		advance = state.advance, advanceReceipts = advanceReceipts, firstWorker = confirmed().data.progress.firstWorker,
 		workerStatus = if workerShift then workerShift.status else nil,
 		workerPaused = workerShift ~= nil and workerShift.paused, workerAttempts = if workerShift then workerShift.attempts else 0,
-		workerReceipts = workerReceipts, claims = state.claims}
+		workerReceipts = workerReceipts, claims = state.claims, firstBelt = confirmed().data.progress.firstBelt,
+		beltLocation = state.locations[State.FIRST_BELT.carrier]}
 end
 reader.Parent = game:GetService("ServerStorage")
 if resumeRig then

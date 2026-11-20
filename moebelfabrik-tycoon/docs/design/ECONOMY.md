@@ -35,4 +35,6 @@ Der erspielbare Ausrüstungskauf umfasst zuerst eine Verbesserung mit nachvollzi
 
 Die erste Anstellung kostet im Prototyp einmalig 120 Spielgeld. Im Test entsprechen drei Verkäufe beim Händler mit regulärem Holzeinkauf zusammen 120 Gewinn. Die Freischaltung gehört dauerhaft zur Werkstatt. Die Anstellung und der Spielgeldabzug werden gemeinsam bestätigt.
 
+Das erste feste Förderband kostet im Prototyp einmalig 200 Spielgeld. Das entspricht fünf regulären Händlerzyklen mit 40 Gewinn je Charge. Der Kauf bindet die Verbindung von der Säge zur Montagebank dauerhaft an die Werkstatt.
+
 Die Prüfungen für Bestände, Verkäufe, Wiederanlauf und Bedienbarkeit stehen in der [Testübersicht](../qa/TESTS.md).

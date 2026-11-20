@@ -58,6 +58,8 @@ State.STATION_BY_ID = table.freeze(stationById)
 State.SAW = State.STATIONS[1]
 State.FIRST_WORKER = table.freeze({carrier="Worker.First",source=State.SAW.output,
 	target=stationById.Montage.input,stage=State.SAW.outputStage})
+State.FIRST_BELT = table.freeze({carrier="Band.First",source=State.SAW.output,
+	target=stationById.Montage.input,stage=State.SAW.outputStage})
 local MAX_INTEGER = 9007199254740991
 local STAGES: {[string]: boolean} = {Holzpaket=true,Bausatz=true,Rohhocker=true,Fertig=true,Karton=true}
 local KINDS: {[string]: boolean} = {Supplier=true,RawStore=true,FinishedStore=true,Carrier=true,
