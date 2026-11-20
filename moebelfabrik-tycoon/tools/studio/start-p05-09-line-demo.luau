@@ -23,6 +23,7 @@ local VehicleRecovery = require(factory.VehicleRecovery)
 local Vehicles = require(factory.Vehicles)
 local Sales = require(factory.Sales)
 local Workers = require(factory.Workers)
+local WorkerRoute = require(factory.WorkerRoute)
 local players = game:GetService("Players")
 local serverStorage = game:GetService("ServerStorage")
 local collection = game:GetService("CollectionService")
@@ -38,6 +39,7 @@ local body = character:FindFirstChild("HumanoidRootPart") :: BasePart
 local hand = "Demo.Hand"
 local TTL = 600
 local logisticsEnabled = workspace:GetAttribute("P06LoadingDemo") == true
+local workerRoute = if logisticsEnabled then WorkerRoute.bind(line.Stations) else nil
 local resumeScope = workspace:GetAttribute("P0607ResumeScope")
 if resumeScope ~= nil then
 	assert(logisticsEnabled and type(resumeScope) == "string" and #resumeScope == 38
@@ -207,6 +209,8 @@ local nextTarget = {Holzpaket = "Säge · Eingang", Bausatz = "Montagebank · Ei
 	Fertig = "Packtisch · Eingang", Karton = "Fertiglager"}
 local prompts: {[string]: ProximityPrompt} = {}
 local hirePrompt: ProximityPrompt? = nil
+local assignPrompt: ProximityPrompt? = nil
+local workerStarted = false
 local lastMessage = if loading then "Beim Holzlieferanten mit R kaufen und mit E verladen."
 	else "Testholz am Rohstofflager mit E aufnehmen."
 if loading and confirmed().data.state.money < Purchases.PRICE and next(confirmed().data.state.batches) == nil then
@@ -235,8 +239,22 @@ local function render()
 	local saved = snapshot.confirmed
 	if not saved then return end
 	local state = saved.data.state
-	local hired = saved.data.progress.firstWorker ~= nil
+	local worker = saved.data.progress.firstWorker
+	local hired = worker ~= nil
+	local assigned = worker ~= nil and worker.assigned == true
 	if hirePrompt then hirePrompt.ActionText = if hired then "Anstellung ansehen" else "Anstellen · " .. Workers.PRICE end
+	if assignPrompt then assignPrompt.ActionText = if assigned then "Route ansehen" else "Route zuweisen" end
+	local route = workerRoute
+	if assigned and route and not workerStarted then
+		workerStarted = true
+		task.spawn(function()
+			local ok, failure = pcall(WorkerRoute.spawn, route, demo)
+			if not ok then
+				lastMessage = "Der Mitarbeiter konnte nicht erscheinen."
+				warn(failure)
+			end
+		end)
+	end
 	LineView.syncWares(demo, state, places)
 	local load = if loading then Vehicles.load(state, loading.slots.slotIds) else nil
 	if load and loading then
@@ -275,7 +293,7 @@ local function render()
 		else "Hand frei · E an einer Auflage drücken") .. " · Fertiglager " .. store.used .. "/" .. store.capacity
 		.. (if load then " · Anhänger " .. load.used .. "/" .. load.capacity .. " · Guthaben " .. state.money else "")
 		.. (if state.advance then " · Vorschuss offen: " .. state.advance.amount else "")
-		.. (if hired then " · 1 Mitarbeiter" else "")
+		.. (if assigned then " · Mitarbeiter: Säge → Montage" elseif hired then " · 1 Mitarbeiter" else "")
 		.. "\n" .. (if sale then offerText(sale) .. "\n" else "") .. lastMessage
 	for buyer, prompt in salePrompts do
 		prompt.Enabled = selling and sale ~= nil and sale.buyer == buyer
@@ -556,49 +574,58 @@ if purchaseSlots then
 end
 
 if logisticsEnabled then
-	local endpoint = endpoints["FinishedStore.Slot2"]
-	local prompt = Instance.new("ProximityPrompt")
-	prompt.Name = "P0801HireWorker"
-	prompt.ObjectText = "Erster Mitarbeiter"
-	prompt.KeyboardKeyCode = Enum.KeyCode.H
-	prompt.GamepadKeyCode = Enum.KeyCode.ButtonL1
-	prompt.MaxActivationDistance = 6
-	prompt.Parent = endpoint.point
-	hirePrompt = prompt
-	collection:AddTag(prompt, "P0509FacingPrompt")
 	local messages = {
 		HIRED = "Mitarbeiter angestellt.",
 		ALREADY_HIRED = "Dein Mitarbeiter ist bereits angestellt.",
+		ASSIGNED = "Arbeitsweg zugewiesen: Sägeausgang → Montageeingang.",
+		ALREADY_ASSIGNED = "Dein Mitarbeiter hat bereits den Weg von der Säge zur Montage.",
+		NOT_HIRED = "Stelle zuerst am Fertiglager einen Mitarbeiter an.",
 		NOT_ENOUGH_MONEY = "Die Anstellung kostet " .. Workers.PRICE .. " Spielgeld.",
 		NOT_CONFIRMED = "Speichern unklar – bitte warten.",
 		WRITE_UNKNOWN = "Speichern unklar – bitte warten.",
 	} :: {[string]: string}
-	local function hire(user: Player): HandMoves.Result
-		if user ~= player or busy or closing then
-			return {ok = false, code = "NOT_READY", message = "Anstellung gerade nicht verfügbar."}
-		end
-		local problem = HandMoves.checkReach(user, endpoint)
-		if problem then
-			lastMessage = problem.message
+	local function workerPrompt(name: string, label: string, key: Enum.KeyCode, gamepad: Enum.KeyCode,
+		endpoint: HandMoves.Endpoint, action: typeof(Workers.hire)): ProximityPrompt
+		local fallback = "Mitarbeiteraktion gerade nicht verfügbar."
+		local function interactWorker(user: Player): HandMoves.Result
+			if user ~= player or busy or closing then
+				return {ok = false, code = "NOT_READY", message = fallback}
+			end
+			local problem = HandMoves.checkReach(user, endpoint)
+			if problem then
+				lastMessage = problem.message
+				render()
+				return problem
+			end
+			busy = true
+			local ran, result = pcall(action, controller, user.UserId, confirmed().data.state.revision, TTL)
+			busy = false
+			local code = if ran then result.code else "ERROR"
+			lastMessage = messages[code] or fallback
 			render()
-			return problem
+			return {ok = ran and result.ok, code = code, message = lastMessage}
 		end
-		busy = true
-		local ran, result = pcall(Workers.hire, controller, user.UserId, confirmed().data.state.revision, TTL)
-		busy = false
-		local code = if ran then result.code else "ERROR"
-		lastMessage = messages[code] or "Anstellung gerade nicht verfügbar."
-		render()
-		return {ok = ran and result.ok, code = code, message = lastMessage}
+		local prompt = Instance.new("ProximityPrompt")
+		prompt.Name = name .. "Worker"
+		prompt.ObjectText = label
+		prompt.KeyboardKeyCode, prompt.GamepadKeyCode = key, gamepad
+		prompt.MaxActivationDistance = 6
+		prompt.Parent = endpoint.point
+		collection:AddTag(prompt, "P0509FacingPrompt")
+		prompt.Triggered:Connect(interactWorker)
+		local hook = Instance.new("BindableFunction")
+		hook.Name = name
+		hook.OnInvoke = function(): HandMoves.Result
+			while busy do task.wait() end
+			return interactWorker(player)
+		end
+		hook.Parent = serverStorage
+		return prompt
 	end
-	prompt.Triggered:Connect(hire)
-	local hook = Instance.new("BindableFunction")
-	hook.Name = "P0801Hire"
-	hook.OnInvoke = function(): HandMoves.Result
-		while busy do task.wait() end
-		return hire(player)
-	end
-	hook.Parent = serverStorage
+	hirePrompt = workerPrompt("P0801Hire", "Erster Mitarbeiter", Enum.KeyCode.H, Enum.KeyCode.ButtonL1,
+		endpoints["FinishedStore.Slot2"], Workers.hire)
+	assignPrompt = workerPrompt("P0802Assign", "Sägeausgang → Montageeingang", Enum.KeyCode.J, Enum.KeyCode.ButtonR1,
+		endpoints[WorkerRoute.SOURCE], Workers.assign)
 end
 
 -- Facing station rows share one aisle stand marker (e.g. Montage.Output / Finish.Input, both 4.3 studs away).

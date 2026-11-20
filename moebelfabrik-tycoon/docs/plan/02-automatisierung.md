@@ -7,7 +7,7 @@
 **Voraussetzungen** P07 ist abgenommen. Der gespeicherte Kreislauf aus Einkauf, manueller Herstellung und physischer Auslieferung ist vollständig spielbar.
 
 - [x] **P08-01** Einen ersten Mitarbeiter mit Spielgeld anstellbar machen und seine Freischaltung im Werkstattprofil speichern.
-- [ ] **P08-02** Eine feste Transportstrecke zwischen zwei vorhandenen Stationen mit klarer Quelle, Ziel und freien Laufwegen zuweisen.
+- [x] **P08-02** Eine feste Transportstrecke zwischen zwei vorhandenen Stationen mit klarer Quelle, Ziel und freien Laufwegen zuweisen.
 - [ ] **P08-03** Die Charge und den Zielplatz bei Auftragsannahme über die gemeinsamen Bestandsregeln reservieren. Der Mitarbeiter übergibt Ware erst am vorgesehenen Ziel.
 - [ ] **P08-04** Zustände für unterwegs, Material fehlt, Ziel voll und Weg blockiert sichtbar machen.
 - [ ] **P08-05** Unterbrechungen mit begrenzten Wiederholungen und kontrollierter Freigabe behandeln. Unübernommene Ware bleibt an der Quelle. Übernommene Ware bleibt an einem eindeutig bestimmten physischen Abholort verfügbar.

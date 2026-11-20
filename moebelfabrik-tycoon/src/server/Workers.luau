@@ -9,19 +9,25 @@ local Workers = {}
 Workers.PRICE = 120
 local MAX_REVISION = 9007199254740991
 
-function Workers.hire(controller: Persistence.Controller, ownerUserId: any, expectedRevision: any, lease: number): Result
+local function current(controller: Persistence.Controller, ownerUserId: any, expectedRevision: any): (Profiles.Envelope?, string?)
 	local snapshot = controller.snapshot()
 	local confirmed = snapshot.confirmed
 	if not confirmed or snapshot.inFlight or snapshot.status ~= "Confirmed" then
-		return {ok = false, code = "NOT_CONFIRMED"}
+		return nil, "NOT_CONFIRMED"
 	end
 	local profile = confirmed.data
-	local state = profile.state
-	if state.ownerUserId ~= ownerUserId then return {ok = false, code = "NOT_AUTHORIZED"} end
+	if profile.state.ownerUserId ~= ownerUserId then return nil, "NOT_AUTHORIZED" end
 	if type(expectedRevision) ~= "number" or expectedRevision % 1 ~= 0
 		or expectedRevision < 0 or expectedRevision > MAX_REVISION then
-		return {ok = false, code = "INVALID_REQUEST"}
+		return nil, "INVALID_REQUEST"
 	end
+	return profile, nil
+end
+
+function Workers.hire(controller: Persistence.Controller, ownerUserId: any, expectedRevision: any, lease: number): Result
+	local profile, problem = current(controller, ownerUserId, expectedRevision)
+	if not profile then return {ok = false, code = problem :: string} end
+	local state = profile.state
 	local hired = profile.progress.firstWorker
 	if hired then return {ok = true, code = "ALREADY_HIRED", hired = hired} end
 	if state.revision ~= expectedRevision then return {ok = false, code = "STALE_REVISION"} end
@@ -35,6 +41,21 @@ function Workers.hire(controller: Persistence.Controller, ownerUserId: any, expe
 	local saved = controller.save(profile, lease)
 	if not saved.ok then return {ok = false, code = saved.code} end
 	return {ok = true, code = "HIRED", hired = hired}
+end
+
+function Workers.assign(controller: Persistence.Controller, ownerUserId: any, expectedRevision: any, lease: number): Result
+	local profile, problem = current(controller, ownerUserId, expectedRevision)
+	if not profile then return {ok = false, code = problem :: string} end
+	local hired = profile.progress.firstWorker
+	if not hired then return {ok = false, code = "NOT_HIRED"} end
+	if hired.assigned then return {ok = true, code = "ALREADY_ASSIGNED", hired = hired} end
+	if profile.state.revision ~= expectedRevision then return {ok = false, code = "STALE_REVISION"} end
+	if profile.state.revision == MAX_REVISION then return {ok = false, code = "REVISION_OVERFLOW"} end
+	hired.assigned = true
+	profile.state.revision += 1
+	local saved = controller.save(profile, lease)
+	if not saved.ok then return {ok = false, code = saved.code} end
+	return {ok = true, code = "ASSIGNED", hired = hired}
 end
 
 return table.freeze(Workers)

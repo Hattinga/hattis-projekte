@@ -3,7 +3,7 @@
 -- A trusted reader returns the raw saved value (nil only for confirmed absence), or throws.
 local State = require(script.Parent.State)
 
-export type WorkerHire = {revision: number, price: number}
+export type WorkerHire = {revision: number, price: number, assigned: boolean?}
 export type Progress = {version: number, selectedRecipeId: string, selectedRecipeVersion: number, firstWorker: WorkerHire?}
 export type Envelope = {profileVersion: number, state: State.Profile, progress: Progress}
 export type Result = {ok: boolean, code: string, message: string, ready: boolean,
@@ -15,7 +15,7 @@ Profiles.PROGRESS_VERSION = 1
 local MAX_INTEGER = 9007199254740991
 local ENVELOPE_FIELDS = {profileVersion=true, state=true, progress=true}
 local PROGRESS_FIELDS = {version=true, selectedRecipeId=true, selectedRecipeVersion=true, firstWorker=true}
-local WORKER_HIRE_FIELDS = {revision=true, price=true}
+local WORKER_HIRE_FIELDS = {revision=true, price=true, assigned=true}
 local MESSAGES: {[string]: string} = {
 	LOADED="Gespeichertes Profil geladen; wirtschaftliche Freigabe steht noch aus.",
 	INITIALIZED="Fehlendes Profil bestätigt und Startmuster erstellt; noch nicht gespeichert oder freigegeben.",
@@ -61,7 +61,9 @@ local function validate(data: any, ownerUserId: number): string?
 	if not State.validate(data.state) then return "INVALID_STATE" end
 	local worker=progress.firstWorker
 	if worker~=nil and (not record(worker, WORKER_HIRE_FIELDS) or not positiveInteger(worker.price)
-		or not positiveInteger(worker.revision) or worker.revision>data.state.revision) then
+		or not positiveInteger(worker.revision) or worker.revision>data.state.revision
+		or (worker.assigned~=nil and worker.assigned~=true)
+		or (worker.assigned==true and worker.revision==data.state.revision)) then
 		return "INVALID_PROGRESS"
 	end
 	return nil

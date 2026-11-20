@@ -1,12 +1,12 @@
 # Projektstatus
 
-Stand 20. November 2026. **P02, P04, P05, P06, P07 und P08-01 sind abgenommen.** Die erste Anstellung für 120 Spielgeld bleibt nach Wiederbeitritt erhalten. **Als Nächstes folgt P08-02, der feste Weg von der Säge zur Montagebank.**
+Stand 20. November 2026. **P02, P04, P05, P06, P07 sowie P08-01 und P08-02 sind abgenommen.** Der erste Mitarbeiter ist anstellbar und geht den festen Weg von der Säge zur Montagebank. **Als Nächstes folgt P08-03, der bestätigte Warentransport.**
 
 | Feld | Aktuell |
 |---|---|
-| Letzter abgeschlossener Schritt | **P08-01** – einmalige Anstellung am Fertiglager, echte H-Eingabe und Wiederbeitritt mit DataStore ([Beleg](../evidence/P08.md)). |
-| Davor | **P07-07 und P07-08** – Materialvorschuss und vollständiger Kreislauf über beide Verkaufskanäle ([Beleg](../evidence/P07.md)). |
-| Naechster Umsetzungsschritt | **P08-02** – feste Mitarbeiterstrecke vom Sägeausgang zum Montageeingang. |
+| Letzter abgeschlossener Schritt | **P08-02** – feste Mitarbeiterstrecke vom Sägeausgang zum Montageeingang, J-Zuweisung und Laufprobe mit Hindernis ([Beleg](../evidence/P08.md#p08-02--feste-strecke)). |
+| Davor | **P08-01** – Anstellung am Fertiglager und Wiederbeitritt mit DataStore ([Beleg](../evidence/P08.md)). |
+| Naechster Umsetzungsschritt | **P08-03** – Quelle und Ziel reservieren und Ware nach tatsächlicher Ankunft bestätigen. |
 | Entscheidungen 18.11. (delegiert) | Hallentor: Laden nur auf dem Hof, Halle wird nicht befahren, Tor bleibt 4 m ([MAP](../design/MAP.md)). Oberfläche: eine Finish-Oberfläche in Hocker01 v1 ([PRODUCTION](../design/PRODUCTION.md)). P00-03: Zielprofil schwächeres Android-Phone 1600×720, Touch, Grafikstufe 1; bis zum echten Gerät Studio-Emulator als Stellvertreter, Checkbox bleibt offen ([P00](../plan/00-start.md)) |
 | Paralleles Paket | **P03-04 abgenommen (19.11.)**: Karton liegt auf, Last im Fahrzeugprofil, Torfahrt, Bild aus der Spielkamera ([Beleg](../evidence/P03-04.md)). **P03-05 abgenommen (19.11.)**: Die fünf FBX sind kalibriert in `ServerStorage.P03ArtProbe`, die Labels sind im Play-Client in DE und EN geprüft, `TextScaled` ist korrigiert ([Beleg](../evidence/P03-05.md)). Offen sind P03-06 (Spielkamera-Ansichten) und P03-07 (Art-Freigabe durch Jonas). **P03-03** – die Gebäudeprobe benötigt eine eigene Upload-Freigabe. [Übergabe](HANDOFF-2026-11-19.md#p03-05--fünf-assets-importiert-und-kalibriert) |
 | Planabschnitt | [Automatisierung, P08](../plan/02-automatisierung.md#p08--erster-mitarbeiter) |
@@ -20,8 +20,8 @@ Stand 20. November 2026. **P02, P04, P05, P06, P07 und P08-01 sind abgenommen.**
 | Vergleichsobjekt | `Workspace.FableWorkshop`, Asset `106051543998570`; kein vorgesehenes Spielgebaeude |
 | Technikproben | `Workspace.P02Greybox` und `Workspace.P02Line`; Prueftraeger in `ServerStorage.P02CarryProbe`, nicht im Spielstart |
 | Arbeitsbranch | `work/p00-studio-import`; jeder Abschluss wird gepusht (Nutzerauftrag vom 18.11.: fortlaufend committen und pushen) |
-| Speicherung | TeamCreate **Version 81**, privater Stand im Edit-Modus. `Profiles`, `Workers`, `ToolRun.LineDemo` und `ToolRun.P0801HireProbe` sind mit den Repo-Quellen abgeglichen. |
-| Wiederherstellbare Staende | Version 80 = P07 abgeschlossen, Version 78 = vor P07-07/08, Version 76 = lesbare P03-05-Labels, Version 75 = P07-Verkauf (Händler, Privat, Wiederbeitritt), Version 67 = Bergungsmarker, Gurte und Art-Prüfinstanzen, Version 61 = Fahrzeugwiederherstellung. |
+| Speicherung | TeamCreate **Version 82**, privater Stand im Edit-Modus. `Profiles`, `Workers`, `WorkerRoute`, `ToolRun.LineDemo` und `ToolRun.P0802RouteProbe` sind mit den Repo-Quellen abgeglichen. |
+| Wiederherstellbare Staende | Version 81 = P08-Anstellung, Version 80 = P07 abgeschlossen, Version 78 = vor P07-07/08, Version 76 = lesbare P03-05-Labels, Version 75 = P07-Verkauf, Version 67 = Bergungsmarker, Gurte und Art-Prüfinstanzen, Version 61 = Fahrzeugwiederherstellung. |
 | Pruefbelege | [P02-06](../evidence/P02-06.md), [P02-05](../evidence/P02-05.md), [P02-04](../evidence/P02-04.md), [P02-03R](../evidence/P02-03R.md); Stadtentwurf [MAP](../design/MAP.md), Masse [DIMENSIONS](../design/DIMENSIONS.md) |
 
 ## P07-07 und P07-08 abgenommen (20.11.)
