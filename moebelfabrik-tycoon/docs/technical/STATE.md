@@ -178,6 +178,8 @@ Beim Verkauf derselben Charge hält der Server zunächst den Fehlbetrag für den
 
 [`Workers.hire`](../../src/server/Workers.luau) prüft bestätigten Sitzungsbesitz, Eigentümer, erwartete State-Revision und Guthaben. Der erste bestätigte Kauf zieht 120 Spielgeld ab und ergänzt `progress.firstWorker={price,revision}` im selben Save. Ein weiterer Antrag liefert diese vorhandene Freischaltung. Alte Profile ohne `firstWorker` bleiben gültig und starten ohne Anstellung. Die Demo lässt den Antrag nur in Reichweite am Fertiglager zu.
 
+J am Sägeausgang speichert `firstWorker.assigned=true` mit neuer Bestandsrevision. Der Mitarbeiter verwendet ausschließlich seinen Kapazität-1-Träger `Worker.First`. Der Aufnahme-Claim bindet `Saege.Output`, den Träger und `Montage.Input` per `nextTargetId`. Nach Ankunft am Ausgang ersetzt ein Save den Aufnahme-Claim mit einem gewöhnlichen Ablage-Claim. Im selben Save wechselt der Bausatz auf den Träger und reserviert den leeren Ausgang für die Rückgabe. Konkurrierende Übergaben prüfen alle reservierten Orte. Erst die Ankunft am Montageeingang erlaubt den Commit und gibt den Rückgabeplatz frei.
+
 ## Speichern und Wiederherstellen
 
 Persistenz gehört zum ersten Bestandsnachweis. Das Profil trennt bestätigte Speicherdaten von laufender Darstellung. Revision und Sitzungszuordnung schützen vor verspäteten Schreibvorgängen älterer Sitzungen. Startdaten entstehen ausschließlich nach einer erfolgreichen Prüfung, dass für den Spieler noch kein Profil existiert. Kann das Profil nicht geladen werden, bleiben wirtschaftliche Aktionen gesperrt. Bei unklarem Ergebnis bleibt der betroffene Verkauf bis zur Prüfung offen.

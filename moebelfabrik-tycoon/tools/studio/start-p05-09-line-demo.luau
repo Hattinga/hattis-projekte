@@ -24,6 +24,7 @@ local Vehicles = require(factory.Vehicles)
 local Sales = require(factory.Sales)
 local Workers = require(factory.Workers)
 local WorkerRoute = require(factory.WorkerRoute)
+local WorkerShift = require(factory.WorkerShift)
 local players = game:GetService("Players")
 local serverStorage = game:GetService("ServerStorage")
 local collection = game:GetService("CollectionService")
@@ -143,6 +144,9 @@ if logisticsEnabled then
 			profile.batches[stockId] = State.newBatch(stockId, player.UserId, "Karton", id)
 		end
 	end
+	if workspace:GetAttribute("P0803WorkerStock") == true then
+		profile.batches.Testbausatz = State.newBatch("Testbausatz", player.UserId, "Bausatz", WorkerRoute.SOURCE)
+	end
 else
 	for i = 1, 2 do
 		local id = "Testholz-" .. i
@@ -211,6 +215,10 @@ local prompts: {[string]: ProximityPrompt} = {}
 local hirePrompt: ProximityPrompt? = nil
 local assignPrompt: ProximityPrompt? = nil
 local workerStarted = false
+local workerShift: WorkerShift.Shift? = nil
+local workerCargo: string? = nil
+local busy = false
+local closing = false
 local lastMessage = if loading then "Beim Holzlieferanten mit R kaufen und mit E verladen."
 	else "Testholz am Rohstofflager mit E aufnehmen."
 if loading and confirmed().data.state.money < Purchases.PRICE and next(confirmed().data.state.batches) == nil then
@@ -243,19 +251,38 @@ local function render()
 	local hired = worker ~= nil
 	local assigned = worker ~= nil and worker.assigned == true
 	if hirePrompt then hirePrompt.ActionText = if hired then "Anstellung ansehen" else "Anstellen · " .. Workers.PRICE end
-	if assignPrompt then assignPrompt.ActionText = if assigned then "Route ansehen" else "Route zuweisen" end
+	if assignPrompt then
+		assignPrompt.ActionText = if workerShift and workerShift.paused then "Weg erneut versuchen"
+			elseif assigned then "Route ansehen" else "Route zuweisen"
+	end
 	local route = workerRoute
 	if assigned and route and not workerStarted then
 		workerStarted = true
 		task.spawn(function()
-			local ok, failure = pcall(WorkerRoute.spawn, route, demo)
+			local ok, workerRig = pcall(WorkerRoute.spawn, route, demo)
 			if not ok then
 				lastMessage = "Der Mitarbeiter konnte nicht erscheinen."
-				warn(failure)
+				warn(workerRig)
+				return
+			end
+			local shift = WorkerShift.new(route, workerRig)
+			workerShift = shift
+			places.carriers[State.FIRST_WORKER.carrier] = workerRig.root
+			while not closing and demo.Parent and workerRig.model.Parent do
+				if not busy then WorkerShift.tick(shift, controller, TTL) end
+				task.wait(0.25)
 			end
 		end)
 	end
 	LineView.syncWares(demo, state, places)
+	if workerShift then
+		local hold = state.reservations[WorkerRoute.SOURCE]
+		local cargo = if hold and hold.kind == "Return" and hold.carrierId == State.FIRST_WORKER.carrier then hold.batchId else nil
+		if cargo ~= workerCargo then
+			workerShift.rig.root:SetNetworkOwner(nil)
+			workerCargo = cargo
+		end
+	end
 	local load = if loading then Vehicles.load(state, loading.slots.slotIds) else nil
 	if load and loading then
 		-- Adding or removing view welds can rebuild the assembly and restore automatic ownership.
@@ -293,7 +320,8 @@ local function render()
 		else "Hand frei · E an einer Auflage drücken") .. " · Fertiglager " .. store.used .. "/" .. store.capacity
 		.. (if load then " · Anhänger " .. load.used .. "/" .. load.capacity .. " · Guthaben " .. state.money else "")
 		.. (if state.advance then " · Vorschuss offen: " .. state.advance.amount else "")
-		.. (if assigned then " · Mitarbeiter: Säge → Montage" elseif hired then " · 1 Mitarbeiter" else "")
+		.. (if assigned then " · Mitarbeiter: " .. (if workerShift then workerShift.status else "Startet")
+			elseif hired then " · 1 Mitarbeiter" else "")
 		.. "\n" .. (if sale then offerText(sale) .. "\n" else "") .. lastMessage
 	for buyer, prompt in salePrompts do
 		prompt.Enabled = selling and sale ~= nil and sale.buyer == buyer
@@ -302,8 +330,6 @@ local function render()
 	for _, prompt in prompts do prompt.ActionText = if held then "Ablegen" else "Aufnehmen" end
 end
 
-local busy = false
-local closing = false
 local saleActor = {ready = true, kind = "Player", ownerUserId = player.UserId,
 	actorId = "Player/" .. string.format("%.0f", player.UserId), carrierLocationId = hand}
 local function saleResponse(result: Sales.Result): HandMoves.Result
@@ -602,6 +628,10 @@ if logisticsEnabled then
 			busy = false
 			local code = if ran then result.code else "ERROR"
 			lastMessage = messages[code] or fallback
+			if code == "ALREADY_ASSIGNED" and workerShift and workerShift.paused then
+				WorkerShift.retry(workerShift)
+				lastMessage = "Der Mitarbeiter versucht es erneut."
+			end
 			render()
 			return {ok = ran and result.ok, code = code, message = lastMessage}
 		end
@@ -778,16 +808,22 @@ reader.OnInvoke = function(): any
 	end
 	local saleReceipts = {}
 	local advanceReceipts = {}
+	local workerReceipts = {}
 	for id, receipt in state.receipts do
 		if receipt.action == "Sale" then saleReceipts[id] = receipt.result end
 		if receipt.action == "Advance" then advanceReceipts[id] = receipt.result end
+		if receipt.action == "Commit" and receipt.actorId == State.FIRST_WORKER.carrier then
+			workerReceipts[id] = receipt.result
+		end
 	end
 	local sellPrompts = {}
 	for buyer, prompt in salePrompts do sellPrompts[buyer] = {enabled = prompt.Enabled, text = prompt.ObjectText} end
 	return {batches = state.batches, reservations = state.reservations, money = state.money, revision = state.revision, valid = State.validate(state),
 		banner = banner.Text, ticks = ticks, signs = signs, views = views, recoverySlots = next(recoveryPoints) ~= nil, arrivals = arrivals,
 		pendingSale = state.pendingSale, saleReceipts = saleReceipts, sellPrompts = sellPrompts,
-		advance = state.advance, advanceReceipts = advanceReceipts, firstWorker = confirmed().data.progress.firstWorker}
+		advance = state.advance, advanceReceipts = advanceReceipts, firstWorker = confirmed().data.progress.firstWorker,
+		workerStatus = if workerShift then workerShift.status else nil,
+		workerPaused = workerShift ~= nil and workerShift.paused, workerReceipts = workerReceipts, claims = state.claims}
 end
 reader.Parent = game:GetService("ServerStorage")
 if resumeRig then

@@ -9,7 +9,7 @@ export type Location = {id: string, kind: string, capacity: number, acceptedStag
 export type Batch = {id: string, ownerUserId: number, recipeId: string, recipeVersion: number, stage: Stage,
 	quantity: number, locationId: string}
 export type Claim = {id: string, actorId: string, actorKind: string, carrierId: string, batchId: string,
-	sourceId: string, targetId: string, quantity: number, expiresAt: number}
+	sourceId: string, targetId: string, nextTargetId: string?, quantity: number, expiresAt: number}
 export type ReturnReservation = {kind: "Return", batchId: string, actorId: string, actorKind: string,
 	carrierId: string, recipeId: string, recipeVersion: number, stage: Stage, quantity: number}
 export type DeliveryReservation = {kind: "Delivery", batchId: string, purchaseOperationId: string}
@@ -56,6 +56,8 @@ for _, rule in State.STATIONS do
 end
 State.STATION_BY_ID = table.freeze(stationById)
 State.SAW = State.STATIONS[1]
+State.FIRST_WORKER = table.freeze({carrier="Worker.First",source=State.SAW.output,
+	target=stationById.Montage.input,stage=State.SAW.outputStage})
 local MAX_INTEGER = 9007199254740991
 local STAGES: {[string]: boolean} = {Holzpaket=true,Bausatz=true,Rohhocker=true,Fertig=true,Karton=true}
 local KINDS: {[string]: boolean} = {Supplier=true,RawStore=true,FinishedStore=true,Carrier=true,
@@ -75,13 +77,14 @@ local ADVANCE_FIELDS = {operationId=true,batchId=true,amount=true}
 local LOCATION_FIELDS = {id=true,kind=true,capacity=true,acceptedStages=true}
 local BATCH_FIELDS = {id=true,ownerUserId=true,recipeId=true,recipeVersion=true,stage=true,quantity=true,locationId=true}
 local CLAIM_FIELDS = {id=true,actorId=true,actorKind=true,carrierId=true,batchId=true,sourceId=true,
-	targetId=true,quantity=true,expiresAt=true}
+	targetId=true,nextTargetId=true,quantity=true,expiresAt=true}
 local RETURN_FIELDS = {kind=true,batchId=true,actorId=true,actorKind=true,carrierId=true,recipeId=true,
 	recipeVersion=true,stage=true,quantity=true}
 local DELIVERY_FIELDS = {kind=true,batchId=true,purchaseOperationId=true}
 local PRODUCTION_FIELDS = {kind=true,batchId=true,finishAt=true}
 local RECEIPT_FIELDS = {actorId=true,actorKind=true,ownerUserId=true,carrierId=true,action=true,request=true,result=true}
-local RESERVE_REQUEST_FIELDS = {operationId=true,expectedRevision=true,batchId=true,sourceId=true,targetId=true,quantity=true}
+local RESERVE_REQUEST_FIELDS = {operationId=true,expectedRevision=true,batchId=true,sourceId=true,targetId=true,
+	nextTargetId=true,quantity=true}
 local CLAIM_REQUEST_FIELDS = {operationId=true,expectedRevision=true,claimId=true}
 local PURCHASE_REQUEST_FIELDS = {operationId=true,expectedRevision=true}
 local PURCHASE_RESULT_FIELDS = {ok=true,code=true,message=true,revision=true,batchId=true,supplierId=true,rawSlotId=true,price=true}
@@ -138,6 +141,17 @@ local function quote(buyer: any, quoteMin: any, quoteMax: any, dealerValue: any)
 end
 local function playerActor(profile: any): string
 	return "Player/"..string.format("%.0f",profile.ownerUserId)
+end
+
+function State.isFirstWorkerPickup(actorKind: string, carrierId: string, sourceId: string, targetId: string,
+	nextTargetId: string): boolean
+	local route=State.FIRST_WORKER
+	return actorKind=="Worker" and carrierId==route.carrier and sourceId==route.source
+		and targetId==route.carrier and nextTargetId==route.target
+end
+
+function State.claimTouches(claim: Claim, locationId: string): boolean
+	return claim.sourceId==locationId or claim.targetId==locationId or claim.nextTargetId==locationId
 end
 
 -- Empty artificial schema specimen. P04-04 must confirm absence before any real new profile.
@@ -332,6 +346,15 @@ function State.validate(profile: any): (boolean, string?)
 				or (request.sourceId~=receipt.carrierId and request.targetId~=receipt.carrierId) then
 				return false,"INVALID_RECEIPT_REQUEST"
 			end
+			if request.nextTargetId~=nil then
+				if not State.isFirstWorkerPickup(receipt.actorKind,receipt.carrierId,request.sourceId,request.targetId,
+					request.nextTargetId) then return false,"INVALID_RECEIPT_REQUEST" end
+				local nextTarget=profile.locations[request.nextTargetId]
+				if profile.locations[request.sourceId].kind~="StationOutput" or not nextTarget
+					or nextTarget.kind~="StationInput" or not table.find(nextTarget.acceptedStages,State.FIRST_WORKER.stage) then
+					return false,"INVALID_RECEIPT_REQUEST"
+				end
+			end
 		elseif not supply and not sale and not identifier(request.claimId) then
 			return false,"INVALID_RECEIPT_REQUEST"
 		end
@@ -453,7 +476,14 @@ function State.validate(profile: any): (boolean, string?)
 			or receipt.actorKind~=claim.actorKind or receipt.carrierId~=claim.carrierId
 			or receipt.request.batchId~=claim.batchId or receipt.request.sourceId~=claim.sourceId
 			or receipt.request.targetId~=claim.targetId or receipt.request.quantity~=claim.quantity
+			or receipt.request.nextTargetId~=claim.nextTargetId
 			or receipt.result.expiresAt~=claim.expiresAt then return false,"INVALID_CLAIM_RECEIPT" end
+		local nextTargetId=claim.nextTargetId
+		if nextTargetId~=nil then
+			if batch.stage~=State.FIRST_WORKER.stage or counts[nextTargetId]~=0 or lockedSlots[nextTargetId]
+				or profile.reservations[nextTargetId] then return false,"INVALID_CLAIM_LOCATIONS" end
+			lockedSlots[nextTargetId]=true
+		end
 		lockedSlots[source.id]=true
 		lockedSlots[target.id]=true
 	end

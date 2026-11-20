@@ -2,14 +2,15 @@
 -- P08-02: the first porter has one measured route between existing handover points.
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local State = require(script.Parent.State)
 
 type Stop = {stand: BasePart, point: Attachment}
 export type Binding = {source: Stop, target: Stop, rest: Vector3}
 export type Rig = {model: Model, root: BasePart, humanoid: Humanoid}
 
 local WorkerRoute = {}
-WorkerRoute.SOURCE = "Saege.Output"
-WorkerRoute.TARGET = "Montage.Input"
+WorkerRoute.SOURCE = State.FIRST_WORKER.source
+WorkerRoute.TARGET = State.FIRST_WORKER.target
 local FLAT = Vector3.new(1, 0, 1)
 local WIDTH = 2.6
 local HEIGHT = 5.8

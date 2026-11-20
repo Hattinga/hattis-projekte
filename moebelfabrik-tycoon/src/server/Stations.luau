@@ -49,8 +49,7 @@ function Stations.start(controller: Persistence.Controller, stationId: string, n
 	if not inputBatch or inputBatch.stage ~= rule.inputStage then return reject("INPUT_REQUIRED") end
 	if state.revision >= MAX_INTEGER - 1 then return reject("REVISION_OVERFLOW") end
 	for id, claim in state.claims do
-		if claim.sourceId == rule.input or claim.targetId == rule.input
-			or claim.sourceId == rule.output or claim.targetId == rule.output then
+		if State.claimTouches(claim, rule.input) or State.claimTouches(claim, rule.output) then
 			if claim.expiresAt > now then return reject("SLOT_RESERVED") end
 			state.claims[id] = nil
 		end

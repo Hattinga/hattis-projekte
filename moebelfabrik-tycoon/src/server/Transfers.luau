@@ -10,7 +10,8 @@ local Transfers={}
 local MAX_INTEGER=9007199254740991
 local ACTOR_KINDS: {[string]: boolean}={Player=true,Worker=true,Band=true}
 local STORE_FIELDS={profile=true}
-local RESERVE_FIELDS={operationId=true,expectedRevision=true,batchId=true,sourceId=true,targetId=true,quantity=true}
+local RESERVE_FIELDS={operationId=true,expectedRevision=true,batchId=true,sourceId=true,targetId=true,
+	nextTargetId=true,quantity=true}
 local CLAIM_FIELDS={operationId=true,expectedRevision=true,claimId=true}
 local MESSAGES: {[string]: string}={
 	RESERVED="Übergabe reserviert.",COMMITTED="Übergabe im Serverzustand verbucht.",
@@ -161,7 +162,7 @@ function Transfers.reserve(store: any, actor: any, request: any, now: any, ttlSe
 	local expiresAt=now+ttlSeconds
 	candidate.claims[request.operationId]={id=request.operationId,actorId=actor.actorId,actorKind=actor.kind,
 		carrierId=actor.carrierLocationId,batchId=request.batchId,sourceId=request.sourceId,
-		targetId=request.targetId,quantity=1,expiresAt=expiresAt}
+		targetId=request.targetId,nextTargetId=request.nextTargetId,quantity=1,expiresAt=expiresAt}
 	candidate.revision+=1
 	local response=result("RESERVED",candidate.revision)
 	response.claimId=request.operationId
@@ -179,7 +180,7 @@ function Transfers.commit(store: any, actor: any, request: any, now: any): Resul
 	if not claimActorMatches(claim,actor) then return result("NOT_AUTHORIZED",profile.revision) end
 	if now>=claim.expiresAt then return result("CLAIM_EXPIRED",profile.revision) end
 	local hop={operationId=request.operationId,expectedRevision=request.expectedRevision,batchId=claim.batchId,
-		sourceId=claim.sourceId,targetId=claim.targetId,quantity=claim.quantity}
+		sourceId=claim.sourceId,targetId=claim.targetId,nextTargetId=claim.nextTargetId,quantity=claim.quantity}
 	local checked=actionProblem(profile,actor,hop,now,request.claimId)
 	if checked then return checked end
 	if profile.revision==MAX_INTEGER then return result("REVISION_OVERFLOW",profile.revision) end

@@ -28,7 +28,8 @@ local MESSAGES={
 	OUTPUT_REQUIRES_RETURN="Ein Stationsausgang nimmt nur seine unveränderte Rückgabe an.",
 	DELIVERY_TARGET_REQUIRED="Diese bezahlte Lieferung gehört auf ihren garantierten Rohstoffplatz.",
 }
-local REQUEST_FIELDS={operationId=true,expectedRevision=true,batchId=true,sourceId=true,targetId=true,quantity=true}
+local REQUEST_FIELDS={operationId=true,expectedRevision=true,batchId=true,sourceId=true,targetId=true,
+	nextTargetId=true,quantity=true}
 local ACTOR_KINDS={Player=true,Worker=true,Band=true}
 local function result(code: string): Result
 	return {ok=code=="OK",code=code,message=MESSAGES[code]}
@@ -79,6 +80,19 @@ function Actions.checkTransfer(profile: any, actor: any, request: any, now: numb
 	if source.id~=carrier.id and target.id~=carrier.id then return result("CARRIER_STEP_REQUIRED") end
 	if not accepts(source,batch.stage) or not accepts(target,batch.stage) then return result("WRONG_STAGE") end
 	if State.countAt(profile,target.id)>=target.capacity then return result("TARGET_FULL") end
+	local nextTargetId=request.nextTargetId
+	if nextTargetId~=nil then
+		if not State.isFirstWorkerPickup(actor.kind,carrier.id,source.id,target.id,nextTargetId) then
+			return result("INVALID_REQUEST")
+		end
+		local nextTarget=profile.locations[nextTargetId]
+		if source.kind~="StationOutput" or not nextTarget or nextTarget.kind~="StationInput" then
+			return result("UNKNOWN_LOCATION")
+		end
+		if batch.stage~=State.FIRST_WORKER.stage or not accepts(nextTarget,batch.stage) then return result("WRONG_STAGE") end
+		if State.countAt(profile,nextTargetId)>=nextTarget.capacity then return result("TARGET_FULL") end
+		if profile.reservations[nextTargetId] then return result("TARGET_RESERVED") end
+	end
 	if now~=nil and (type(now)~="number" or now~=now or now<0 or now>9007199254740991) then
 		return result("INVALID_TIME")
 	end
@@ -86,9 +100,12 @@ function Actions.checkTransfer(profile: any, actor: any, request: any, now: numb
 		local own=claimId==ownClaimId and claim.actorId==actor.actorId and claim.actorKind==actor.kind
 			and claim.carrierId==carrier.id and claim.batchId==batch.id
 			and claim.sourceId==source.id and claim.targetId==target.id and claim.quantity==request.quantity
+			and claim.nextTargetId==nextTargetId
 		if not own and (now==nil or now<claim.expiresAt) then
-			if claim.sourceId==source.id or claim.targetId==source.id then return result("SOURCE_RESERVED") end
-			if claim.sourceId==target.id or claim.targetId==target.id then return result("TARGET_RESERVED") end
+			if State.claimTouches(claim,source.id) then return result("SOURCE_RESERVED") end
+			if State.claimTouches(claim,target.id) or (nextTargetId~=nil and State.claimTouches(claim,nextTargetId)) then
+				return result("TARGET_RESERVED")
+			end
 		end
 	end
 	local returnLocationId,returnReservation=nil,nil

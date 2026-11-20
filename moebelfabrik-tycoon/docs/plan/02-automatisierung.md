@@ -8,10 +8,10 @@
 
 - [x] **P08-01** Einen ersten Mitarbeiter mit Spielgeld anstellbar machen und seine Freischaltung im Werkstattprofil speichern.
 - [x] **P08-02** Eine feste Transportstrecke zwischen zwei vorhandenen Stationen mit klarer Quelle, Ziel und freien Laufwegen zuweisen.
-- [ ] **P08-03** Die Charge und den Zielplatz bei Auftragsannahme über die gemeinsamen Bestandsregeln reservieren. Der Mitarbeiter übergibt Ware erst am vorgesehenen Ziel.
+- [x] **P08-03** Die Charge und den Zielplatz bei Auftragsannahme über die gemeinsamen Bestandsregeln reservieren. Der Mitarbeiter übergibt Ware erst am vorgesehenen Ziel.
 - [ ] **P08-04** Zustände für unterwegs, Material fehlt, Ziel voll und Weg blockiert sichtbar machen.
 - [ ] **P08-05** Unterbrechungen mit begrenzten Wiederholungen und kontrollierter Freigabe behandeln. Unübernommene Ware bleibt an der Quelle. Übernommene Ware bleibt an einem eindeutig bestimmten physischen Abholort verfügbar.
-- [ ] **P08-06** Manuelle Übernahme und Mitarbeitertransport gegeneinander prüfen. Eigentümer und andere Träger sehen dieselbe Reservierung und erhalten bei Konflikten eine klare Rückmeldung.
+- [x] **P08-06** Manuelle Übernahme und Mitarbeitertransport gegeneinander prüfen. Eigentümer und andere Träger sehen dieselbe Reservierung und erhalten bei Konflikten eine klare Rückmeldung.
 - [ ] **P08-07** Die Tests der [Prüfmatrix](../qa/TESTS.md) für Konkurrenz, blockierten Weg, volles Ziel und Wiederbeitritt ausführen. Beobachten, welche nächste Betriebsentscheidung Spieler nach der Entlastung treffen.
 
 **Abnahme** Der Mitarbeiter übernimmt genau eine bekannte Arbeit zuverlässig. Die manuelle Kette bleibt bedienbar. Zielblockade und Abbruch erhalten die Charge. Der Besitzer erkennt Status und nächste Handlung.
