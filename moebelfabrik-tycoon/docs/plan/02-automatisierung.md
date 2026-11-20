@@ -6,7 +6,7 @@
 
 **Voraussetzungen** P07 ist abgenommen. Der gespeicherte Kreislauf aus Einkauf, manueller Herstellung und physischer Auslieferung ist vollständig spielbar.
 
-- [ ] **P08-01** Einen ersten Mitarbeiter mit Spielgeld anstellbar machen und seine Freischaltung im Werkstattprofil speichern.
+- [x] **P08-01** Einen ersten Mitarbeiter mit Spielgeld anstellbar machen und seine Freischaltung im Werkstattprofil speichern.
 - [ ] **P08-02** Eine feste Transportstrecke zwischen zwei vorhandenen Stationen mit klarer Quelle, Ziel und freien Laufwegen zuweisen.
 - [ ] **P08-03** Die Charge und den Zielplatz bei Auftragsannahme über die gemeinsamen Bestandsregeln reservieren. Der Mitarbeiter übergibt Ware erst am vorgesehenen Ziel.
 - [ ] **P08-04** Zustände für unterwegs, Material fehlt, Ziel voll und Weg blockiert sichtbar machen.
@@ -17,6 +17,8 @@
 **Abnahme** Der Mitarbeiter übernimmt genau eine bekannte Arbeit zuverlässig. Die manuelle Kette bleibt bedienbar. Zielblockade und Abbruch erhalten die Charge. Der Besitzer erkennt Status und nächste Handlung.
 
 **Nachweis** Einen vollständigen Transport zu Fuß und einen gezielt blockierten Transport mit den betroffenen Chargenorten dokumentieren. Die beobachtete Entscheidung nach der Einstellung ergänzen.
+
+[P08-Prüfbelege](../evidence/P08.md)
 
 ## P09 · Erstes festes Förderband
 

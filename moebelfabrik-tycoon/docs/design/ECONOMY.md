@@ -31,4 +31,8 @@ Bei bestätigter Übergabe an den Privatkäufer wird der Betrag einmal pro Verka
 
 Der erspielbare Ausrüstungskauf umfasst zuerst eine Verbesserung mit nachvollziehbarer Wirkung auf Kapazität oder Durchsatz. Der Lieferant verkauft Rohstoffe, Käufer nehmen fertige Möbel ab. Ein begehbarer Showroom und Angebote gegen Robux sind eigenständige, offene Entscheidungen.
 
+### Erster Mitarbeiter
+
+Die erste Anstellung kostet im Prototyp einmalig 120 Spielgeld. Im Test entsprechen drei Verkäufe beim Händler mit regulärem Holzeinkauf zusammen 120 Gewinn. Die Freischaltung gehört dauerhaft zur Werkstatt. Die Anstellung und der Spielgeldabzug werden gemeinsam bestätigt.
+
 Die Prüfungen für Bestände, Verkäufe, Wiederanlauf und Bedienbarkeit stehen in der [Testübersicht](../qa/TESTS.md).

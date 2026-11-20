@@ -174,6 +174,10 @@ Die lokalen Fälle decken ab: keine Reservierung oder Zahlung ohne passende Anku
 
 Beim Verkauf derselben Charge hält der Server zunächst den Fehlbetrag für den nächsten Einkauf zurück. Der verbleibende Erlös tilgt bis zum gespeicherten Materialwert. `Sales.settle` speichert die Nettogutschrift, den Warenabgang, den geschlossenen Vorschuss und den Verkaufsbeleg gemeinsam. `amount` enthält den Bruttoerlös. Für eine Vorschusscharge dokumentieren `repaid` und `balanceBefore` die Verrechnung. Schema-2-Belege aus P07-06 bleiben ohne diese Felder lesbar.
 
+### Anstellung P08-01
+
+[`Workers.hire`](../../src/server/Workers.luau) prüft bestätigten Sitzungsbesitz, Eigentümer, erwartete State-Revision und Guthaben. Der erste bestätigte Kauf zieht 120 Spielgeld ab und ergänzt `progress.firstWorker={price,revision}` im selben Save. Ein weiterer Antrag liefert diese vorhandene Freischaltung. Alte Profile ohne `firstWorker` bleiben gültig und starten ohne Anstellung. Die Demo lässt den Antrag nur in Reichweite am Fertiglager zu.
+
 ## Speichern und Wiederherstellen
 
 Persistenz gehört zum ersten Bestandsnachweis. Das Profil trennt bestätigte Speicherdaten von laufender Darstellung. Revision und Sitzungszuordnung schützen vor verspäteten Schreibvorgängen älterer Sitzungen. Startdaten entstehen ausschließlich nach einer erfolgreichen Prüfung, dass für den Spieler noch kein Profil existiert. Kann das Profil nicht geladen werden, bleiben wirtschaftliche Aktionen gesperrt. Bei unklarem Ergebnis bleibt der betroffene Verkauf bis zur Prüfung offen.

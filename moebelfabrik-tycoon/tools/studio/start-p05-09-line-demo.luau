@@ -22,6 +22,7 @@ local Trips = require(factory.Trips)
 local VehicleRecovery = require(factory.VehicleRecovery)
 local Vehicles = require(factory.Vehicles)
 local Sales = require(factory.Sales)
+local Workers = require(factory.Workers)
 local players = game:GetService("Players")
 local serverStorage = game:GetService("ServerStorage")
 local collection = game:GetService("CollectionService")
@@ -205,6 +206,7 @@ banner.Parent = gui
 local nextTarget = {Holzpaket = "Säge · Eingang", Bausatz = "Montagebank · Eingang", Rohhocker = "Finishplatz · Eingang",
 	Fertig = "Packtisch · Eingang", Karton = "Fertiglager"}
 local prompts: {[string]: ProximityPrompt} = {}
+local hirePrompt: ProximityPrompt? = nil
 local lastMessage = if loading then "Beim Holzlieferanten mit R kaufen und mit E verladen."
 	else "Testholz am Rohstofflager mit E aufnehmen."
 if loading and confirmed().data.state.money < Purchases.PRICE and next(confirmed().data.state.batches) == nil then
@@ -233,6 +235,8 @@ local function render()
 	local saved = snapshot.confirmed
 	if not saved then return end
 	local state = saved.data.state
+	local hired = saved.data.progress.firstWorker ~= nil
+	if hirePrompt then hirePrompt.ActionText = if hired then "Anstellung ansehen" else "Anstellen · " .. Workers.PRICE end
 	LineView.syncWares(demo, state, places)
 	local load = if loading then Vehicles.load(state, loading.slots.slotIds) else nil
 	if load and loading then
@@ -271,6 +275,7 @@ local function render()
 		else "Hand frei · E an einer Auflage drücken") .. " · Fertiglager " .. store.used .. "/" .. store.capacity
 		.. (if load then " · Anhänger " .. load.used .. "/" .. load.capacity .. " · Guthaben " .. state.money else "")
 		.. (if state.advance then " · Vorschuss offen: " .. state.advance.amount else "")
+		.. (if hired then " · 1 Mitarbeiter" else "")
 		.. "\n" .. (if sale then offerText(sale) .. "\n" else "") .. lastMessage
 	for buyer, prompt in salePrompts do
 		prompt.Enabled = selling and sale ~= nil and sale.buyer == buyer
@@ -550,6 +555,52 @@ if purchaseSlots then
 	advanceTest.Parent = game:GetService("ServerStorage")
 end
 
+if logisticsEnabled then
+	local endpoint = endpoints["FinishedStore.Slot2"]
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.Name = "P0801HireWorker"
+	prompt.ObjectText = "Erster Mitarbeiter"
+	prompt.KeyboardKeyCode = Enum.KeyCode.H
+	prompt.GamepadKeyCode = Enum.KeyCode.ButtonL1
+	prompt.MaxActivationDistance = 6
+	prompt.Parent = endpoint.point
+	hirePrompt = prompt
+	collection:AddTag(prompt, "P0509FacingPrompt")
+	local messages = {
+		HIRED = "Mitarbeiter angestellt.",
+		ALREADY_HIRED = "Dein Mitarbeiter ist bereits angestellt.",
+		NOT_ENOUGH_MONEY = "Die Anstellung kostet " .. Workers.PRICE .. " Spielgeld.",
+		NOT_CONFIRMED = "Speichern unklar – bitte warten.",
+		WRITE_UNKNOWN = "Speichern unklar – bitte warten.",
+	} :: {[string]: string}
+	local function hire(user: Player): HandMoves.Result
+		if user ~= player or busy or closing then
+			return {ok = false, code = "NOT_READY", message = "Anstellung gerade nicht verfügbar."}
+		end
+		local problem = HandMoves.checkReach(user, endpoint)
+		if problem then
+			lastMessage = problem.message
+			render()
+			return problem
+		end
+		busy = true
+		local ran, result = pcall(Workers.hire, controller, user.UserId, confirmed().data.state.revision, TTL)
+		busy = false
+		local code = if ran then result.code else "ERROR"
+		lastMessage = messages[code] or "Anstellung gerade nicht verfügbar."
+		render()
+		return {ok = ran and result.ok, code = code, message = lastMessage}
+	end
+	prompt.Triggered:Connect(hire)
+	local hook = Instance.new("BindableFunction")
+	hook.Name = "P0801Hire"
+	hook.OnInvoke = function(): HandMoves.Result
+		while busy do task.wait() end
+		return hire(player)
+	end
+	hook.Parent = serverStorage
+end
+
 -- Facing station rows share one aisle stand marker (e.g. Montage.Output / Finish.Input, both 4.3 studs away).
 -- The client offers only prompts in front of the avatar, so E always means the station the player faces.
 local facing = Instance.new("LocalScript")
@@ -709,7 +760,7 @@ reader.OnInvoke = function(): any
 	return {batches = state.batches, reservations = state.reservations, money = state.money, revision = state.revision, valid = State.validate(state),
 		banner = banner.Text, ticks = ticks, signs = signs, views = views, recoverySlots = next(recoveryPoints) ~= nil, arrivals = arrivals,
 		pendingSale = state.pendingSale, saleReceipts = saleReceipts, sellPrompts = sellPrompts,
-		advance = state.advance, advanceReceipts = advanceReceipts}
+		advance = state.advance, advanceReceipts = advanceReceipts, firstWorker = confirmed().data.progress.firstWorker}
 end
 reader.Parent = game:GetService("ServerStorage")
 if resumeRig then
