@@ -2,6 +2,8 @@
 -- Studio-play demo: P05-09 with marked test stock, or P06-04/05 with purchases and the trailer.
 -- P07: in a buyer yard, E at the trailer opens a sale; the buyer pad confirms it (hold E).
 -- P07SaleStock=true starts with one marked test carton on each trailer slot.
+-- P07-07: F at the supplier claims a material advance (1 Holzpaket, no money) for a broke, empty workshop;
+-- its sale repays it. P0707Broke=true starts the logistics demo with money 0 instead of 180.
 -- In memory by default. P0607ResumeScope opts into an isolated save in the private test place.
 assert(game.PlaceId == 79033653140107 and game.GameId == 10776116608, "Wrong test place")
 local rs = game:GetService("RunService")
@@ -130,7 +132,8 @@ if logisticsEnabled then
 		names[id] = "Anhänger · Platz " .. id:sub(-1)
 		profile.locations[id] = vehicleSlots.locations[id]
 	end
-	profile.money = 180 -- Only the in-memory test bankroll.
+	-- Only the in-memory test bankroll (with a resume scope only on the first start). P0707Broke tests the advance.
+	profile.money = if workspace:GetAttribute("P0707Broke") == true then 0 else 180
 	if workspace:GetAttribute("P07SaleStock") == true then -- With a resume scope only the first start seeds it.
 		for index, id in vehicleSlots.slotIds do
 			local stockId = "Testkarton-" .. index
@@ -204,12 +207,21 @@ local nextTarget = {Holzpaket = "Säge · Eingang", Bausatz = "Montagebank · Ei
 local prompts: {[string]: ProximityPrompt} = {}
 local lastMessage = if loading then "Beim Holzlieferanten mit R kaufen und mit E verladen."
 	else "Testholz am Rohstofflager mit E aufnehmen."
+if loading and confirmed().data.state.money < Purchases.PRICE and next(confirmed().data.state.batches) == nil then
+	lastMessage = "Kein Geld für Holz: Beim Holzlieferanten mit F einen Materialvorschuss holen."
+end
 if next(recoveryPoints) then lastMessage = "Fracht am Bergungsplatz abholen und auf den passenden Anhängerplatz laden." end
 if confirmed().data.state.pendingSale then lastMessage = "Offener Verkauf: Lege den Karton zurück auf seinen Anhängerplatz." end
 local function offerText(sale: any): string
 	local name = buyerNames[sale.buyer]
 	if sale.buyer == "Dealer" then return name .. ": 1 Hocker · Erlös " .. sale.dealerValue end
 	return name .. ": 1 Hocker · " .. sale.quoteMin .. "–" .. sale.quoteMax .. " (Händler " .. sale.dealerValue .. ")"
+end
+-- A repaid material advance (P07-07) is part of the confirmed receipt: amount - repaid was credited.
+local function repaidText(receipt: Sales.Receipt): string
+	if receipt.balanceBefore == nil then return "" end
+	local repaid = receipt.repaid or 0
+	return " Vorschuss " .. repaid .. " verrechnet, " .. (receipt.amount - repaid) .. " gutgeschrieben."
 end
 local function heldBatch(state: any): any
 	for _, batch in state.batches do if batch.locationId == hand then return batch end end
@@ -258,6 +270,7 @@ local function render()
 	banner.Text = (if held then "In der Hand: " .. Recipe.stageNames[held.stage] .. " · Ziel: " .. (target or "Auflage")
 		else "Hand frei · E an einer Auflage drücken") .. " · Fertiglager " .. store.used .. "/" .. store.capacity
 		.. (if load then " · Anhänger " .. load.used .. "/" .. load.capacity .. " · Guthaben " .. state.money else "")
+		.. (if state.advance then " · Vorschuss offen: " .. state.advance.amount else "")
 		.. "\n" .. (if sale then offerText(sale) .. "\n" else "") .. lastMessage
 	for buyer, prompt in salePrompts do
 		prompt.Enabled = selling and sale ~= nil and sale.buyer == buyer
@@ -422,7 +435,7 @@ local function settleSale(user: Player, buyer: string): HandMoves.Result
 		if result.ok and receipt then
 			openedHere[sale.id] = nil
 			return {ok = true, code = result.code,
-				message = "Verkauft an " .. buyerNames[buyer] .. ": 1 Hocker für " .. receipt.amount .. "."}
+				message = "Verkauft an " .. buyerNames[buyer] .. ": 1 Hocker für " .. receipt.amount .. "." .. repaidText(receipt)}
 		end
 		return saleResponse(result)
 	end)
@@ -460,8 +473,16 @@ if purchaseSlots then
 	local purchaseStatus = {NOT_ENOUGH_MONEY = "Dein Guthaben reicht für kein weiteres Holzpaket.",
 		SUPPLIER_FULL = "Beim Lieferanten ist kein Abholplatz frei.",
 		RAW_STORE_FULL = "Im Rohstofflager kann kein Platz für die Lieferung reserviert werden."}
-	local function buy(user: Player): HandMoves.Result
-		if user ~= player or busy or closing then return {ok = false, code = "NOT_READY", message = "Kauf gerade nicht verfügbar."} end
+	local advanceStatus = {MONEY_AVAILABLE = "Dein Guthaben reicht für einen regulären Einkauf (R).",
+		STOCK_AVAILABLE = "Du hast noch Holz oder Ware. Der Vorschuss hilft nur einem leeren Betrieb.",
+		ADVANCE_OPEN = "Dein Materialvorschuss ist noch offen. Der Verkauf dieser Charge verrechnet ihn.",
+		SALE_OPEN = "Schließe zuerst den offenen Verkauf ab.",
+		NOT_CONFIRMED = "Speichern unklar – bitte warten.", WRITE_UNKNOWN = "Speichern unklar – bitte warten.",
+		SUPPLIER_FULL = purchaseStatus.SUPPLIER_FULL, RAW_STORE_FULL = purchaseStatus.RAW_STORE_FULL}
+	-- Buying and the material advance share the reach check at the first pickup, the busy guard and the receipt text.
+	local function supply(user: Player, claim: (Persistence.Controller, any, any, Purchases.Slots, number) -> any,
+		statuses: {[string]: string}, fallback: string): HandMoves.Result
+		if user ~= player or busy or closing then return {ok = false, code = "NOT_READY", message = fallback} end
 		local reachProblem = HandMoves.checkReach(user, endpoint)
 		if reachProblem then
 			lastMessage = reachProblem.message
@@ -472,16 +493,22 @@ if purchaseSlots then
 		local ran, outcome = pcall(function(): HandMoves.Result
 			local actor = {kind = "Player", actorId = "Player/" .. string.format("%.0f", user.UserId),
 				ownerUserId = user.UserId, ready = true}
-			local result = Purchases.buy(controller, actor, {operationId = http:GenerateGUID(false),
+			local result = claim(controller, actor, {operationId = http:GenerateGUID(false),
 				expectedRevision = confirmed().data.state.revision}, slots, TTL)
 			return {ok = result.ok, code = result.code, message = if result.receipt then result.receipt.message
-				else ((purchaseStatus :: {[string]: string})[result.code] or "Kauf gerade nicht verfügbar.")}
+				else (statuses[result.code] or fallback)}
 		end)
 		busy = false
-		local response = if ran then outcome else {ok = false, code = "ERROR", message = "Kauf gerade nicht verfügbar."}
+		local response = if ran then outcome else {ok = false, code = "ERROR", message = fallback}
 		lastMessage = response.message
 		render()
 		return response
+	end
+	local function buy(user: Player): HandMoves.Result
+		return supply(user, Purchases.buy, purchaseStatus, "Kauf gerade nicht verfügbar.")
+	end
+	local function advance(user: Player): HandMoves.Result
+		return supply(user, Purchases.advance, advanceStatus, "Vorschuss gerade nicht verfügbar.")
 	end
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.Name = "P060405BuyWood"
@@ -501,6 +528,26 @@ if purchaseSlots then
 	test.Name = "P060405Purchase"
 	test.OnInvoke = function(): HandMoves.Result return buy(player) end
 	test.Parent = game:GetService("ServerStorage")
+	-- P07-07: a separate prompt beside the buy prompt; the server decides eligibility and explains refusals.
+	local advancePrompt = Instance.new("ProximityPrompt")
+	advancePrompt.Name = "P0707AdvanceWood"
+	advancePrompt.ObjectText = "Materialvorschuss"
+	advancePrompt.ActionText = "1 Holzpaket · ohne Geld"
+	advancePrompt.MaxActivationDistance = 6
+	advancePrompt.KeyboardKeyCode = Enum.KeyCode.F
+	advancePrompt.GamepadKeyCode = Enum.KeyCode.ButtonX
+	advancePrompt.UIOffset = Vector2.new(0, 80) -- Shares the pickup point with the E and R prompts.
+	advancePrompt.Parent = endpoint.point
+	collection:AddTag(advancePrompt, "P0509FacingPrompt")
+	advancePrompt.Triggered:Connect(function(user)
+		if user ~= player or busy or os.clock() - last < 0.4 then return end
+		last = os.clock()
+		advance(user)
+	end)
+	local advanceTest = Instance.new("BindableFunction")
+	advanceTest.Name = "P0707Advance"
+	advanceTest.OnInvoke = function(): HandMoves.Result return advance(player) end
+	advanceTest.Parent = game:GetService("ServerStorage")
 end
 
 -- Facing station rows share one aisle stand marker (e.g. Montage.Output / Finish.Input, both 4.3 studs away).
@@ -561,7 +608,9 @@ rs.Heartbeat:Connect(function(dt: number)
 			local resumed = Sales.resume(controller, saleActor, unclearSale)
 			if resumed.ok then
 				local receipt = resumed.receipt
-				lastMessage = if receipt then "Verkauf bestätigt: 1 Hocker für " .. receipt.amount .. "." else "Spielstand geklärt."
+				-- An unclear advance write is clarified here too; a landed advance then shows in the banner.
+				lastMessage = if receipt then "Verkauf bestätigt: 1 Hocker für " .. receipt.amount .. "." .. repaidText(receipt)
+					else "Spielstand geklärt."
 				unclearSale = nil
 			else
 				lastMessage = "Speichern unklar – bitte warten."
@@ -650,12 +699,17 @@ reader.OnInvoke = function(): any
 		end
 	end
 	local saleReceipts = {}
-	for id, receipt in state.receipts do if receipt.action == "Sale" then saleReceipts[id] = receipt.result end end
+	local advanceReceipts = {}
+	for id, receipt in state.receipts do
+		if receipt.action == "Sale" then saleReceipts[id] = receipt.result end
+		if receipt.action == "Advance" then advanceReceipts[id] = receipt.result end
+	end
 	local sellPrompts = {}
 	for buyer, prompt in salePrompts do sellPrompts[buyer] = {enabled = prompt.Enabled, text = prompt.ObjectText} end
 	return {batches = state.batches, reservations = state.reservations, money = state.money, revision = state.revision, valid = State.validate(state),
 		banner = banner.Text, ticks = ticks, signs = signs, views = views, recoverySlots = next(recoveryPoints) ~= nil, arrivals = arrivals,
-		pendingSale = state.pendingSale, saleReceipts = saleReceipts, sellPrompts = sellPrompts}
+		pendingSale = state.pendingSale, saleReceipts = saleReceipts, sellPrompts = sellPrompts,
+		advance = state.advance, advanceReceipts = advanceReceipts}
 end
 reader.Parent = game:GetService("ServerStorage")
 if resumeRig then

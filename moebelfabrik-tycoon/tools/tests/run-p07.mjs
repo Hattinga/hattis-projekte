@@ -18,20 +18,32 @@ for(const name of modules){
   s=s.replace(guard,`local game: any={GetService=function(_: any,n: string): any assert(n=="RunService");return {IsServer=function(): boolean return true end} end}\n${guard}`);
  }
  if(name==='Persistence')s=s.replace('--!strict','--!strict\nlocal Instance: any=nil -- CLI: engine wrapper is checked separately in Studio.');
+ if(name==='Purchases')s=s.replace('--!strict','--!strict\ntype Instance = any\ntype Attachment = any');
  writeFileSync(resolve(staging,name+'.luau'),s);
 }
 writeFileSync(resolve(staging,'Suite.luau'),source('Suite','tools/tests/p07-sales.luau'));
+writeFileSync(resolve(staging,'AdvanceSuite.luau'),source('AdvanceSuite','tools/tests/p07-07-advance.luau'));
 writeFileSync(resolve(staging,'Runner.luau'),`--!strict
-local run=require("./Suite")
-local summary=run(require("./State"),require("./Transfers"),require("./Persistence"),require("./Purchases"),require("./Sales"))
-for _,name in summary.passed do print("PASS\\t"..name) end
-for _,failure in summary.failures do print("FAIL\\t"..failure.name.."\\n"..failure.error) end
-print(string.format("TOTAL\\t%d\\t%d\\t%d",summary.total,#summary.passed,#summary.failures))
-assert(#summary.failures==0,"Sales test failure")
+local State = require("./State")
+local Transfers = require("./Transfers")
+local Persistence = require("./Persistence")
+local Purchases = require("./Purchases")
+local Sales = require("./Sales")
+local salesSuite = require("./Suite")
+local advanceSuite = require("./AdvanceSuite")
+local failed = 0
+for _, suite in {{name = "Sales", run = salesSuite}, {name = "Material advance", run = advanceSuite}} do
+ local summary = suite.run(State, Transfers, Persistence, Purchases, Sales)
+ print(suite.name)
+ for _, name in summary.passed do print("PASS\\t" .. name) end
+ for _, failure in summary.failures do print("FAIL\\t" .. failure.name .. "\\n" .. failure.error) end
+ print(string.format("TOTAL\\t%d\\t%d\\t%d", summary.total, #summary.passed, #summary.failures))
+ failed += #summary.failures
+end
+assert(failed == 0, "P07 test failure")
 `);
 function run(exe,args){const r=spawnSync(resolve(runtime,exe),args,{cwd:staging,encoding:'utf8'});if(r.error)throw r.error;return {exit:r.status,output:(r.stdout+r.stderr).trim()};}
-// Purchases binds engine Instances; its types are checked in Studio, the CLI runs its logic.
-const analysis=run('luau-analyze.exe',[...modules.filter(n=>n!=='Purchases').map(n=>n+'.luau'),'Suite.luau']);
+const analysis=run('luau-analyze.exe',[...modules.map(n=>n+'.luau'),'Suite.luau','AdvanceSuite.luau']);
 const tests=run('luau.exe',['Runner.luau']);
 const report={task:'P07',runtime:'Official Luau CLI 0.747 Windows',sourceSha256:hashes,analysis,tests,
  status:analysis.exit===0&&tests.exit===0?'passed-local':'failed',

@@ -24,7 +24,8 @@ Bei bestätigter Übergabe an den Privatkäufer wird der Betrag einmal pro Verka
 ## Liquidität und Wiederanlauf
 
 - Der Händlererlös des Einstiegsrezepts deckt in der Testwirtschaft die Rohstoffkosten. Verkaufsvorschau und Materialpreis helfen dem Spieler, Geld für den nächsten Einkauf einzuplanen.
-- Für einen Stillstand durch Geldmangel ist ein zweckgebundener Materialvorschuss vorgesehen. Er ermöglicht einen Produktionszyklus, erzeugt keinen direkten Geldzufluss und kann während eines offenen Vorschusses nur einmal beansprucht werden. Ob er beim Verkauf verrechnet wird, wird im Solvenztest entschieden.
+- Wenn der Betrieb weniger als 60 Spielgeld und weder Ware noch einen offenen Verkauf hat, stellt der Lieferant einmalig für diesen Stillstand ein Holzpaket am Abholplatz bereit. Die Hilfe zahlt kein Geld aus. Solange der Vorschuss offen ist, kann der Betrieb keinen weiteren beanspruchen.
+- Beim Verkauf dieser Charge wird bis zum Materialwert so viel verrechnet, dass genug für den nächsten regulären Einkauf bleibt. Der Verkauf schließt den Vorschuss ab. Bei 0 Guthaben und einem Privatverkauf für 80 werden 20 verrechnet und 60 gutgeschrieben. Der nächste Einkauf kostet im Test 60.
 
 ## Shop
 

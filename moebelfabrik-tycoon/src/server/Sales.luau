@@ -230,6 +230,7 @@ end
 
 -- Binding handoff at the buyer pad: removes the carton and its Return, credits once and stores the receipt,
 -- all in one profile change. The private amount comes from the seed fixed when the sale was opened.
+-- A sale of advanced material repays it only from proceeds available after the next purchase is funded.
 function Sales.settle(controller: Persistence.Controller, actor: Actor, saleId: string, lease: number): Result
 	if not identifier(saleId, State.MAX_SALE_ID_LENGTH) then return rejected("INVALID_REQUEST") end
 	local candidate, problem = loaded(controller, actor)
@@ -248,16 +249,22 @@ function Sales.settle(controller: Persistence.Controller, actor: Actor, saleId: 
 	end
 	if state.revision == MAX_INTEGER then return rejected("REVISION_OVERFLOW") end
 	local amount = sale.quoteMin + sale.seed % (sale.quoteMax - sale.quoteMin + 1)
-	if state.money > MAX_INTEGER - amount then return rejected("MONEY_OVERFLOW") end
+	local advance = state.advance
+	local balanceBefore = state.money
+	local repays = advance ~= nil and advance.batchId == sale.batchId
+	local repaid = if advance and repays then State.advanceRepayment(balanceBefore, amount, advance.amount) else 0
+	if balanceBefore > MAX_INTEGER - (amount - repaid) then return rejected("MONEY_OVERFLOW") end
 	local revision = state.revision
 	state.revision += 1
-	state.money += amount
+	state.money += amount - repaid
+	if repays then state.advance = nil end
 	state.batches[sale.batchId] = nil
 	state.reservations[sale.slotId] = nil
 	state.pendingSale = nil
 	local receipt: Receipt = {ok = true, code = "SOLD", message = MESSAGES.SOLD, revision = state.revision,
 		buyer = sale.buyer, vehicleId = sale.vehicleId, slotId = sale.slotId, batchId = sale.batchId, quantity = 1,
-		amount = amount, quoteMin = sale.quoteMin, quoteMax = sale.quoteMax, dealerValue = sale.dealerValue}
+		amount = amount, quoteMin = sale.quoteMin, quoteMax = sale.quoteMax, dealerValue = sale.dealerValue,
+		repaid = repaid, balanceBefore = if repays then balanceBefore else nil}
 	state.receipts[saleId] = {action = "Sale", ownerUserId = actor.ownerUserId, actorId = actor.actorId,
 		actorKind = "Player", carrierId = sale.carrierId,
 		request = {operationId = saleId, expectedRevision = revision}, result = receipt}

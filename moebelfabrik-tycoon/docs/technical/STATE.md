@@ -168,6 +168,12 @@ Bekannte Grenze: `openedHere` lebt nur im Speicher der Live-Sitzung. Nach Wieder
 
 Die lokalen Fälle decken ab: keine Reservierung oder Zahlung ohne passende Ankunft, für fremde oder nicht bereite Akteure, für Holz oder bei Zusatzfeldern; Öffnen mit Return und Händlerwert ohne offengelegten Seed; Replay und `SALE_BUSY`; Abbruch ohne Zahlung mit wieder verkaufbarem Karton; Händlerabschluss mit 100 genau einmal; erzwungene Privatwerte 80 und 120 ohne Neuwurf oder Käuferwechsel; unklaren Abschluss mit Klärung über `resume`; Fortsetzung in neuer Sitzung mit gleichem Seed; gesperrte Umbuchung aus der Hand und `SALE_TRANSFER_PENDING`; gültige Kauf- und Transferhistorie verkaufter Chargen; Abweisung beschädigter Verkaufsrecords; derselbe Zufallswert nach Abbruch, neuer Sitzung und erneuter Anlieferung sowie Streuung über die ganze Spanne.
 
+### Materialvorschuss P07-07
+
+[`Purchases.advance`](../../src/server/Purchases.luau) nutzt dieselben bestätigten Lieferanten- und Rohstoffplätze wie der Kauf. Ein bereiter Spieler mit eigenem bestätigtem Profil braucht Guthaben unter dem Materialpreis, einen leeren Bestand und weder einen offenen Verkauf noch einen offenen Vorschuss. Der Server speichert Holzpaket, Delivery-Zusage, `Advance`-Beleg und `state.advance` gemeinsam. Das Guthaben ändert sich dabei nicht. Dieselbe Vorgangs-ID liefert denselben Beleg, eine zweite ID wird bei offenem Vorschuss abgewiesen. Ein unklarer Save sperrt weitere Anforderungen bis zur Klärung.
+
+Beim Verkauf derselben Charge hält der Server zunächst den Fehlbetrag für den nächsten Einkauf zurück. Der verbleibende Erlös tilgt bis zum gespeicherten Materialwert. `Sales.settle` speichert die Nettogutschrift, den Warenabgang, den geschlossenen Vorschuss und den Verkaufsbeleg gemeinsam. `amount` enthält den Bruttoerlös. Für eine Vorschusscharge dokumentieren `repaid` und `balanceBefore` die Verrechnung. Schema-2-Belege aus P07-06 bleiben ohne diese Felder lesbar.
+
 ## Speichern und Wiederherstellen
 
 Persistenz gehört zum ersten Bestandsnachweis. Das Profil trennt bestätigte Speicherdaten von laufender Darstellung. Revision und Sitzungszuordnung schützen vor verspäteten Schreibvorgängen älterer Sitzungen. Startdaten entstehen ausschließlich nach einer erfolgreichen Prüfung, dass für den Spieler noch kein Profil existiert. Kann das Profil nicht geladen werden, bleiben wirtschaftliche Aktionen gesperrt. Bei unklarem Ergebnis bleibt der betroffene Verkauf bis zur Prüfung offen.

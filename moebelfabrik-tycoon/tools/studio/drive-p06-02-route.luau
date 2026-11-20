@@ -130,7 +130,7 @@ for _,m in city.Destinations:GetChildren() do local lp=m:GetAttribute("LocalPosi
 local handoff=serverStorage:FindFirstChild("P0608Stop") or serverStorage:FindFirstChild("P07Stop")
 	or serverStorage:FindFirstChild("P0708Stop")
 local order=if handoff and handoff.Name=="P07Stop" then {"Tischlerei_West","Moebelhandel","Privatkunden"}
-	elseif handoff and handoff.Name=="P0708Stop" then {"Tischlerei_West","Holzlieferant","Tischlerei_West","Moebelhandel","Privatkunden"}
+	elseif handoff and handoff.Name=="P0708Stop" then {"Tischlerei_West","Holzlieferant","Tischlerei_West","Moebelhandel","Privatkunden","Holzlieferant"}
 	elseif handoff then {"Tischlerei_West","Holzlieferant","Tischlerei_West","Moebelhandel"}
 	elseif workspace:GetAttribute("P0606TripProbe") then {"Tischlerei_West","Moebelhandel","Privatkunden"}
 	else {"Tischlerei_West","Holzlieferant","Tischlerei_West","Moebelhandel","Privatkunden","Tischlerei_West"}

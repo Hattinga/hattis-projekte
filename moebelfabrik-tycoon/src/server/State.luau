@@ -21,12 +21,16 @@ export type Receipt = {actorId: string, actorKind: string, ownerUserId: number, 
 export type Buyer = "Dealer" | "Private"
 export type PendingSale = {id: string, buyer: Buyer, vehicleId: string, slotId: string, batchId: string,
 	carrierId: string, quoteMin: number, quoteMax: number, dealerValue: number, seed: number}
+-- An advance sale records the repayment and the confirmed balance before crediting the net proceeds.
 export type SaleResult = {ok: boolean, code: string, message: string, revision: number, buyer: Buyer,
 	vehicleId: string, slotId: string, batchId: string, quantity: number, amount: number,
-	quoteMin: number, quoteMax: number, dealerValue: number}
+	quoteMin: number, quoteMax: number, dealerValue: number, repaid: number?, balanceBefore: number?}
+-- P07-07: at most one open material advance. Only the sale of exactly its batch repays and clears it.
+export type Advance = {operationId: string, batchId: string, amount: number}
 export type Profile = {schemaVersion: number, ownerUserId: number, revision: number, money: number,
 	locations: {[string]: Location}, batches: {[string]: Batch}, claims: {[string]: Claim},
-	reservations: {[string]: Reservation}, receipts: {[string]: Receipt}, pendingSale: PendingSale?}
+	reservations: {[string]: Reservation}, receipts: {[string]: Receipt}, pendingSale: PendingSale?,
+	advance: Advance?}
 
 export type StationRule = {read id: string, read input: string, read process: string, read output: string,
 	read inputStage: Stage, read outputStage: Stage, read durationSeconds: number}
@@ -59,14 +63,15 @@ local KINDS: {[string]: boolean} = {Supplier=true,RawStore=true,FinishedStore=tr
 	Band=true,Recovery=true}
 local ACTOR_KINDS: {[string]: boolean} = {Player=true,Worker=true,Band=true}
 local PROFILE_FIELDS = {schemaVersion=true,ownerUserId=true,revision=true,money=true,locations=true,
-	batches=true,claims=true,reservations=true,receipts=true,pendingSale=true}
+	batches=true,claims=true,reservations=true,receipts=true,pendingSale=true,advance=true}
 State.MAX_SALE_SEED = 16777215
 State.MAX_SALE_ID_LENGTH = 88 -- Leaves room for the derived transfer operation IDs.
 local BUYERS: {[string]: boolean} = {Dealer=true,Private=true}
 local PENDING_SALE_FIELDS = {id=true,buyer=true,vehicleId=true,slotId=true,batchId=true,carrierId=true,
 	quoteMin=true,quoteMax=true,dealerValue=true,seed=true}
 local SALE_RESULT_FIELDS = {ok=true,code=true,message=true,revision=true,buyer=true,vehicleId=true,slotId=true,
-	batchId=true,quantity=true,amount=true,quoteMin=true,quoteMax=true,dealerValue=true}
+	batchId=true,quantity=true,amount=true,quoteMin=true,quoteMax=true,dealerValue=true,repaid=true,balanceBefore=true}
+local ADVANCE_FIELDS = {operationId=true,batchId=true,amount=true}
 local LOCATION_FIELDS = {id=true,kind=true,capacity=true,acceptedStages=true}
 local BATCH_FIELDS = {id=true,ownerUserId=true,recipeId=true,recipeVersion=true,stage=true,quantity=true,locationId=true}
 local CLAIM_FIELDS = {id=true,actorId=true,actorKind=true,carrierId=true,batchId=true,sourceId=true,
@@ -80,6 +85,7 @@ local RESERVE_REQUEST_FIELDS = {operationId=true,expectedRevision=true,batchId=t
 local CLAIM_REQUEST_FIELDS = {operationId=true,expectedRevision=true,claimId=true}
 local PURCHASE_REQUEST_FIELDS = {operationId=true,expectedRevision=true}
 local PURCHASE_RESULT_FIELDS = {ok=true,code=true,message=true,revision=true,batchId=true,supplierId=true,rawSlotId=true,price=true}
+local ADVANCE_RESULT_FIELDS = {ok=true,code=true,message=true,revision=true,batchId=true,supplierId=true,rawSlotId=true,amount=true}
 local RESERVE_RESULT_FIELDS = {ok=true,code=true,message=true,revision=true,claimId=true,expiresAt=true}
 local COMMIT_RESULT_FIELDS = {ok=true,code=true,message=true,revision=true,claimId=true,batchId=true,sourceId=true,targetId=true}
 local CANCEL_RESULT_FIELDS = {ok=true,code=true,message=true,revision=true,claimId=true}
@@ -169,6 +175,12 @@ function State.countAt(profile: Profile, locationId: string): number
 		if batch.locationId==locationId then count+=batch.quantity end
 	end
 	return count
+end
+
+-- Set aside enough proceeds for one regular purchase before booking the repayment.
+function State.advanceRepayment(balance: number, gross: number, advanced: number): number
+	local needed = math.max(0, advanced - balance)
+	return math.clamp(gross - needed, 0, advanced)
 end
 
 function State.validate(profile: any): (boolean, string?)
@@ -262,15 +274,20 @@ function State.validate(profile: any): (boolean, string?)
 		end
 	end
 	local receiptRevisions: {[number]: boolean} = {}
-	local purchasesByBatch: {[string]: any} = {}
+	-- Purchases and material advances both deliver a new batch to a promised raw slot: one validation path.
+	local suppliesByBatch: {[string]: any} = {}
 	local deliveriesCompleted: {[string]: boolean} = {}
-	-- A sold carton leaves the stock; its earlier purchase and transfer receipts stay valid history.
+	-- A sold carton leaves the stock; its earlier purchase, advance and transfer receipts stay valid history.
 	local soldBatches: {[string]: string} = {}
+	local advancedBatches: {[string]: any} = {} -- Each receipt is checked below.
 	for operationId,receipt in profile.receipts do
 		if plainTable(receipt) and receipt.action=="Sale" and plainTable(receipt.result)
 			and identifier(receipt.result.batchId) then
 			if soldBatches[receipt.result.batchId] then return false,"DUPLICATE_SALE" end
 			soldBatches[receipt.result.batchId]=operationId
+		elseif plainTable(receipt) and receipt.action=="Advance" and plainTable(receipt.result)
+			and identifier(receipt.result.batchId) then
+			advancedBatches[receipt.result.batchId]=receipt.result
 		end
 	end
 	local function known(batchId: any): boolean
@@ -283,8 +300,10 @@ function State.validate(profile: any): (boolean, string?)
 		end
 		local request,result=receipt.request,receipt.result
 		local purchase=receipt.action=="Purchase"
+		local advance=receipt.action=="Advance"
+		local supply=purchase or advance
 		local sale=receipt.action=="Sale"
-		if purchase then
+		if supply then
 			if receipt.actorKind~="Player" or receipt.carrierId~=nil
 				or receipt.actorId~="Player/"..string.format("%.0f",profile.ownerUserId) then
 				return false,"INVALID_RECEIPT"
@@ -299,10 +318,10 @@ function State.validate(profile: any): (boolean, string?)
 		end
 		local reserve=receipt.action=="Reserve"
 		local commit=receipt.action=="Commit"
-		if not purchase and not sale and not reserve and not commit and receipt.action~="Cancel" then
+		if not supply and not sale and not reserve and not commit and receipt.action~="Cancel" then
 			return false,"INVALID_RECEIPT_ACTION"
 		end
-		if not record(request,if purchase or sale then PURCHASE_REQUEST_FIELDS elseif reserve then RESERVE_REQUEST_FIELDS else CLAIM_REQUEST_FIELDS)
+		if not record(request,if supply or sale then PURCHASE_REQUEST_FIELDS elseif reserve then RESERVE_REQUEST_FIELDS else CLAIM_REQUEST_FIELDS)
 			or request.operationId~=operationId or not integer(request.expectedRevision,0)
 			or request.expectedRevision==MAX_INTEGER then return false,"INVALID_RECEIPT_REQUEST" end
 		if reserve then
@@ -313,22 +332,24 @@ function State.validate(profile: any): (boolean, string?)
 				or (request.sourceId~=receipt.carrierId and request.targetId~=receipt.carrierId) then
 				return false,"INVALID_RECEIPT_REQUEST"
 			end
-		elseif not purchase and not sale and not identifier(request.claimId) then
+		elseif not supply and not sale and not identifier(request.claimId) then
 			return false,"INVALID_RECEIPT_REQUEST"
 		end
-		local fields=if purchase then PURCHASE_RESULT_FIELDS elseif sale then SALE_RESULT_FIELDS
-			elseif reserve then RESERVE_RESULT_FIELDS elseif commit then COMMIT_RESULT_FIELDS else CANCEL_RESULT_FIELDS
-		local code=if purchase then "PURCHASED" elseif sale then "SOLD" elseif reserve then "RESERVED"
-			elseif commit then "COMMITTED" else "CANCELLED"
+		local fields=if purchase then PURCHASE_RESULT_FIELDS elseif advance then ADVANCE_RESULT_FIELDS
+			elseif sale then SALE_RESULT_FIELDS elseif reserve then RESERVE_RESULT_FIELDS
+			elseif commit then COMMIT_RESULT_FIELDS else CANCEL_RESULT_FIELDS
+		local code=if purchase then "PURCHASED" elseif advance then "ADVANCED" elseif sale then "SOLD"
+			elseif reserve then "RESERVED" elseif commit then "COMMITTED" else "CANCELLED"
 		if not record(result,fields) or result.ok~=true or result.code~=code or not message(result.message)
 			or not integer(result.revision,1) or result.revision~=request.expectedRevision+1
 			or result.revision>profile.revision or receiptRevisions[result.revision] then
 			return false,"INVALID_RECEIPT_RESULT"
 		end
 		receiptRevisions[result.revision]=true
-		if purchase then
+		if supply then
 			if not identifier(result.batchId) or not identifier(result.supplierId) or not identifier(result.rawSlotId)
-				or result.batchId~="purchase/"..operationId or not known(result.batchId) or not integer(result.price,1)
+				or result.batchId~=(if purchase then "purchase/" else "advance/")..operationId or not known(result.batchId)
+				or not integer(if purchase then result.price else result.amount,1)
 				or not profile.locations[result.supplierId] or profile.locations[result.supplierId].kind~="Supplier"
 				or not profile.locations[result.rawSlotId] or profile.locations[result.rawSlotId].kind~="RawStore" then
 				return false,"INVALID_RECEIPT_RESULT"
@@ -339,12 +360,24 @@ function State.validate(profile: any): (boolean, string?)
 				or (promised and (promised~=result.rawSlotId or profile.reservations[promised].batchId~=result.batchId)) then
 				return false,"INVALID_DELIVERY_RESERVATION"
 			end
-			purchasesByBatch[result.batchId]={receipt=receipt, promised=promised~=nil}
+			suppliesByBatch[result.batchId]={receipt=receipt, promised=promised~=nil}
 		elseif sale then
 			if not vehicleSlotOf(profile,result.vehicleId,result.slotId) or not identifier(result.batchId)
 				or profile.batches[result.batchId] or soldBatches[result.batchId]~=operationId or result.quantity~=1
 				or not quote(result.buyer,result.quoteMin,result.quoteMax,result.dealerValue)
 				or not integer(result.amount,result.quoteMin) or result.amount>result.quoteMax then
+				return false,"INVALID_RECEIPT_RESULT"
+			end
+			local advanced=advancedBatches[result.batchId]
+			if advanced then
+				if not integer(advanced.amount,1) or not integer(advanced.revision,1)
+					or advanced.revision>=result.revision or not integer(result.balanceBefore,0)
+					or not integer(result.repaid,0)
+					or result.repaid~=State.advanceRepayment(result.balanceBefore,result.amount,advanced.amount)
+					or result.balanceBefore>MAX_INTEGER-(result.amount-result.repaid) then
+					return false,"INVALID_RECEIPT_RESULT"
+				end
+			elseif result.balanceBefore~=nil or (result.repaid~=nil and result.repaid~=0) then
 				return false,"INVALID_RECEIPT_RESULT"
 			end
 		elseif reserve then
@@ -364,7 +397,8 @@ function State.validate(profile: any): (boolean, string?)
 	-- Historical completions bind the original Reserve, not today's stock location.
 	local completedClaims: {[string]: boolean} = {}
 	for _,receipt in profile.receipts do
-		if receipt.action=="Reserve" or receipt.action=="Purchase" or receipt.action=="Sale" then continue end
+		if receipt.action=="Reserve" or receipt.action=="Purchase" or receipt.action=="Advance"
+			or receipt.action=="Sale" then continue end
 		local claimId=receipt.request.claimId
 		local reserved=profile.receipts[claimId]
 		if not reserved or reserved.action~="Reserve" or reserved.actorId~=receipt.actorId
@@ -379,15 +413,15 @@ function State.validate(profile: any): (boolean, string?)
 		end
 		completedClaims[claimId]=true
 		if receipt.action=="Commit" then
-			local purchase=purchasesByBatch[receipt.result.batchId]
-			if purchase and receipt.result.targetId==purchase.receipt.result.rawSlotId
-				and receipt.result.revision>purchase.receipt.result.revision then
+			local supplied=suppliesByBatch[receipt.result.batchId]
+			if supplied and receipt.result.targetId==supplied.receipt.result.rawSlotId
+				and receipt.result.revision>supplied.receipt.result.revision then
 				deliveriesCompleted[receipt.result.batchId]=true
 			end
 		end
 	end
-	for batchId,purchase in purchasesByBatch do
-		if purchase.promised==(deliveriesCompleted[batchId]==true) then return false,"INVALID_DELIVERY_HISTORY" end
+	for batchId,supplied in suppliesByBatch do
+		if supplied.promised==(deliveriesCompleted[batchId]==true) then return false,"INVALID_DELIVERY_HISTORY" end
 	end
 	local lockedSlots: {[string]: boolean} = {}
 	for claimId,claim in profile.claims do
@@ -438,6 +472,20 @@ function State.validate(profile: any): (boolean, string?)
 			or promise.carrierId~=sale.carrierId or promise.actorKind~="Player" or promise.actorId~=playerActor(profile) then
 			return false,"INVALID_PENDING_SALE"
 		end
+	end
+	-- P07-07: the open advance names its validated receipt and its unsold batch. While an advanced batch is in
+	-- stock its advance stays open, so its sale always repays it; at most one advanced batch is in stock.
+	local open=profile.advance
+	if open~=nil then
+		local granted=if record(open,ADVANCE_FIELDS) and identifier(open.operationId)
+			then profile.receipts[open.operationId] else nil
+		if not granted or granted.action~="Advance" or granted.result.batchId~=open.batchId
+			or granted.result.amount~=open.amount or not profile.batches[open.batchId] or soldBatches[open.batchId] then
+			return false,"INVALID_ADVANCE"
+		end
+	end
+	for batchId in advancedBatches do
+		if profile.batches[batchId] and (open==nil or open.batchId~=batchId) then return false,"INVALID_ADVANCE" end
 	end
 	return true,nil
 end

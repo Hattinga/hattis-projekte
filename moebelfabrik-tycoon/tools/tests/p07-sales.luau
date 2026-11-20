@@ -148,6 +148,7 @@ return function(State: any, Transfers: any, Persistence: any, Purchases: any, Sa
 		assert(sold.ok and sold.code == "SOLD", sold.code)
 		local receipt = sold.receipt
 		assert(receipt.buyer == "Dealer" and receipt.quantity == 1 and receipt.amount == 100 and receipt.batchId == "box")
+		assert(receipt.repaid == 0, "Without a material advance nothing is repaid")
 		local state = h.state()
 		assert(state.money == 220 and state.batches.box == nil and state.reservations[B] == nil and state.pendingSale == nil)
 		assert(state.receipts["sale/d"].action == "Sale" and State.validate(state))
@@ -282,6 +283,7 @@ return function(State: any, Transfers: any, Persistence: any, Purchases: any, Sa
 		end
 		rejectsSold(function(p) p.receipts["sale/v"].result.amount = 121 end, "INVALID_RECEIPT_RESULT")
 		rejectsSold(function(p) p.receipts["sale/v"].result.buyer = "Dealer" end, "INVALID_RECEIPT_RESULT")
+		rejectsSold(function(p) p.receipts["sale/v"].result.repaid = 1 end, "INVALID_RECEIPT_RESULT")
 		rejectsSold(function(p) p.batches.box = State.newBatch("box", 101, "Karton", B) end, "INVALID_RECEIPT_RESULT")
 		rejectsSold(function(p)
 			local twin = copy(p.receipts["sale/v"]); twin.request.operationId = "sale/w"

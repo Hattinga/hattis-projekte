@@ -11,6 +11,7 @@ local http = game:GetService("HttpService")
 local lineTest = storage:FindFirstChild("P0509LineTest") :: BindableFunction
 local lineState = storage:FindFirstChild("P0509LineState") :: BindableFunction
 local purchase = storage:FindFirstChild("P060405Purchase") :: BindableFunction
+local advance = storage:FindFirstChild("P0707Advance") :: BindableFunction
 local saleTest = storage:FindFirstChild("P07SaleTest") :: BindableFunction
 assert(lineTest and lineState and purchase and saleTest, "Start a fresh P06 loading demo first")
 assert(not storage:FindFirstChild("P0708Result") and not storage:FindFirstChild("P0708Stop"), "P07-08 probe already active")
@@ -40,7 +41,10 @@ local FLAT = Vector3.new(1, 0, 1)
 local HAND = "Demo.Hand"
 
 local initial = lineState:Invoke()
-assert(initial.valid and initial.money == 180 and next(initial.batches) == nil and next(initial.reservations) == nil)
+local advanceRun = workspace:GetAttribute("P0707Broke") == true
+assert(initial.valid and initial.money == (if advanceRun then 0 else 180)
+	and next(initial.batches) == nil and next(initial.reservations) == nil)
+assert(not advanceRun or advance, "Start the demo with the material advance before testing it")
 assert(Vehicles.zone(binding, zones) == "Workshop" and seat.Occupant == nil)
 local result = Instance.new("StringValue")
 result.Name = "P0708Result"
@@ -55,7 +59,8 @@ local batches: {string} = {}
 local started = os.clock()
 local savedRoot, savedAnchored = root.CFrame, root.Anchored
 local stage = 0
-local report: any = {status = "ready", checkpoints = {}, legs = {}, sales = {}, initialMoney = initial.money}
+local report: any = {status = "ready", checkpoints = {}, legs = {}, sales = {}, initialMoney = initial.money,
+	task = if advanceRun then "P07-07" else "P07-08"}
 
 local function publish() result.Value = http:JSONEncode(report) end
 local function finish(status: string, failure: string?)
@@ -217,19 +222,22 @@ local function sell(slotId: string, buyer: string, yardName: string, amount: num
 	local after = lineState:Invoke()
 	local saleId, receipt = nil, nil
 	for id, kept in after.saleReceipts do if kept.batchId == pending.batchId then saleId, receipt = id, kept end end
+	local repaid = if advanceRun then 20 else 0
 	assert(receipt and receipt.amount == amount and receipt.quantity == 1 and receipt.buyer == buyer
-		and after.money == open.money + amount and after.batches[pending.batchId] == nil, "Wrong settlement at " .. buyer)
+		and (receipt.repaid or 0) == repaid and after.advance == nil
+		and after.money == open.money + amount - repaid and after.batches[pending.batchId] == nil, "Wrong settlement at " .. buyer)
+	if advanceRun then assert(receipt.balanceBefore == 0, "Wrong balance before repayment") end
 	table.insert(report.sales, {saleId = saleId, buyer = buyer, batchId = pending.batchId, slotId = slotId, amount = amount,
 		quoteMin = receipt.quoteMin, quoteMax = receipt.quoteMax, dealerValue = receipt.dealerValue,
-		moneyBefore = open.money, moneyAfter = after.money, revision = after.revision})
+		moneyBefore = open.money, moneyAfter = after.money, revision = after.revision, repaid = repaid})
 	publish()
 	park()
 	return after
 end
 
-local expectedStops = {"Supplier", "Workshop", "Dealer", "Private"}
+local expectedStops = {"Supplier", "Workshop", "Dealer", "Private", "Supplier"}
 local expectedRoutes = {{"Tischlerei_West", "Holzlieferant"}, {"Holzlieferant", "Tischlerei_West"},
-	{"Tischlerei_West", "Moebelhandel"}, {"Moebelhandel", "Privatkunden"}}
+	{"Tischlerei_West", "Moebelhandel"}, {"Moebelhandel", "Privatkunden"}, {"Privatkunden", "Holzlieferant"}}
 stop.OnInvoke = function(index: number, leg: any): any
 	if report.status == "failed" or report.status == "passed" then return false end
 	local ok, failure = xpcall(function()
@@ -244,28 +252,57 @@ stop.OnInvoke = function(index: number, leg: any): any
 		report.status = "running"
 		local cargo = if transit then finishTransit(leg) else nil
 		table.insert(report.legs, {from = leg.from, to = leg.to, roadM = leg.roadM, seconds = leg.seconds, zone = leg.zone, cargo = cargo})
-		local one, two = batches[1], batches[2]
 		if index == 1 then
-			batches[1], batches[2] = buy(), buy()
-			one, two = batches[1], batches[2]
-			checkpoint("two purchases at the supplier", {[one] = {"Supplier.Slot1", "Holzpaket"}, [two] = {"Supplier.Slot2", "Holzpaket"}})
-			move("Supplier.Slot1", "Take"); move(slotA, "Put")
-			move("Supplier.Slot2", "Take"); move(slotB, "Put")
-			armTransit({[slotA] = one, [slotB] = two}, "Holzpaket",
-				checkpoint("wood loaded", {[one] = {slotA, "Holzpaket"}, [two] = {slotB, "Holzpaket"}}))
+			if advanceRun then
+				local far = advance:Invoke()
+				assert(not far.ok and far.code == "TOO_FAR", far.code)
+				stand("Supplier.Slot1")
+				local broke = purchase:Invoke()
+				assert(not broke.ok and broke.code == "NOT_ENOUGH_MONEY", broke.code)
+				local granted = advance:Invoke()
+				assert(granted.ok and granted.code == "ADVANCED", granted.code)
+				local grantedState = lineState:Invoke()
+				local loan = assert(grantedState.advance, "Missing confirmed advance")
+				local receipt = grantedState.advanceReceipts[loan.operationId]
+				assert(receipt and receipt.batchId == loan.batchId and receipt.amount == 60
+					and grantedState.revision == initial.revision + 1 and grantedState.money == 0)
+				local repeated = advance:Invoke()
+				assert(not repeated.ok and repeated.code == "ADVANCE_OPEN", repeated.code)
+				local after = checkpoint("exactly one advance at the supplier", {[loan.batchId] = {"Supplier.Slot1", "Holzpaket"}})
+				assert(after.revision == grantedState.revision and after.money == 0)
+				report.advance = {operationId = loan.operationId, batchId = loan.batchId, amount = loan.amount,
+					money = after.money, far = far.code, regularPurchase = broke.code, repeated = repeated.code}
+				batches[1] = loan.batchId
+			else
+				batches[1], batches[2] = buy(), buy()
+				local bought = checkpoint("two purchases at the supplier",
+					{[batches[1]] = {"Supplier.Slot1", "Holzpaket"}, [batches[2]] = {"Supplier.Slot2", "Holzpaket"}})
+				assert(bought.money == 60)
+			end
+			local loaded, expected = {}, {}
+			for i, id in batches do
+				local slot = binding.slotIds[i]
+				move("Supplier.Slot" .. i, "Take"); move(slot, "Put")
+				loaded[slot], expected[id] = id, {slot, "Holzpaket"}
+			end
+			armTransit(loaded, "Holzpaket", checkpoint("wood loaded", expected))
 		elseif index == 2 then
-			local arrived = checkpoint("wood at the workshop", {[one] = {slotA, "Holzpaket"}, [two] = {slotB, "Holzpaket"}})
+			local expected = {}
+			for i, id in batches do expected[id] = {binding.slotIds[i], "Holzpaket"} end
+			local arrived = checkpoint("wood at the workshop", expected)
 			local raw: {[string]: string} = {}
 			for id, reservation in arrived.reservations do
 				if reservation.kind == "Delivery" then raw[reservation.batchId] = id end
 			end
-			assert(raw[one] and raw[two], "Missing paid delivery targets")
-			move(slotA, "Take"); move(raw[one], "Put")
-			move(slotB, "Take"); move(raw[two], "Put")
-			local unloaded = checkpoint("wood unloaded", {[one] = {raw[one], "Holzpaket"}, [two] = {raw[two], "Holzpaket"}})
+			for i, id in batches do
+				assert(raw[id], "Missing delivery target")
+				move(binding.slotIds[i], "Take"); move(raw[id], "Put")
+				expected[id] = {raw[id], "Holzpaket"}
+			end
+			local unloaded = checkpoint("wood unloaded", expected)
 			assert(next(unloaded.reservations) == nil, "Delivery reservations did not release")
-			local shelf = {[one] = "FinishedStore.Slot1", [two] = "FinishedStore.Slot2"}
-			for _, batchId in {one, two} do
+			for i, batchId in batches do
+				local shelf = "FinishedStore.Slot" .. i
 				local from = raw[batchId]
 				for _, rule in State.STATIONS do
 					move(from, "Take")
@@ -274,27 +311,44 @@ stop.OnInvoke = function(index: number, leg: any): any
 					from = rule.output
 				end
 				move(from, "Take")
-				move(shelf[batchId], "Put")
+				move(shelf, "Put")
+				expected[batchId] = {shelf, "Karton"}
 			end
-			checkpoint("two cartons stored", {[one] = {shelf[one], "Karton"}, [two] = {shelf[two], "Karton"}})
-			move(shelf[one], "Take"); move(slotA, "Put")
-			move(shelf[two], "Take"); move(slotB, "Put")
-			armTransit({[slotA] = one, [slotB] = two}, "Karton",
-				checkpoint("cartons loaded", {[one] = {slotA, "Karton"}, [two] = {slotB, "Karton"}}))
+			checkpoint("cartons stored", expected)
+			local loaded = {}
+			for i, id in batches do
+				local slot = binding.slotIds[i]
+				move(expected[id][1], "Take"); move(slot, "Put")
+				loaded[slot], expected[id] = id, {slot, "Karton"}
+			end
+			armTransit(loaded, "Karton", checkpoint("cartons loaded", expected))
 		elseif index == 3 then
-			checkpoint("cartons at the dealer", {[one] = {slotA, "Karton"}, [two] = {slotB, "Karton"}})
+			if advanceRun then
+				local atDealer = checkpoint("advance carton at the dealer", {[batches[1]] = {slotA, "Karton"}})
+				armTransit({[slotA] = batches[1]}, "Karton", atDealer)
+			else
+				checkpoint("cartons at the dealer", {[batches[1]] = {slotA, "Karton"}, [batches[2]] = {slotB, "Karton"}})
+				task.wait(0.75)
+				local after = sell(slotA, "Dealer", "Moebelhandel", 100)
+				armTransit({[slotB] = batches[2]}, "Karton", after)
+			end
+		elseif index == 4 then
+			local slot, id = if advanceRun then slotA else slotB, if advanceRun then batches[1] else batches[2]
+			checkpoint("carton at the private buyer", {[id] = {slot, "Karton"}})
 			task.wait(0.75)
-			local after = sell(slotA, "Dealer", "Moebelhandel", 100)
-			armTransit({[slotB] = two}, "Karton", after)
-		else
-			checkpoint("carton at the private buyer", {[two] = {slotB, "Karton"}})
-			task.wait(0.75)
-			sell(slotB, "Private", "Privatkunden", 80, 0)
+			sell(slot, "Private", "Privatkunden", 80, 0)
 			checkpoint("everything sold", {})
+		else
+			if advanceRun then
+				stand("Supplier.Slot1")
+				local funded = advance:Invoke()
+				assert(not funded.ok and funded.code == "MONEY_AVAILABLE", funded.code)
+				report.advance.funded = funded.code
+			end
 			local again = buy()
 			local final = checkpoint("new wood bought from the proceeds", {[again] = {"Supplier.Slot1", "Holzpaket"}})
 			report.final = {money = final.money, revision = final.revision, newBatch = again}
-			assert(final.money == 180 - 120 + 100 + 80 - 60, "Unexpected final balance")
+			assert(final.money == (if advanceRun then 0 else 180), "Unexpected final balance")
 			finish("passed", nil)
 		end
 	end, function(message: any): string return debug.traceback(tostring(message), 2) end)

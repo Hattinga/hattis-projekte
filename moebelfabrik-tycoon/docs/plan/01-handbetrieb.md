@@ -110,11 +110,13 @@
 - [x] **P07-04** Den Privaterlös nach Bestätigung einmal serverseitig festlegen und mit der Verkaufs-ID wiederherstellbar speichern. Wiederholte Schreibversuche verwenden das festgelegte Ergebnis.
 - [x] **P07-05** Warenabgang, Geldgutschrift und Verkaufsabschluss in derselben geprüften Profiländerung speichern. Den Beleg erst nach bestätigtem Abschluss anzeigen.
 - [x] **P07-06** Bei unterbrochenem Verkauf den vorhandenen Status wieder aufnehmen. Ein bereits bezahlter Vorgang liefert denselben Beleg. Ein unklarer Schreibausgang wird vor einem neuen Versuch geprüft.
-- [ ] **P07-07** Eine begrenzte, zweckgebundene Wiederanlaufhilfe für fehlendes Betriebskapital einbauen und ihren wiederholten Missbrauch prüfen.
-- [ ] **P07-08** Beide Verkaufskanäle als kompletten Kreislauf aus Einkauf, Fahrt, Handproduktion, Lager, Auslieferung und bestätigter Zahlung mit der [Prüfmatrix](../qa/TESTS.md) abnehmen.
+- [x] **P07-07** Eine begrenzte, zweckgebundene Wiederanlaufhilfe für fehlendes Betriebskapital einbauen und ihren wiederholten Missbrauch prüfen.
+- [x] **P07-08** Beide Verkaufskanäle als kompletten Kreislauf aus Einkauf, Fahrt, Handproduktion, Lager, Auslieferung und bestätigter Zahlung mit der [Prüfmatrix](../qa/TESTS.md) abnehmen.
 
 **Abnahme** Verkaufserlös wird erst nach gültiger physischer Übergabe bestätigt. Ein guter und ein schlechter Privatpreis lassen sich unter kontrollierten Testbedingungen nachvollziehen. Doppelklick, erzwungener Schreibfehler und Wiederbeitritt erzeugen keine zweite Auszahlung und keinen neuen Privatpreis. Der Kreislauf kann mit neu gekauftem Rohstoff weiterlaufen.
 
 **Nachweis** Je Kanal einen Fahrt- und Verkaufsbeleg mit Verkaufs-ID, Mengen und Geldänderung sichern. Den beobachteten Wiederanlauf nach Fehler und nach fehlendem Kapital vermerken.
 
 [P07-Beleg](../evidence/P07.md): Ein Karton wird im Käuferhof nach bestätigter Ankunft in die Hand genommen und an der Annahme bindend übergeben. Der Händler zahlte 100, der Privatkunde mit erzwungenem Testwert 120. Abbruch, Doppelbestätigung, fremde Annahme und Reichweite wurden geprüft, Bestand und Guthaben blieben dabei korrekt. Lokal bestanden 12 von 12 Fällen, darunter die Testwerte 80 und 120, unklarer Schreibausgang und neue Sitzung ohne neuen Wurf. Über einen echten Serverwechsel mit DataStore blieben der offene Verkauf, der bezahlte Beleg und das Guthaben erhalten.
+
+[Wiederanlauf und Kreislauf](../evidence/P07.md#prüfaufbau-für-p07-07-und-p07-08-am-20-november): Zwei vollständige Studio-Runden einschließlich Rückfahrt zum Lieferanten und regulärem Neukauf bestanden. Der Materialvorschuss funktionierte aus 0 Guthaben. Ein zweiter Antrag wurde abgelehnt. Beim Privatverkauf für 80 wurden 20 verrechnet, sodass der Betrieb das nächste Holzpaket für 60 kaufen konnte. Im regulären Kreislauf verkauften sich die beiden Kartons für 100 und 80.
