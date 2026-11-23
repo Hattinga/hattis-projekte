@@ -1,0 +1,28 @@
+[package]
+name = "framerush"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+description = "Low-latency HDMI capture viewer for Windows (prototype with synthetic source)"
+license = "MIT"
+repository = "https://github.com/Hattinga/hattis-projekte"
+publish = false
+
+[dependencies]
+pollster = "1.0.3"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter", "fmt"] }
+# DX12 only: the native Windows backend (DXGI flip-model swapchain). Vulkan is
+# intentionally not compiled in; see docs/ARCHITECTURE.md ("Backend choice").
+wgpu = { version = "30.0.2", default-features = false, features = ["std", "parking_lot", "dx12", "wgsl"] }
+winit = "0.30.13"
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.62.2", features = [
+    "Win32_Foundation",
+    "Win32_Media_MediaFoundation",
+    "Win32_System_Com",
+] }
+
+[profile.release]
+debug = "line-tables-only"
