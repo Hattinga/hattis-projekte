@@ -285,7 +285,10 @@ mod tests {
 
     /// Exercises the real COM/MF calls. Passes with zero devices too; it only
     /// proves that enumeration works without crashing on this machine.
+    /// Ignored by default because it briefly opens every camera attached
+    /// (webcam LEDs flash): `cargo test -- --ignored`.
     #[test]
+    #[ignore = "opens every attached camera; run with --ignored"]
     fn enumeration_runs() {
         let devices = list_video_devices().expect("Media Foundation enumeration failed");
         for device in &devices {

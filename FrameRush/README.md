@@ -47,6 +47,7 @@ Prüfungen wie in CLAUDE.md:
 cargo fmt --check
 cargo clippy --all-targets -- -D warnings
 cargo test
+cargo test -- --ignored   # Media-Foundation-Test, öffnet kurz alle Kameras
 ```
 
 ### Tasten
@@ -78,19 +79,37 @@ Frame-Uhr.
 
 ## Messwerte des Prototyps (2026-11-23)
 
-Debug-Build, RTX 5060 Ti, DX12, synthetische Quelle 1920×1080 NV12 @ 60,
-je 10,5 s, Fenster 1280×720:
+Debug-Build, RTX 5060 Ti, DX12, Frame-Latenz 1, synthetische Quelle
+1920×1080 @ 60. Fenster 1280×720, nicht im Vollbild, also von DWM
+komponiert, auf dem Hauptmonitor (1920×1080 @ 60 Hz an der RTX). Je Lauf
+10,5 s. Die Zeiten stammen aus den Sekunden ohne Hänger:
 
-| Present-Modus | rein / angezeigt | Mailbox-Drops | ready→present (Mittel) | Present-Abstand |
-|---|---|---|---|---|
-| FIFO (VSync) | 60,0 / 60,0 fps | 8 | ~5,3 ms | 15,1–18,1 ms |
-| Mailbox | 60,0 / 60,0 fps | 7 | ~2,9 ms | 15,4–17,9 ms |
-| Immediate | 60,0 / 60,0 fps | 3 | ~2,8 ms | 15,2–18,0 ms |
+| Present-Modus | Läufe | rein / angezeigt | Mailbox-Drops je Lauf | ready→present (Mittel) | Present-Abstand |
+|---|---|---|---|---|---|
+| FIFO (VSync), NV12 | 1 | 60 / 60 fps | 7 | ~3,0 ms | 15,2–17,8 ms |
+| FIFO (VSync), BGRA | 1 | 60 / 60 fps | 8 | ~2,9 ms | 15,4–17,8 ms |
+| Mailbox, NV12 | 1 | 60 / 60 fps | 7 | ~2,1 ms | 15,8–17,8 ms |
+| Immediate, NV12 | 3 | 60 / 60 fps | 70 / 6 / 5 | ~2,1 ms | 15,2–18,1 ms |
 
-Die Drops fallen fast alle in die Startphase. Das sind Software-Zeiten mit
-einer synthetischen Quelle, kein Vergleich mit OBS/PotPlayer und keine
-End-to-End-Latenz. Welcher Modus mit der echten Karte am besten ist, bleibt
-offen (Meilenstein M3).
+So sind die Zahlen zu lesen:
+
+- **Start:** Jeder Lauf hat in der ersten Sekunde einen Hänger von etwa
+  50 ms, solange Fenster und Swapchain entstehen. Daher kommen die meisten
+  Drops.
+- **Hänger im Betrieb:** Vereinzelt gibt es Hänger von etwa 50 ms. Ein
+  Immediate-Lauf stand einmal gut eine Sekunde lang (70 Drops); zwei
+  Wiederholungen zeigten das nicht. Die Ursache ist offen, der PC war
+  nebenher in Benutzung, und gemessen wurde ein Debug-Build. Das wird in M3
+  mit Release-Build nachgemessen.
+- **FIFO schwankt von Lauf zu Lauf:** Die Wartezeit hängt davon ab, wie der
+  Takt der Quelle zufällig zum VBlank liegt. Ein früherer FIFO-Lauf mit
+  gleichem Timing-Code ergab ~5,3 ms. Ein einzelner Lauf ist also nicht
+  repräsentativ.
+- **Was die Zahlen nicht sind:** Das sind Software-Zeiten mit einer
+  synthetischen Quelle, kein Vergleich mit OBS/PotPlayer und keine
+  End-to-End-Latenz. Vollbild, wo Windows eventuell ohne DWM-Komposition
+  direkt flippt, ist nicht gemessen. Welcher Modus mit der echten Karte am
+  besten ist, bleibt offen (Meilenstein M3).
 
 ## Capture-Karte, PS5 und Discord
 
