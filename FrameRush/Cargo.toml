@@ -2,7 +2,7 @@
 name = "framerush"
 version = "0.1.0"
 edition = "2024"
-rust-version = "1.87"
+rust-version = "1.88"
 description = "Low-latency HDMI capture viewer for Windows (prototype with synthetic source)"
 license = "MIT"
 repository = "https://github.com/Hattinga/hattis-projekte"
