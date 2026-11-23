@@ -28,6 +28,7 @@ local WorkerShift = require(factory.WorkerShift)
 local WorkerTransport = require(factory.WorkerTransport)
 local Belts = require(factory.Belts)
 local BeltRoute = require(factory.BeltRoute)
+local BeltShift = require(factory.BeltShift)
 local players = game:GetService("Players")
 local serverStorage = game:GetService("ServerStorage")
 local collection = game:GetService("CollectionService")
@@ -185,8 +186,14 @@ local demo = Instance.new("Folder")
 demo.Name = "P0509LineDemo"
 demo.Parent = workspace
 local restoredWorker: WorkerRoute.Rig? = nil
+local beltFixture: BeltRoute.Fixture? = nil
 if resumeRig then
-	local hire = confirmed().data.progress.firstWorker
+	local progress = confirmed().data.progress
+	if beltRoute and progress.firstBelt then
+		beltFixture = BeltRoute.spawn(beltRoute, demo)
+		places.points[State.FIRST_BELT.carrier] = beltFixture.buffer
+	end
+	local hire = progress.firstWorker
 	if workerRoute and hire and hire.assigned then
 		local ok, rig = pcall(WorkerRoute.spawn, workerRoute, demo)
 		if not ok then
@@ -236,7 +243,8 @@ local prompts: {[string]: ProximityPrompt} = {}
 local hirePrompt: ProximityPrompt? = nil
 local assignPrompt: ProximityPrompt? = nil
 local beltPrompt: ProximityPrompt? = nil
-local beltFixture: BeltRoute.Fixture? = nil
+local powerPrompt: ProximityPrompt? = nil
+local beltShift: BeltShift.Shift? = nil
 local workerStarted = false
 local workerShift: WorkerShift.Shift? = nil
 local workerCargo: string? = nil
@@ -272,12 +280,29 @@ local function render()
 	if not saved then return end
 	local state = saved.data.state
 	local worker = saved.data.progress.firstWorker
-	local installedBelt = saved.data.progress.firstBelt ~= nil
+	local permit = saved.data.progress.firstBelt
+	local installedBelt = permit ~= nil
 	if beltPrompt then beltPrompt.ActionText = if installedBelt then "Förderband ansehen" else "Installieren · " .. Belts.PRICE end
+	if powerPrompt then
+		powerPrompt.Enabled = installedBelt
+		powerPrompt.ActionText = if permit and permit.stopped then "Starten" else "Anhalten"
+	end
 	if installedBelt and beltRoute and not beltFixture then
 		beltFixture = BeltRoute.spawn(beltRoute, demo)
 		places.points[State.FIRST_BELT.carrier] = beltFixture.buffer
 	end
+	local fixture = beltFixture
+	if fixture and not beltShift then
+		local shift = BeltShift.new(fixture, demo)
+		beltShift = shift
+		task.spawn(function()
+			while not closing and demo.Parent and fixture.model.Parent do
+				if not busy then BeltShift.tick(shift, controller, TTL) end
+				task.wait(0.25)
+			end
+		end)
+	end
+	if beltShift then beltShift.powered = permit ~= nil and not permit.stopped end
 	local hired = worker ~= nil
 	local assigned = worker ~= nil and worker.assigned == true
 	if hirePrompt then hirePrompt.ActionText = if hired then "Anstellung ansehen" else "Anstellen · " .. Workers.PRICE end
@@ -399,7 +424,7 @@ local function render()
 		else "Hand frei · E an einer Auflage drücken") .. " · Fertiglager " .. store.used .. "/" .. store.capacity
 		.. (if load then " · Anhänger " .. load.used .. "/" .. load.capacity .. " · Guthaben " .. state.money else "")
 		.. (if state.advance then " · Vorschuss offen: " .. state.advance.amount else "")
-		.. (if installedBelt then " · Förderband" else "")
+		.. (if beltShift then " · Band: " .. beltShift.status else "")
 		.. (if assigned then " · Mitarbeiter: " .. (if workerShift then workerShift.status else "Startet")
 			elseif hired then " · 1 Mitarbeiter" else "")
 		.. "\n" .. (if sale then offerText(sale) .. "\n" else "") .. lastMessage
@@ -689,13 +714,16 @@ if logisticsEnabled then
 		BELT_INSTALLED = "Förderband zwischen Säge und Montage installiert.",
 		BELT_OWNED = "Dieses Förderband ist bereits installiert.",
 		NOT_ENOUGH_FOR_BELT = "Das Förderband kostet " .. Belts.PRICE .. " Spielgeld.",
+		BELT_NOT_INSTALLED = "Installiere zuerst das Förderband.",
+		BELT_STOPPED = "Förderband angehalten.",
+		BELT_RUNNING = "Förderband gestartet.",
 		NOT_ENOUGH_MONEY = "Die Anstellung kostet " .. Workers.PRICE .. " Spielgeld.",
 		NOT_CONFIRMED = "Speichern unklar – bitte warten.",
 		WRITE_UNKNOWN = "Speichern unklar – bitte warten.",
 	} :: {[string]: string}
 	local function workshopPrompt(name: string, label: string, key: Enum.KeyCode, gamepad: Enum.KeyCode,
 		endpoint: HandMoves.Endpoint, action: (Persistence.Controller, number, number, number) -> {ok: boolean, code: string},
-		promptName: string): ProximityPrompt
+		promptName: string, facingOnly: boolean?): ProximityPrompt
 		local fallback = "Diese Aktion ist gerade nicht verfügbar."
 		local function interactWorkshop(user: Player): HandMoves.Result
 			if user ~= player or busy or closing then
@@ -725,7 +753,7 @@ if logisticsEnabled then
 		prompt.KeyboardKeyCode, prompt.GamepadKeyCode = key, gamepad
 		prompt.MaxActivationDistance = 6
 		prompt.Parent = endpoint.point
-		collection:AddTag(prompt, "P0509FacingPrompt")
+		if facingOnly ~= false then collection:AddTag(prompt, "P0509FacingPrompt") end
 		prompt.Triggered:Connect(interactWorkshop)
 		local hook = Instance.new("BindableFunction")
 		hook.Name = name
@@ -742,6 +770,8 @@ if logisticsEnabled then
 		endpoints[WorkerRoute.SOURCE], Workers.assign, "P0802AssignWorker")
 	beltPrompt = workshopPrompt("P0901Belt", "Förderband · Säge → Montage", Enum.KeyCode.B, Enum.KeyCode.ButtonL2,
 		endpoints[State.FIRST_BELT.source], Belts.install, "P0901InstallBelt")
+	powerPrompt = workshopPrompt("P0905Power", "Förderband", Enum.KeyCode.T, Enum.KeyCode.ButtonR2,
+		endpoints[State.FIRST_BELT.source], Belts.toggle, "P0905BeltPower", false)
 end
 
 -- Facing station rows share one aisle stand marker (e.g. Montage.Output / Finish.Input, both 4.3 studs away).
@@ -895,12 +925,14 @@ reader.OnInvoke = function(): any
 	local saleReceipts = {}
 	local advanceReceipts = {}
 	local workerReceipts = {}
+	local beltReceipts = {}
 	for id, receipt in state.receipts do
 		if receipt.action == "Sale" then saleReceipts[id] = receipt.result end
 		if receipt.action == "Advance" then advanceReceipts[id] = receipt.result end
 		if receipt.action == "Commit" and receipt.actorId == State.FIRST_WORKER.carrier then
 			workerReceipts[id] = receipt.result
 		end
+		if receipt.action == "Commit" and receipt.actorId == State.FIRST_BELT.carrier then beltReceipts[id] = receipt.result end
 	end
 	local sellPrompts = {}
 	for buyer, prompt in salePrompts do sellPrompts[buyer] = {enabled = prompt.Enabled, text = prompt.ObjectText} end
@@ -911,7 +943,8 @@ reader.OnInvoke = function(): any
 		workerStatus = if workerShift then workerShift.status else nil,
 		workerPaused = workerShift ~= nil and workerShift.paused, workerAttempts = if workerShift then workerShift.attempts else 0,
 		workerReceipts = workerReceipts, claims = state.claims, firstBelt = confirmed().data.progress.firstBelt,
-		beltLocation = state.locations[State.FIRST_BELT.carrier]}
+		beltLocation = state.locations[State.FIRST_BELT.carrier], beltReceipts = beltReceipts,
+		beltStatus = if beltShift then beltShift.status else nil}
 end
 reader.Parent = game:GetService("ServerStorage")
 if resumeRig then
@@ -919,6 +952,7 @@ if resumeRig then
 		if closing then return controller.snapshot() end
 		closing = true
 		if workerShift then WorkerShift.stop(workerShift) end
+		if beltShift then beltShift.closing = true end
 		while busy or controller.snapshot().inFlight do task.wait() end
 		return controller.release()
 	end

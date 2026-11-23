@@ -1,12 +1,12 @@
 # Projektstatus
 
-Stand 20. November 2026. **P02, P04 bis P08 sowie P09-01 und P09-02 sind abgenommen.** Das erste Förderband ist zwischen Säge und Montagebank freischaltbar und puffert baulich einen Bausatz. **Als Nächstes folgt P09-03, die Umbuchung der Ware über den Bandplatz.**
+Stand 23. November 2026. **P02, P04 bis P08 sowie P09-01 bis P09-03 sind abgenommen.** Das erste Förderband bucht einen Bausatz über den gemeinsamen Bestand von der Säge auf seinen Puffer und an die Montage. Es hält bei belegtem Ziel und lässt sich anhalten. **Als Nächstes folgt P09-04, die Ausrichtung der sichtbaren Bewegung am Transportzustand samt Wiederbeitritt.**
 
 | Feld | Aktuell |
 |---|---|
-| Letzter abgeschlossener Schritt | **P09-01/02** – Kauf und Wiederbeitritt des geraden Bands, ein vermessener Bausatzpuffer (`Band.First`). B-Prompt im Client sichtbar, direkte Tastatureingabe noch offen. [Beleg](../evidence/P09.md) |
-| Davor | **P08** – Mitarbeitertransport, Konkurrenz, Blockaden, Bergung und Wiederbeitritt ([Beleg](../evidence/P08.md)). |
-| Naechster Umsetzungsschritt | **P09-03** – Bausatz über den gemeinsamen Bestand vom Sägeausgang auf das Band und an den Montageeingang umbuchen. |
+| Letzter abgeschlossener Schritt | **P09-03** – Sägeausgang → `Band.First` → Montageeingang mit je einer Aufnahme und Abgabe. Geprüft wurden belegtes Ziel, Halt während der Fahrt und Wiederbeitritt über zwei Server. Direkte B/T-Tastatureingabe noch offen. [Beleg](../evidence/P09.md#p09-03--umbuchung-über-den-bandpuffer) |
+| Davor | **P09-01/02** – Kauf und Wiederbeitritt des geraden Bands, vermessener Bausatzpuffer ([Beleg](../evidence/P09.md)). |
+| Naechster Umsetzungsschritt | **P09-04** – sichtbare Bewegung am verbindlichen Transportzustand ausrichten und beim Wiederbeitritt den bestätigten Band- oder Pufferzustand wiederherstellen, auch mit laufender Ausfahrt. |
 | Entscheidungen 18.11. (delegiert) | Hallentor: Laden nur auf dem Hof, Halle wird nicht befahren, Tor bleibt 4 m ([MAP](../design/MAP.md)). Oberfläche: eine Finish-Oberfläche in Hocker01 v1 ([PRODUCTION](../design/PRODUCTION.md)). P00-03: Zielprofil schwächeres Android-Phone 1600×720, Touch, Grafikstufe 1; bis zum echten Gerät Studio-Emulator als Stellvertreter, Checkbox bleibt offen ([P00](../plan/00-start.md)) |
 | Paralleles Paket | **P03-04 abgenommen (19.11.)**: Karton liegt auf, Last im Fahrzeugprofil, Torfahrt, Bild aus der Spielkamera ([Beleg](../evidence/P03-04.md)). **P03-05 abgenommen (19.11.)**: Die fünf FBX sind kalibriert in `ServerStorage.P03ArtProbe`, die Labels sind im Play-Client in DE und EN geprüft, `TextScaled` ist korrigiert ([Beleg](../evidence/P03-05.md)). Offen sind P03-06 (Spielkamera-Ansichten) und P03-07 (Art-Freigabe durch Jonas). **P03-03** – die Gebäudeprobe benötigt eine eigene Upload-Freigabe. [Übergabe](HANDOFF-2026-11-19.md#p03-05--fünf-assets-importiert-und-kalibriert) |
 | Planabschnitt | [Automatisierung, P09](../plan/02-automatisierung.md#p09--erstes-festes-förderband) |
@@ -20,8 +20,8 @@ Stand 20. November 2026. **P02, P04 bis P08 sowie P09-01 und P09-02 sind abgenom
 | Vergleichsobjekt | `Workspace.FableWorkshop`, Asset `106051543998570`; kein vorgesehenes Spielgebaeude |
 | Technikproben | `Workspace.P02Greybox` und `Workspace.P02Line`; Prueftraeger in `ServerStorage.P02CarryProbe`, nicht im Spielstart |
 | Arbeitsbranch | `work/p00-studio-import`; jeder Abschluss wird gepusht (Nutzerauftrag vom 18.11.: fortlaufend committen und pushen) |
-| Speicherung | TeamCreate **Version 86**, privater Stand im Edit-Modus. Sechs Quellen für Band-Freischaltung, Puffer, Demo und Prüfung abgeglichen. |
-| Wiederherstellbare Staende | Version 85 = P08 abgeschlossen, Version 83 = Mitarbeitertransport, Version 82 = P08-Strecke, Version 81 = P08-Anstellung, Version 80 = P07 abgeschlossen, Version 78 = vor P07-07/08, Version 76 = lesbare P03-05-Labels, Version 67 = Art-Prüfinstanzen. |
+| Speicherung | TeamCreate **Version 89**, privater Stand im Edit-Modus. Alle Factory-Module, Demo und P09-03-Probe mit dem Repo abgeglichen. |
+| Wiederherstellbare Staende | Version 86 = P09-01/02, Version 85 = P08 abgeschlossen, Version 83 = Mitarbeitertransport, Version 82 = P08-Strecke, Version 81 = P08-Anstellung, Version 80 = P07 abgeschlossen, Version 78 = vor P07-07/08, Version 76 = lesbare P03-05-Labels, Version 67 = Art-Prüfinstanzen. |
 | Pruefbelege | [P02-06](../evidence/P02-06.md), [P02-05](../evidence/P02-05.md), [P02-04](../evidence/P02-04.md), [P02-03R](../evidence/P02-03R.md); Stadtentwurf [MAP](../design/MAP.md), Masse [DIMENSIONS](../design/DIMENSIONS.md) |
 
 ## P07-07 und P07-08 abgenommen (20.11.)

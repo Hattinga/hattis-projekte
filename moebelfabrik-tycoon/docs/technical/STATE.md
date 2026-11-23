@@ -186,6 +186,10 @@ Nach zwei erfolglosen Wegversuchen gibt der Mitarbeiter den Claim frei und pausi
 
 [`Belts.install`](../../src/server/Belts.luau) speichert den Spielgeldabzug, `progress.firstBelt` mit Kaufrevision und fester Quelle/Ziel-Verbindung sowie den registrierten Pufferplatz `Band.First` gemeinsam. Der Puffer hat Kapazität 1 und akzeptiert nur `Bausatz`. Alte Profile ohne Freischaltung starten ohne Band. [Prüfbeleg](../evidence/P09.md)
 
+### Bandtransport P09-03
+
+[`BeltTransport`](../../src/server/BeltTransport.luau) bucht über den gemeinsamen Übergabekern mit dem Akteur `Band` und dem Träger `Band.First`. Die Aufnahme reserviert Sägeausgang → `Band.First` und verbucht sie im selben Kandidaten. Solange der Bausatz auf dem Band liegt, hält der Sägeausgang die Rückgabezusage. Die Abgabe `Band.First` → Montageeingang wird erst bei freiem Ziel reserviert und nach Erreichen des Bandausgangs verbucht. Damit endet die Zusage. Bei angehaltenem Band oder abgebrochener Bewegung wird der Abgabe-Claim storniert oder als abgelaufen freigegeben. Der Bausatz bleibt dann im bestätigten Puffer. Die sichtbare Bewegung ist Darstellung, verbindlich ist die bestätigte Umbuchung. `progress.firstBelt.stopped=true` speichert den Stillstand. [Prüfbeleg](../evidence/P09.md#p09-03--umbuchung-über-den-bandpuffer)
+
 ## Speichern und Wiederherstellen
 
 Persistenz gehört zum ersten Bestandsnachweis. Das Profil trennt bestätigte Speicherdaten von laufender Darstellung. Revision und Sitzungszuordnung schützen vor verspäteten Schreibvorgängen älterer Sitzungen. Startdaten entstehen ausschließlich nach einer erfolgreichen Prüfung, dass für den Spieler noch kein Profil existiert. Kann das Profil nicht geladen werden, bleiben wirtschaftliche Aktionen gesperrt. Bei unklarem Ergebnis bleibt der betroffene Verkauf bis zur Prüfung offen.
