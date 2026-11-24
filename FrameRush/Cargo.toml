@@ -3,7 +3,7 @@ name = "framerush"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.88"
-description = "Low-latency HDMI capture viewer for Windows (prototype with synthetic source)"
+description = "Low-latency HDMI capture viewer for Windows"
 license = "MIT"
 repository = "https://github.com/Hattinga/hattis-projekte"
 publish = false
@@ -22,7 +22,14 @@ windows = { version = "0.62.2", features = [
     "Win32_Foundation",
     "Win32_Media_MediaFoundation",
     "Win32_System_Com",
+    # Only for IMFAttributes::GetItemByIndex (attribute dump in --probe).
+    "Win32_System_Com_StructuredStorage",
+    "Win32_System_Variant",
 ] }
+# Already a dependency of `windows`; named directly because the
+# `#[implement]` macro (COM callback for the source reader) expands to
+# `windows_core::` paths.
+windows-core = "0.62.2"
 
 [profile.release]
 debug = "line-tables-only"

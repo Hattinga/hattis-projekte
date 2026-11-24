@@ -2,12 +2,16 @@
 
 use std::fmt;
 
+use crate::capture::SourceError;
 use crate::render::RenderError;
 
 #[derive(Debug)]
 pub enum AppError {
     /// Invalid command line.
     Usage(String),
+    /// The video source could not be opened (`--probe`; the viewer shows
+    /// source errors in its overlay instead).
+    Source(SourceError),
     EventLoop(winit::error::EventLoopError),
     Window(winit::error::OsError),
     Render(RenderError),
@@ -21,6 +25,7 @@ impl fmt::Display for AppError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Usage(msg) => write!(f, "{msg}"),
+            Self::Source(err) => write!(f, "{err}"),
             Self::EventLoop(err) => write!(f, "window system error: {err}"),
             Self::Window(err) => write!(f, "cannot create the window: {err}"),
             Self::Render(err) => write!(f, "GPU initialisation failed: {err}"),

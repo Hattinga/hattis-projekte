@@ -21,7 +21,7 @@ use crate::capture::{
     CaptureEvent, CaptureHandle, Frame, Mailbox, SourceFactory, SourceInfo, VideoSource,
     spawn_capture,
 };
-use crate::cli::ViewerConfig;
+use crate::cli::{SourceChoice, ViewerConfig};
 use crate::error::AppError;
 use crate::metrics::{DurationStats, Snapshot, ViewerMetrics};
 use crate::render::{Renderer, RendererOptions};
@@ -33,6 +33,8 @@ const LOG_EVERY: u32 = 5;
 /// Re-present for overlay updates only if no frame was shown for this long,
 /// so overlay refreshes never compete with live frames for a vsync slot.
 const IDLE_REDRAW_AFTER: Duration = Duration::from_millis(250);
+/// The overlay warns when an opened source delivered nothing for this long.
+const NO_FRAMES_WARNING_AFTER: Duration = Duration::from_secs(1);
 
 pub fn run(config: ViewerConfig) -> Result<(), AppError> {
     let event_loop = EventLoop::<CaptureEvent>::with_user_event().build()?;
@@ -53,6 +55,9 @@ struct App {
     capture: Option<CaptureHandle>,
     source: Option<SourceInfo>,
     source_error: Option<String>,
+    /// When the source opened, and when it last delivered a frame.
+    source_opened_at: Option<Instant>,
+    last_frame_at: Option<Instant>,
     metrics: ViewerMetrics,
     last_snapshot: Option<Snapshot>,
     stats_windows: u32,
@@ -77,6 +82,8 @@ impl App {
             capture: None,
             source: None,
             source_error: None,
+            source_opened_at: None,
+            last_frame_at: None,
             metrics: ViewerMetrics::new(now),
             last_snapshot: None,
             stats_windows: 0,
@@ -110,9 +117,7 @@ impl App {
         self.renderer = Some(renderer);
         self.refresh_overlay();
 
-        let mode = self.config.mode;
-        let factory: SourceFactory =
-            Box::new(move || Ok(Box::new(SyntheticSource::new(mode)?) as Box<dyn VideoSource>));
+        let factory = source_factory(&self.config);
         let proxy = self.proxy.clone();
         let capture = spawn_capture(factory, Arc::clone(&self.mailbox), move |event| {
             proxy.send_event(event).is_ok()
@@ -139,6 +144,7 @@ impl App {
             tracing::warn!("wake-up without a frame (mailbox contract violated)");
             return;
         };
+        self.last_frame_at = Some(taken_at);
         renderer.upload_frame(&frame);
         match target {
             Some(target) => {
@@ -189,9 +195,15 @@ impl App {
     }
 
     fn refresh_overlay(&mut self) {
+        let silent_for = self
+            .last_frame_at
+            .or(self.source_opened_at)
+            .map(|since| since.elapsed())
+            .filter(|d| *d >= NO_FRAMES_WARNING_AFTER && self.source_error.is_none());
         let lines = overlay_lines(
             self.source.as_ref(),
             self.source_error.as_deref(),
+            silent_for,
             self.last_snapshot.as_ref(),
             self.renderer.as_ref(),
         );
@@ -245,6 +257,7 @@ impl ApplicationHandler<CaptureEvent> for App {
             CaptureEvent::Opened(info) => {
                 self.source = Some(info);
                 self.source_error = None;
+                self.source_opened_at = Some(Instant::now());
                 self.refresh_overlay();
             }
             CaptureEvent::Failed(err) => {
@@ -315,6 +328,32 @@ impl ApplicationHandler<CaptureEvent> for App {
     }
 }
 
+/// Creates the configured source on the capture thread.
+fn source_factory(config: &ViewerConfig) -> SourceFactory {
+    match &config.source {
+        SourceChoice::Synthetic => {
+            let mode = config.mode;
+            Box::new(move || Ok(Box::new(SyntheticSource::new(mode)?) as Box<dyn VideoSource>))
+        }
+        #[cfg(windows)]
+        SourceChoice::Device { device, mode } => {
+            let (device, mode) = (device.clone(), mode.clone());
+            Box::new(move || {
+                use crate::capture::media_foundation::{MediaFoundationSource, ReaderOptions};
+                let source =
+                    MediaFoundationSource::open(&device, &mode, ReaderOptions::from_env())?;
+                Ok(Box::new(source) as Box<dyn VideoSource>)
+            })
+        }
+        #[cfg(not(windows))]
+        SourceChoice::Device { .. } => Box::new(|| {
+            Err(crate::capture::SourceError::Device(
+                "capture devices need Media Foundation (Windows)".into(),
+            ))
+        }),
+    }
+}
+
 fn ms(d: Option<Duration>) -> String {
     d.map_or_else(
         || "-".into(),
@@ -344,6 +383,7 @@ fn log_line(s: &Snapshot) -> String {
 fn overlay_lines(
     source: Option<&SourceInfo>,
     source_error: Option<&str>,
+    silent_for: Option<Duration>,
     snapshot: Option<&Snapshot>,
     renderer: Option<&Renderer>,
 ) -> Vec<String> {
@@ -353,6 +393,17 @@ fn overlay_lines(
     }];
     if let Some(err) = source_error {
         lines.push(format!("SOURCE ERROR: {err}"));
+    }
+    if let Some(d) = silent_for {
+        // Order of likelihood seen so far: security software blocking the
+        // camera stream, another app holding the device. The UGREEN 25854
+        // sends a "No Signal" picture without HDMI input, so a missing
+        // signal does not stop frames on that card.
+        lines.push(format!(
+            "NO FRAMES FOR {} S - BLOCKED BY SECURITY SOFTWARE (CAMERA PROTECTION)?",
+            d.as_secs()
+        ));
+        lines.push("  OR IN USE BY ANOTHER APP? NO HDMI SIGNAL?".into());
     }
     match snapshot {
         Some(s) => {

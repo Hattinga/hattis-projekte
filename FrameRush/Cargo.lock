@@ -405,6 +405,7 @@ dependencies = [
  "tracing-subscriber",
  "wgpu",
  "windows",
+ "windows-core",
  "winit",
 ]
 

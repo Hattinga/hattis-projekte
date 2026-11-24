@@ -11,8 +11,8 @@ pub mod media_foundation;
 pub mod synthetic;
 
 use std::fmt;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, mpsc};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
@@ -25,8 +25,52 @@ pub enum PixelFormat {
     /// 8-bit B, G, R, A per pixel; sRGB-encoded colour, alpha ignored.
     Bgra8,
     /// 4:2:0: full-resolution 8-bit Y plane followed by a half-resolution
-    /// interleaved CbCr plane. BT.709, limited (studio) range.
+    /// interleaved CbCr plane. Matrix and range: [`Frame::color`].
     Nv12,
+}
+
+/// Y'CbCr → R'G'B' matrix of a YUV frame.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum YuvMatrix {
+    Bt601,
+    Bt709,
+}
+
+/// Value range of a YUV frame.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum YuvRange {
+    /// Studio range: Y 16..235, CbCr 16..240.
+    Limited,
+    /// Full range: Y and CbCr 0..255 (typical for JPEG-derived video).
+    Full,
+}
+
+/// How to interpret YUV samples. Ignored for RGB formats.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ColorSpace {
+    pub matrix: YuvMatrix,
+    pub range: YuvRange,
+}
+
+impl ColorSpace {
+    pub const BT709_LIMITED: Self = Self {
+        matrix: YuvMatrix::Bt709,
+        range: YuvRange::Limited,
+    };
+}
+
+impl fmt::Display for ColorSpace {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let matrix = match self.matrix {
+            YuvMatrix::Bt601 => "BT.601",
+            YuvMatrix::Bt709 => "BT.709",
+        };
+        let range = match self.range {
+            YuvRange::Limited => "limited",
+            YuvRange::Full => "full",
+        };
+        write!(f, "{matrix} {range}")
+    }
 }
 
 impl PixelFormat {
@@ -121,6 +165,44 @@ impl fmt::Display for VideoMode {
     }
 }
 
+/// Which capture device to open.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum DeviceSelector {
+    /// Position in the order `--list-devices` prints. That order is not
+    /// guaranteed to stay the same across replugs or reboots. A number that
+    /// is no valid position is matched against names and ids instead.
+    Index(usize),
+    /// Case-insensitive part of the friendly name or the symbolic link.
+    Name(String),
+}
+
+impl fmt::Display for DeviceSelector {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Index(i) => write!(f, "device #{i}"),
+            Self::Name(name) => write!(f, "device {name:?}"),
+        }
+    }
+}
+
+/// Which of a device's reported media types to use.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ModeSelector {
+    /// Index into the native media types, as `--list-devices` prints them.
+    Index(u32),
+    /// Exactly this size, pixel format and frame rate.
+    Match(VideoMode),
+}
+
+impl fmt::Display for ModeSelector {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Index(i) => write!(f, "mode #{i}"),
+            Self::Match(mode) => write!(f, "{mode}"),
+        }
+    }
+}
+
 /// Describes an opened source.
 #[derive(Debug, Clone)]
 pub struct SourceInfo {
@@ -138,6 +220,8 @@ pub struct Frame {
     pub format: PixelFormat,
     /// Tightly packed planes, `format.frame_len(width, height)` bytes.
     pub data: Vec<u8>,
+    /// YUV matrix and range (ignored for RGB formats).
+    pub color: ColorSpace,
     /// Software timestamp taken when the frame became available to the
     /// application. This is *not* the time the image left the HDMI source.
     pub ready_at: Instant,
@@ -147,12 +231,16 @@ pub struct Frame {
 pub enum SourceError {
     /// The requested mode cannot be produced by this source.
     UnsupportedMode(String),
+    /// The device could not be found, opened or read (unplugged, in use,
+    /// driver error).
+    Device(String),
 }
 
 impl fmt::Display for SourceError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::UnsupportedMode(msg) => write!(f, "unsupported video mode: {msg}"),
+            Self::Device(msg) => write!(f, "capture device: {msg}"),
         }
     }
 }
@@ -167,10 +255,14 @@ impl std::error::Error for SourceError {}
 pub trait VideoSource {
     fn info(&self) -> &SourceInfo;
 
-    /// Blocks until the next frame is available and returns it. Must return
-    /// within roughly one frame period so the capture thread can notice a
-    /// stop request.
-    fn next_frame(&mut self) -> Result<Frame, SourceError>;
+    /// Blocks until the next frame is available and returns it, or returns
+    /// `Ok(None)` if none arrived within a short bounded wait (a few hundred
+    /// milliseconds at most), so the capture thread can notice a stop request
+    /// even when a device delivers nothing (e.g. no HDMI signal).
+    fn next_frame(&mut self) -> Result<Option<Frame>, SourceError>;
+
+    /// Called once when capture stops, e.g. to log source-specific counters.
+    fn log_summary(&self) {}
 }
 
 /// Creates the source on the capture thread.
@@ -186,26 +278,57 @@ pub enum CaptureEvent {
     Failed(SourceError),
 }
 
-/// Owns the capture thread; stopping and joining happens on drop.
+/// How long [`CaptureHandle::stop`] waits for the capture thread, including
+/// closing the device.
+pub const STOP_TIMEOUT: Duration = Duration::from_secs(2);
+
+/// Owns the capture thread; stopping happens on drop.
 pub struct CaptureHandle {
     stop: Arc<AtomicBool>,
     thread: Option<JoinHandle<()>>,
+    /// Closed (sender dropped) when the capture thread has finished,
+    /// including the source's teardown.
+    finished: mpsc::Receiver<()>,
 }
 
 impl CaptureHandle {
-    pub fn stop(&mut self) {
+    /// Asks the capture thread to stop and waits up to [`STOP_TIMEOUT`].
+    ///
+    /// Closing a capture device can block inside the driver (seen with
+    /// Media Foundation on 2026-11-24, docs/hardware-probe-2026-11-24.md).
+    /// The window must not freeze because of that, so after the timeout the
+    /// thread is left behind with an error in the log. Returns whether the
+    /// thread finished.
+    pub fn stop(&mut self) -> bool {
         self.stop.store(true, Ordering::Relaxed);
-        if let Some(thread) = self.thread.take()
-            && thread.join().is_err()
-        {
-            tracing::error!("capture thread panicked");
+        let Some(thread) = self.thread.take() else {
+            return true;
+        };
+        match self.finished.recv_timeout(STOP_TIMEOUT) {
+            Err(mpsc::RecvTimeoutError::Timeout) => {
+                tracing::error!(
+                    timeout_s = STOP_TIMEOUT.as_secs_f64(),
+                    "capture thread did not stop in time (device or driver not responding); \
+                     leaving it behind. The process may only fully exit after the device \
+                     is replugged or Windows restarts"
+                );
+                false
+            }
+            // Disconnected: the thread finished (or panicked) and dropped the
+            // sender, so joining returns at once.
+            Ok(()) | Err(mpsc::RecvTimeoutError::Disconnected) => {
+                if thread.join().is_err() {
+                    tracing::error!("capture thread panicked");
+                }
+                true
+            }
         }
     }
 }
 
 impl Drop for CaptureHandle {
     fn drop(&mut self) {
-        self.stop();
+        let _ = self.stop();
     }
 }
 
@@ -221,15 +344,22 @@ pub fn spawn_capture(
     notify: impl Fn(CaptureEvent) -> bool + Send + 'static,
 ) -> std::io::Result<CaptureHandle> {
     let stop = Arc::new(AtomicBool::new(false));
+    let (finished_tx, finished) = mpsc::channel();
     let thread = {
         let stop = Arc::clone(&stop);
         thread::Builder::new()
             .name("capture".into())
-            .spawn(move || capture_loop(factory, &mailbox, &stop, &notify))?
+            .spawn(move || {
+                // The source (and with it the device) is dropped inside
+                // capture_loop, so this signal means "fully closed".
+                capture_loop(factory, &mailbox, &stop, &notify);
+                drop(finished_tx);
+            })?
     };
     Ok(CaptureHandle {
         stop,
         thread: Some(thread),
+        finished,
     })
 }
 
@@ -252,11 +382,12 @@ fn capture_loop(
     }
     while !stop.load(Ordering::Relaxed) {
         match source.next_frame() {
-            Ok(frame) => {
+            Ok(Some(frame)) => {
                 if mailbox.publish(frame).needs_wake() && !notify(CaptureEvent::FrameReady) {
                     break;
                 }
             }
+            Ok(None) => {}
             Err(err) => {
                 tracing::error!(%err, "capture failed");
                 notify(CaptureEvent::Failed(err));
@@ -264,13 +395,13 @@ fn capture_loop(
             }
         }
     }
+    source.log_summary();
     tracing::info!("capture stopped");
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::mpsc;
 
     #[test]
     fn frame_len_matches_plane_layout() {
@@ -309,17 +440,22 @@ mod tests {
         fn info(&self) -> &SourceInfo {
             &self.info
         }
-        fn next_frame(&mut self) -> Result<Frame, SourceError> {
+        fn next_frame(&mut self) -> Result<Option<Frame>, SourceError> {
             std::thread::sleep(Duration::from_millis(1));
             self.next += 1;
-            Ok(Frame {
+            // Every third call simulates "nothing arrived in time".
+            if self.next.is_multiple_of(3) {
+                return Ok(None);
+            }
+            Ok(Some(Frame {
                 sequence: self.next,
                 width: 2,
                 height: 2,
                 format: PixelFormat::Bgra8,
                 data: vec![0; 16],
+                color: ColorSpace::BT709_LIMITED,
                 ready_at: Instant::now(),
-            })
+            }))
         }
     }
 
@@ -371,5 +507,51 @@ mod tests {
         let factory: SourceFactory = Box::new(|| Err(SourceError::UnsupportedMode("test".into())));
         let _handle = spawn_capture(factory, mailbox, move |event| tx.send(event).is_ok()).unwrap();
         assert!(matches!(rx.recv().unwrap(), CaptureEvent::Failed(_)));
+    }
+
+    /// A source whose teardown blocks longer than STOP_TIMEOUT, like a
+    /// device whose driver hangs on close.
+    struct HangsOnDrop(Counting);
+
+    impl VideoSource for HangsOnDrop {
+        fn info(&self) -> &SourceInfo {
+            self.0.info()
+        }
+        fn next_frame(&mut self) -> Result<Option<Frame>, SourceError> {
+            self.0.next_frame()
+        }
+    }
+
+    impl Drop for HangsOnDrop {
+        fn drop(&mut self) {
+            thread::sleep(STOP_TIMEOUT + Duration::from_millis(500));
+        }
+    }
+
+    #[test]
+    fn stop_gives_up_on_a_hanging_teardown() {
+        let factory: SourceFactory = Box::new(|| {
+            let Ok(inner) = counting_factory()() else {
+                unreachable!("counting factory never fails")
+            };
+            let info = inner.info().clone();
+            Ok(Box::new(HangsOnDrop(Counting { info, next: 0 })) as Box<dyn VideoSource>)
+        });
+        let mailbox = Arc::new(Mailbox::new());
+        let (tx, rx) = mpsc::channel();
+        let mut handle =
+            spawn_capture(factory, mailbox, move |event| tx.send(event).is_ok()).unwrap();
+        assert!(matches!(rx.recv().unwrap(), CaptureEvent::Opened(_)));
+        let start = Instant::now();
+        assert!(!handle.stop(), "stop should report the timeout");
+        let waited = start.elapsed();
+        assert!(
+            waited >= STOP_TIMEOUT,
+            "returned before the timeout: {waited:?}"
+        );
+        assert!(
+            waited < STOP_TIMEOUT + Duration::from_millis(400),
+            "waited for the hanging teardown: {waited:?}"
+        );
     }
 }

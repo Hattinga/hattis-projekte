@@ -2,24 +2,42 @@
 
 use std::time::Duration;
 
-use crate::capture::{FrameRate, PixelFormat, VideoMode};
+use crate::capture::{DeviceSelector, FrameRate, ModeSelector, PixelFormat, VideoMode};
 
 pub const USAGE: &str = "\
-FrameRush - low-latency capture viewer (prototype, synthetic source)
+FrameRush - low-latency capture viewer
 
 USAGE:
-    framerush [OPTIONS]
+    framerush [OPTIONS]                      synthetic test pattern
+    framerush --device <DEVICE> [OPTIONS]    capture device
+    framerush --device <DEVICE> --probe      capture diagnostics, no window
     framerush --list-devices
 
-OPTIONS:
-    --size <WxH>             Synthetic frame size            [default: 1920x1080]
-    --fps <N | N/D>          Synthetic frame rate            [default: 60]
-    --format <nv12|bgra>     Synthetic pixel format          [default: nv12]
+SOURCE:
+    --device <N | NAME>      Capture from this device: its number in
+                             --list-devices or part of its name or id.
+                             A number that is no device number must be a
+                             word of the name, e.g. --device 25854 for
+                             \"UGREEN 25854\". Numbers can change after
+                             replugging; names are stable
+    --mode <N>               Native mode number from --list-devices
+                             [default: the mode matching --size/--fps/--format]
+    --size <WxH>             Frame size                      [default: 1920x1080]
+    --fps <N | N/D>          Frame rate                      [default: 60]
+    --format <nv12|bgra>     Pixel format (capture: nv12)    [default: nv12]
+    --probe                  With --device: capture for --exit-after seconds
+                             (default 5) without a window and print the
+                             negotiated media type, buffer layout, timing and
+                             value ranges
+
+DISPLAY:
     --present-mode <MODE>    fifo | mailbox | immediate      [default: fifo]
     --frame-latency <1-3>    Max. frames queued for display  [default: 1]
     --fullscreen             Start in borderless fullscreen
     --no-overlay             Start with the statistics overlay hidden
     --exit-after <SECONDS>   Quit after this time and log final statistics
+
+OTHER:
     --list-devices           List Media Foundation video capture devices and
                              the media types they report, then exit
     -h, --help               Show this help
@@ -54,8 +72,22 @@ impl PresentModeChoice {
     }
 }
 
+/// Where frames come from.
+#[derive(Debug, Clone, PartialEq)]
+pub enum SourceChoice {
+    /// The synthetic test pattern in `ViewerConfig::mode`.
+    Synthetic,
+    /// A Media Foundation capture device.
+    Device {
+        device: DeviceSelector,
+        mode: ModeSelector,
+    },
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct ViewerConfig {
+    pub source: SourceChoice,
+    /// Synthetic mode, or the mode to match on a device (without `--mode`).
     pub mode: VideoMode,
     pub present_mode: PresentModeChoice,
     pub frame_latency: u32,
@@ -67,6 +99,7 @@ pub struct ViewerConfig {
 impl Default for ViewerConfig {
     fn default() -> Self {
         Self {
+            source: SourceChoice::Synthetic,
             mode: VideoMode {
                 width: 1920,
                 height: 1080,
@@ -85,9 +118,21 @@ impl Default for ViewerConfig {
     }
 }
 
+/// Headless capture diagnostics (`--probe`).
+#[derive(Debug, Clone, PartialEq)]
+pub struct ProbeConfig {
+    pub device: DeviceSelector,
+    pub mode: ModeSelector,
+    pub duration: Duration,
+}
+
+/// Capture duration of `--probe` without `--exit-after`.
+const DEFAULT_PROBE_DURATION: Duration = Duration::from_secs(5);
+
 #[derive(Debug, PartialEq)]
 pub enum Command {
     Run(ViewerConfig),
+    Probe(ProbeConfig),
     ListDevices,
     Help,
 }
@@ -95,15 +140,38 @@ pub enum Command {
 pub fn parse(args: impl IntoIterator<Item = String>) -> Result<Command, String> {
     let mut config = ViewerConfig::default();
     let mut list_devices = false;
+    let mut probe = false;
+    let mut device = None;
+    let mut mode_index = None;
+    let mut mode_options = false;
     let mut args = args.into_iter();
     while let Some(arg) = args.next() {
         let mut value = |name: &str| args.next().ok_or_else(|| format!("{name} needs a value"));
         match arg.as_str() {
             "-h" | "--help" => return Ok(Command::Help),
             "--list-devices" => list_devices = true,
+            "--probe" => probe = true,
             "--fullscreen" => config.fullscreen = true,
             "--no-overlay" => config.overlay = false,
+            "--device" => {
+                let v = value("--device")?;
+                let v = v.trim();
+                if v.is_empty() {
+                    return Err("--device needs a number or a name".into());
+                }
+                device = Some(match v.parse() {
+                    Ok(index) => DeviceSelector::Index(index),
+                    Err(_) => DeviceSelector::Name(v.to_string()),
+                });
+            }
+            "--mode" => {
+                let v = value("--mode")?;
+                mode_index = Some(v.trim().trim_start_matches('#').parse().map_err(|_| {
+                    format!("invalid --mode {v:?}, expected a number from --list-devices")
+                })?);
+            }
             "--size" => {
+                mode_options = true;
                 let v = value("--size")?;
                 let (w, h) = parse_size(&v)
                     .ok_or_else(|| format!("invalid --size {v:?}, expected e.g. 1920x1080"))?;
@@ -111,12 +179,14 @@ pub fn parse(args: impl IntoIterator<Item = String>) -> Result<Command, String> 
                 config.mode.height = h;
             }
             "--fps" => {
+                mode_options = true;
                 let v = value("--fps")?;
                 config.mode.frame_rate = parse_frame_rate(&v).ok_or_else(|| {
                     format!("invalid --fps {v:?}, expected e.g. 60 or 60000/1001")
                 })?;
             }
             "--format" => {
+                mode_options = true;
                 config.mode.format = match value("--format")?.to_ascii_lowercase().as_str() {
                     "nv12" => PixelFormat::Nv12,
                     "bgra" | "bgra8" => PixelFormat::Bgra8,
@@ -170,11 +240,31 @@ pub fn parse(args: impl IntoIterator<Item = String>) -> Result<Command, String> 
             config.mode.format.name()
         ));
     }
-    Ok(if list_devices {
-        Command::ListDevices
-    } else {
-        Command::Run(config)
-    })
+    if list_devices {
+        return Ok(Command::ListDevices);
+    }
+    if mode_index.is_some() && mode_options {
+        return Err("use either --mode or --size/--fps/--format, not both".into());
+    }
+    let Some(device) = device else {
+        if mode_index.is_some() {
+            return Err("--mode needs --device".into());
+        }
+        if probe {
+            return Err("--probe needs --device".into());
+        }
+        return Ok(Command::Run(config));
+    };
+    let mode = mode_index.map_or(ModeSelector::Match(config.mode), ModeSelector::Index);
+    if probe {
+        return Ok(Command::Probe(ProbeConfig {
+            device,
+            mode,
+            duration: config.exit_after.unwrap_or(DEFAULT_PROBE_DURATION),
+        }));
+    }
+    config.source = SourceChoice::Device { device, mode };
+    Ok(Command::Run(config))
 }
 
 fn parse_size(s: &str) -> Option<(u32, u32)> {
@@ -249,6 +339,89 @@ mod tests {
             Command::ListDevices
         );
         assert_eq!(parse_args(&["--fps", "30", "-h"]).unwrap(), Command::Help);
+    }
+
+    #[test]
+    fn device_by_index_or_name() {
+        let Command::Run(config) = parse_args(&["--device", "2"]).unwrap() else {
+            panic!("expected Run");
+        };
+        assert_eq!(
+            config.source,
+            SourceChoice::Device {
+                device: DeviceSelector::Index(2),
+                mode: ModeSelector::Match(ViewerConfig::default().mode),
+            }
+        );
+        let Command::Run(config) =
+            parse_args(&["--device", "UGREEN 25854", "--mode", "#6"]).unwrap()
+        else {
+            panic!("expected Run");
+        };
+        assert_eq!(
+            config.source,
+            SourceChoice::Device {
+                device: DeviceSelector::Name("UGREEN 25854".into()),
+                mode: ModeSelector::Index(6),
+            }
+        );
+    }
+
+    #[test]
+    fn device_mode_follows_size_and_fps() {
+        let Command::Run(config) =
+            parse_args(&["--device", "25854", "--size", "1280x720", "--fps", "50"]).unwrap()
+        else {
+            panic!("expected Run");
+        };
+        let SourceChoice::Device {
+            mode: ModeSelector::Match(mode),
+            ..
+        } = config.source
+        else {
+            panic!("expected a device with a mode to match");
+        };
+        assert_eq!((mode.width, mode.height), (1280, 720));
+        assert_eq!(mode.frame_rate, FrameRate::new(50, 1).unwrap());
+    }
+
+    #[test]
+    fn probe_defaults_to_five_seconds() {
+        assert_eq!(
+            parse_args(&["--device", "25854", "--probe"]).unwrap(),
+            Command::Probe(ProbeConfig {
+                device: DeviceSelector::Index(25854),
+                mode: ModeSelector::Match(ViewerConfig::default().mode),
+                duration: Duration::from_secs(5),
+            })
+        );
+        let Command::Probe(probe) = parse_args(&[
+            "--probe",
+            "--device",
+            "0",
+            "--mode",
+            "3",
+            "--exit-after",
+            "2",
+        ])
+        .unwrap() else {
+            panic!("expected Probe");
+        };
+        assert_eq!(probe.mode, ModeSelector::Index(3));
+        assert_eq!(probe.duration, Duration::from_secs(2));
+    }
+
+    #[test]
+    fn invalid_source_combinations() {
+        for args in [
+            &["--probe"][..],
+            &["--mode", "3"],
+            &["--device", "0", "--mode", "3", "--fps", "30"],
+            &["--device", "0", "--mode", "x"],
+            &["--device", " "],
+        ] {
+            assert!(parse_args(args).is_err(), "{args:?} should fail");
+        }
     }
 
     #[test]

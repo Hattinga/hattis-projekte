@@ -15,7 +15,7 @@ use std::sync::Arc;
 use winit::dpi::PhysicalSize;
 use winit::window::Window;
 
-use crate::capture::{Frame, PixelFormat};
+use crate::capture::{ColorSpace, Frame, PixelFormat, YuvMatrix, YuvRange};
 use crate::cli::PresentModeChoice;
 use crate::font;
 
@@ -89,6 +89,10 @@ pub struct Renderer {
     overlay_pipeline: Pipeline,
     linear_sampler: wgpu::Sampler,
     nearest_sampler: wgpu::Sampler,
+    /// Y'CbCr parameters for the NV12 shader (see [`yuv_params`]).
+    yuv_buffer: wgpu::Buffer,
+    /// Colour space currently in `yuv_buffer`.
+    yuv_color: Option<ColorSpace>,
     video: Option<VideoTextures>,
     overlay: Option<OverlayTexture>,
     info: RendererInfo,
@@ -188,16 +192,23 @@ impl Renderer {
             label: Some("overlay"),
             source: wgpu::ShaderSource::Wgsl(format!("{COMMON_WGSL}\n{OVERLAY_WGSL}").into()),
         });
-        let bgra = create_pipeline(&device, &video_module, "fs_bgra", 1, format, None);
-        let nv12 = create_pipeline(&device, &video_module, "fs_nv12", 2, format, None);
+        let bgra = create_pipeline(&device, &video_module, "fs_bgra", 1, false, format, None);
+        let nv12 = create_pipeline(&device, &video_module, "fs_nv12", 2, true, format, None);
         let overlay_pipeline = create_pipeline(
             &device,
             &overlay_module,
             "fs_overlay",
             1,
+            false,
             format,
             Some(wgpu::BlendState::ALPHA_BLENDING),
         );
+        let yuv_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("yuv params"),
+            size: YUV_PARAMS_SIZE,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
         let sampler = |filter| {
             device.create_sampler(&wgpu::SamplerDescriptor {
                 label: Some("frame sampler"),
@@ -241,6 +252,8 @@ impl Renderer {
             overlay_pipeline,
             linear_sampler,
             nearest_sampler,
+            yuv_buffer,
+            yuv_color: None,
             video: None,
             overlay: None,
             info,
@@ -321,6 +334,15 @@ impl Renderer {
         if !up_to_date {
             self.video = Some(self.create_video_textures(frame.format, frame.width, frame.height));
         }
+        if frame.format == PixelFormat::Nv12 && self.yuv_color != Some(frame.color) {
+            let bytes: Vec<u8> = yuv_params(frame.color)
+                .iter()
+                .flat_map(|v| v.to_le_bytes())
+                .collect();
+            self.queue.write_buffer(&self.yuv_buffer, 0, &bytes);
+            self.yuv_color = Some(frame.color);
+            tracing::info!(color = %frame.color, "YUV colour space");
+        }
         let video = self.video.as_ref().expect("created above");
         let (w, h) = (frame.width, frame.height);
         match frame.format {
@@ -393,6 +415,12 @@ impl Renderer {
                     resource: wgpu::BindingResource::TextureView(view),
                 }),
         );
+        if format == PixelFormat::Nv12 {
+            entries.push(wgpu::BindGroupEntry {
+                binding: 3,
+                resource: self.yuv_buffer.as_entire_binding(),
+            });
+        }
         let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("video"),
             layout: &pipeline.layout,
@@ -535,11 +563,14 @@ impl Renderer {
     }
 }
 
+/// `textures` sampled planes at bindings 1..; with `yuv_uniform`, the YUV
+/// parameter buffer at binding 3.
 fn create_pipeline(
     device: &wgpu::Device,
     module: &wgpu::ShaderModule,
     fragment_entry: &str,
     textures: u32,
+    yuv_uniform: bool,
     target: wgpu::TextureFormat,
     blend: Option<wgpu::BlendState>,
 ) -> Pipeline {
@@ -559,6 +590,18 @@ fn create_pipeline(
         },
         count: None,
     }));
+    if yuv_uniform {
+        entries.push(wgpu::BindGroupLayoutEntry {
+            binding: 3,
+            visibility: wgpu::ShaderStages::FRAGMENT,
+            ty: wgpu::BindingType::Buffer {
+                ty: wgpu::BufferBindingType::Uniform,
+                has_dynamic_offset: false,
+                min_binding_size: wgpu::BufferSize::new(YUV_PARAMS_SIZE),
+            },
+            count: None,
+        });
+    }
     let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
         label: Some(fragment_entry),
         entries: &entries,
@@ -625,6 +668,32 @@ fn write_plane(
     );
 }
 
+/// Size of the `Yuv` uniform in video.wgsl: 8 x f32.
+const YUV_PARAMS_SIZE: u64 = 32;
+
+/// Uniform values for the `Yuv` struct in video.wgsl:
+/// `[y_offset, y_scale, c_scale, 0, cr->r, cb->g, cr->g, cb->b]`.
+///
+/// Coefficients follow from the luma weights Kr and Kb (ITU-R BT.601 /
+/// BT.709): R = Y + 2(1-Kr)Cr, B = Y + 2(1-Kb)Cb, and G from
+/// Y = Kr R + Kg G + Kb B.
+pub fn yuv_params(color: ColorSpace) -> [f32; 8] {
+    let (kr, kb) = match color.matrix {
+        YuvMatrix::Bt601 => (0.299_f64, 0.114_f64),
+        YuvMatrix::Bt709 => (0.2126, 0.0722),
+    };
+    let kg = 1.0 - kr - kb;
+    let cr_r = 2.0 * (1.0 - kr);
+    let cb_b = 2.0 * (1.0 - kb);
+    let cb_g = -cb_b * kb / kg;
+    let cr_g = -cr_r * kr / kg;
+    let (y_offset, y_scale, c_scale) = match color.range {
+        YuvRange::Limited => (16.0 / 255.0, 255.0 / 219.0, 255.0 / 224.0),
+        YuvRange::Full => (0.0, 1.0, 1.0),
+    };
+    [y_offset, y_scale, c_scale, 0.0, cr_r, cb_g, cr_g, cb_b].map(|v| v as f32)
+}
+
 /// Largest rectangle with the source's aspect ratio that fits the target,
 /// centred, on whole pixels: `[x, y, width, height]`.
 pub fn fit_rect(src_w: u32, src_h: u32, dst_w: u32, dst_h: u32) -> [f32; 4] {
@@ -637,7 +706,57 @@ pub fn fit_rect(src_w: u32, src_h: u32, dst_w: u32, dst_h: u32) -> [f32; 4] {
 
 #[cfg(test)]
 mod tests {
-    use super::fit_rect;
+    use super::{fit_rect, yuv_params};
+    use crate::capture::{ColorSpace, YuvMatrix, YuvRange};
+
+    /// Applies the shader's formula to 8-bit Y, Cb, Cr.
+    fn to_rgb(color: ColorSpace, y: u8, cb: u8, cr: u8) -> [f32; 3] {
+        let [y_off, y_scale, c_scale, _, cr_r, cb_g, cr_g, cb_b] = yuv_params(color);
+        let y = (f32::from(y) / 255.0 - y_off) * y_scale;
+        let cb = (f32::from(cb) / 255.0 - 128.0 / 255.0) * c_scale;
+        let cr = (f32::from(cr) / 255.0 - 128.0 / 255.0) * c_scale;
+        [y + cr_r * cr, y + cb_g * cb + cr_g * cr, y + cb_b * cb]
+    }
+
+    fn assert_rgb(actual: [f32; 3], expected: [f32; 3]) {
+        for (a, e) in actual.iter().zip(expected) {
+            assert!((a - e).abs() < 0.01, "{actual:?} != {expected:?}");
+        }
+    }
+
+    #[test]
+    fn bt709_coefficients_match_the_standard() {
+        let p = yuv_params(ColorSpace::BT709_LIMITED);
+        for (got, want) in p[4..].iter().zip([1.5748, -0.18732, -0.46812, 1.8556]) {
+            assert!((got - want).abs() < 1e-4, "{p:?}");
+        }
+    }
+
+    #[test]
+    fn bt601_coefficients_match_the_standard() {
+        let p = yuv_params(ColorSpace {
+            matrix: YuvMatrix::Bt601,
+            range: YuvRange::Full,
+        });
+        for (got, want) in p[4..].iter().zip([1.402, -0.344136, -0.714136, 1.772]) {
+            assert!((got - want).abs() < 1e-4, "{p:?}");
+        }
+    }
+
+    #[test]
+    fn black_and_white_per_range() {
+        let limited = ColorSpace::BT709_LIMITED;
+        assert_rgb(to_rgb(limited, 16, 128, 128), [0.0; 3]);
+        assert_rgb(to_rgb(limited, 235, 128, 128), [1.0; 3]);
+        let full = ColorSpace {
+            matrix: YuvMatrix::Bt601,
+            range: YuvRange::Full,
+        };
+        assert_rgb(to_rgb(full, 0, 128, 128), [0.0; 3]);
+        assert_rgb(to_rgb(full, 255, 128, 128), [1.0; 3]);
+        // Full-range BT.601 red as JPEG encodes it: Y 76, Cb 85, Cr 255.
+        assert_rgb(to_rgb(full, 76, 85, 255), [1.0, 0.0, 0.0]);
+    }
 
     #[test]
     fn same_size_maps_one_to_one() {

@@ -1,30 +1,39 @@
-//! Media Foundation device discovery (read-only preparation for capture).
+//! Media Foundation: device discovery and capture.
 //!
-//! Lists video capture devices and the native media types each driver
-//! reports. Nothing here assumes a particular device, resolution, frame rate
-//! or pixel format: it prints what Media Foundation returns.
+//! This file lists video capture devices and the native media types each
+//! driver reports, and holds the COM/MF helpers. Nothing here assumes a
+//! particular device, resolution, frame rate or pixel format: it prints what
+//! Media Foundation returns. The capture source itself is in
+//! [`source`] (asynchronous `IMFSourceReader`).
 //!
-//! Deliberately **not** implemented yet (milestone M2, needs the real card):
-//! a `VideoSource` built on `IMFSourceReader::ReadSample`, media-type
-//! selection, stride/padding handling, YUV matrix/range detection and
-//! device-loss handling. See docs/ARCHITECTURE.md for where it plugs in.
-//!
-//! COM threading: everything runs on one dedicated thread that initializes
-//! COM as multithreaded apartment. It must not be the winit event-loop thread,
+//! COM threading: every thread that touches MF objects initializes COM as
+//! multithreaded apartment ([`MfSession`]). Listing runs on its own thread,
+//! capture on the capture thread. Neither may be the winit event-loop thread,
 //! which winit initializes as STA (OLE) for drag and drop.
+
+mod source;
+
+pub use source::{MediaFoundationSource, ReaderOptions};
 
 use std::fmt;
 
 use windows::Win32::Foundation::E_POINTER;
 use windows::Win32::Media::MediaFoundation::{
-    IMFActivate, IMFAttributes, IMFMediaSource, IMFMediaType, MF_DEVSOURCE_ATTRIBUTE_FRIENDLY_NAME,
+    IMFActivate, IMFAttributes, IMFMediaSource, IMFMediaType, MF_ATTRIBUTE_BLOB,
+    MF_ATTRIBUTE_DOUBLE, MF_ATTRIBUTE_GUID, MF_ATTRIBUTE_IUNKNOWN, MF_ATTRIBUTE_STRING,
+    MF_ATTRIBUTE_UINT32, MF_ATTRIBUTE_UINT64, MF_DEVSOURCE_ATTRIBUTE_FRIENDLY_NAME,
     MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE, MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_GUID,
-    MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_SYMBOLIC_LINK, MF_E_NO_MORE_TYPES, MF_MT_FRAME_RATE,
-    MF_MT_FRAME_SIZE, MF_MT_SUBTYPE, MF_SOURCE_READER_FIRST_VIDEO_STREAM, MF_VERSION,
-    MFCreateAttributes, MFCreateSourceReaderFromMediaSource, MFEnumDeviceSources, MFSTARTUP_FULL,
-    MFShutdown, MFStartup, MFVideoFormat_ARGB32, MFVideoFormat_I420, MFVideoFormat_MJPG,
-    MFVideoFormat_NV12, MFVideoFormat_RGB24, MFVideoFormat_RGB32, MFVideoFormat_UYVY,
-    MFVideoFormat_YUY2,
+    MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_SYMBOLIC_LINK, MF_E_NO_MORE_TYPES,
+    MF_MT_ALL_SAMPLES_INDEPENDENT, MF_MT_AVG_BITRATE, MF_MT_DEFAULT_STRIDE,
+    MF_MT_FIXED_SIZE_SAMPLES, MF_MT_FRAME_RATE, MF_MT_FRAME_RATE_RANGE_MAX,
+    MF_MT_FRAME_RATE_RANGE_MIN, MF_MT_FRAME_SIZE, MF_MT_GEOMETRIC_APERTURE, MF_MT_INTERLACE_MODE,
+    MF_MT_MAJOR_TYPE, MF_MT_MINIMUM_DISPLAY_APERTURE, MF_MT_PIXEL_ASPECT_RATIO, MF_MT_SAMPLE_SIZE,
+    MF_MT_SUBTYPE, MF_MT_TRANSFER_FUNCTION, MF_MT_VIDEO_CHROMA_SITING, MF_MT_VIDEO_NOMINAL_RANGE,
+    MF_MT_VIDEO_PRIMARIES, MF_MT_YUV_MATRIX, MF_SOURCE_READER_FIRST_VIDEO_STREAM, MF_VERSION,
+    MFCreateAttributes, MFCreateSourceReaderFromMediaSource, MFEnumDeviceSources,
+    MFMediaType_Video, MFSTARTUP_FULL, MFShutdown, MFStartup, MFVideoFormat_ARGB32,
+    MFVideoFormat_I420, MFVideoFormat_MJPG, MFVideoFormat_NV12, MFVideoFormat_RGB24,
+    MFVideoFormat_RGB32, MFVideoFormat_UYVY, MFVideoFormat_YUY2,
 };
 use windows::Win32::System::Com::{
     COINIT_MULTITHREADED, CoInitializeEx, CoTaskMemFree, CoUninitialize,
@@ -131,6 +140,7 @@ fn list_on_current_thread() -> windows::core::Result<Vec<DeviceInfo>> {
 }
 
 /// COM (MTA) and Media Foundation for the current thread, undone on drop.
+/// Must outlive every MF object created on the thread.
 struct MfSession;
 
 impl MfSession {
@@ -151,6 +161,7 @@ impl MfSession {
 
 impl Drop for MfSession {
     fn drop(&mut self) {
+        tracing::debug!("drop: MFShutdown");
         // SAFETY: start() succeeded with both calls on this thread, and all
         // COM objects created in the session have been released already.
         unsafe {
@@ -159,6 +170,7 @@ impl Drop for MfSession {
             }
             CoUninitialize();
         }
+        tracing::debug!("drop: COM and Media Foundation released");
     }
 }
 
@@ -244,6 +256,198 @@ fn read_native_types(source: &IMFMediaSource) -> windows::core::Result<Vec<Media
     Ok(types)
 }
 
+/// Every attribute of `attributes` as `(name, value)` text, in storage order.
+/// Unknown keys are shown as GUIDs, so nothing the driver sets is hidden.
+pub fn dump_attributes(attributes: &IMFAttributes) -> Vec<(String, String)> {
+    // SAFETY: plain query on a live attribute store.
+    let count = unsafe { attributes.GetCount() }.unwrap_or(0);
+    (0..count)
+        .filter_map(|index| {
+            let mut key = GUID::zeroed();
+            // SAFETY: valid out-pointer for the key; the value is not
+            // requested (None), so no PROPVARIANT needs clearing.
+            unsafe { attributes.GetItemByIndex(index, &mut key, None) }.ok()?;
+            Some((attribute_name(key), attribute_value(attributes, &key)))
+        })
+        .collect()
+}
+
+fn attribute_name(key: GUID) -> String {
+    const NAMES: [(GUID, &str); 20] = [
+        (MF_MT_MAJOR_TYPE, "MF_MT_MAJOR_TYPE"),
+        (MF_MT_SUBTYPE, "MF_MT_SUBTYPE"),
+        (MF_MT_FRAME_SIZE, "MF_MT_FRAME_SIZE"),
+        (MF_MT_FRAME_RATE, "MF_MT_FRAME_RATE"),
+        (MF_MT_FRAME_RATE_RANGE_MIN, "MF_MT_FRAME_RATE_RANGE_MIN"),
+        (MF_MT_FRAME_RATE_RANGE_MAX, "MF_MT_FRAME_RATE_RANGE_MAX"),
+        (MF_MT_PIXEL_ASPECT_RATIO, "MF_MT_PIXEL_ASPECT_RATIO"),
+        (MF_MT_INTERLACE_MODE, "MF_MT_INTERLACE_MODE"),
+        (MF_MT_DEFAULT_STRIDE, "MF_MT_DEFAULT_STRIDE"),
+        (MF_MT_SAMPLE_SIZE, "MF_MT_SAMPLE_SIZE"),
+        (MF_MT_FIXED_SIZE_SAMPLES, "MF_MT_FIXED_SIZE_SAMPLES"),
+        (
+            MF_MT_ALL_SAMPLES_INDEPENDENT,
+            "MF_MT_ALL_SAMPLES_INDEPENDENT",
+        ),
+        (MF_MT_AVG_BITRATE, "MF_MT_AVG_BITRATE"),
+        (MF_MT_YUV_MATRIX, "MF_MT_YUV_MATRIX"),
+        (MF_MT_VIDEO_NOMINAL_RANGE, "MF_MT_VIDEO_NOMINAL_RANGE"),
+        (MF_MT_VIDEO_PRIMARIES, "MF_MT_VIDEO_PRIMARIES"),
+        (MF_MT_TRANSFER_FUNCTION, "MF_MT_TRANSFER_FUNCTION"),
+        (MF_MT_VIDEO_CHROMA_SITING, "MF_MT_VIDEO_CHROMA_SITING"),
+        (MF_MT_GEOMETRIC_APERTURE, "MF_MT_GEOMETRIC_APERTURE"),
+        (
+            MF_MT_MINIMUM_DISPLAY_APERTURE,
+            "MF_MT_MINIMUM_DISPLAY_APERTURE",
+        ),
+    ];
+    NAMES
+        .iter()
+        .find(|(guid, _)| *guid == key)
+        .map_or_else(|| format!("{key:?}"), |(_, name)| (*name).to_string())
+}
+
+fn attribute_value(attributes: &IMFAttributes, key: &GUID) -> String {
+    let split = |v: u64| ((v >> 32) as u32, v as u32);
+    // SAFETY (all calls below): typed reads on a live attribute store, each
+    // matching the type GetItemType reported for the key.
+    unsafe {
+        let Ok(kind) = attributes.GetItemType(key) else {
+            return "?".into();
+        };
+        match kind {
+            MF_ATTRIBUTE_UINT32 => match attributes.GetUINT32(key) {
+                // The stride is a signed value stored as UINT32.
+                Ok(v) if *key == MF_MT_DEFAULT_STRIDE => format!("{}", v as i32),
+                Ok(v) => match enum_label(key, v) {
+                    Some(label) => format!("{v} ({label})"),
+                    None => v.to_string(),
+                },
+                Err(e) => format!("<{e}>"),
+            },
+            MF_ATTRIBUTE_UINT64 => match attributes.GetUINT64(key) {
+                Ok(v) if *key == MF_MT_FRAME_SIZE => {
+                    let (w, h) = split(v);
+                    format!("{w} x {h}")
+                }
+                Ok(v)
+                    if [
+                        MF_MT_FRAME_RATE,
+                        MF_MT_FRAME_RATE_RANGE_MIN,
+                        MF_MT_FRAME_RATE_RANGE_MAX,
+                        MF_MT_PIXEL_ASPECT_RATIO,
+                    ]
+                    .contains(key) =>
+                {
+                    let (n, d) = split(v);
+                    format!("{n}/{d}")
+                }
+                Ok(v) => v.to_string(),
+                Err(e) => format!("<{e}>"),
+            },
+            MF_ATTRIBUTE_GUID => match attributes.GetGUID(key) {
+                Ok(v) if v == MFMediaType_Video => "Video".into(),
+                Ok(v) if *key == MF_MT_SUBTYPE => subtype_name(v),
+                Ok(v) => format!("{v:?}"),
+                Err(e) => format!("<{e}>"),
+            },
+            MF_ATTRIBUTE_DOUBLE => attributes
+                .GetDouble(key)
+                .map_or_else(|e| format!("<{e}>"), |v| v.to_string()),
+            MF_ATTRIBUTE_STRING => allocated_string(attributes, key)
+                .map_or_else(|e| format!("<{e}>"), |s| format!("{s:?}")),
+            MF_ATTRIBUTE_BLOB => {
+                let size = attributes.GetBlobSize(key).unwrap_or(0) as usize;
+                let mut blob = vec![0u8; size];
+                match attributes.GetBlob(key, &mut blob, None) {
+                    Ok(()) => {
+                        let hex: Vec<String> =
+                            blob.iter().take(32).map(|b| format!("{b:02x}")).collect();
+                        format!("blob, {size} bytes: {}", hex.join(" "))
+                    }
+                    Err(e) => format!("<blob, {size} bytes: {e}>"),
+                }
+            }
+            MF_ATTRIBUTE_IUNKNOWN => "<COM object>".into(),
+            other => format!("<type {}>", other.0),
+        }
+    }
+}
+
+/// Names for the enum values of a few colour and layout attributes
+/// (mfobjects.h: MFVideoInterlaceMode, MFVideoTransferMatrix,
+/// MFNominalRange, MFVideoPrimaries, MFVideoTransferFunction).
+fn enum_label(key: &GUID, value: u32) -> Option<&'static str> {
+    let table: &[&str] = if *key == MF_MT_INTERLACE_MODE {
+        &[
+            "unknown",
+            "",
+            "progressive",
+            "field interleaved upper first",
+            "field interleaved lower first",
+            "field single upper",
+            "field single lower",
+            "mixed interlace or progressive",
+        ]
+    } else if *key == MF_MT_YUV_MATRIX {
+        &[
+            "unknown",
+            "BT.709",
+            "BT.601",
+            "SMPTE 240M",
+            "BT.2020 10",
+            "BT.2020 12",
+        ]
+    } else if *key == MF_MT_VIDEO_NOMINAL_RANGE {
+        &[
+            "unknown",
+            "0-255 (full)",
+            "16-235 (limited)",
+            "48-208",
+            "64-127",
+        ]
+    } else if *key == MF_MT_VIDEO_PRIMARIES {
+        &[
+            "unknown",
+            "reserved",
+            "BT.709",
+            "BT.470-2 System M",
+            "BT.470-2 System B,G",
+            "SMPTE 170M",
+            "SMPTE 240M",
+            "EBU 3213",
+            "SMPTE C",
+            "BT.2020",
+        ]
+    } else if *key == MF_MT_TRANSFER_FUNCTION {
+        &[
+            "unknown",
+            "linear",
+            "1.8",
+            "2.0",
+            "2.2",
+            "BT.709",
+            "SMPTE 240M",
+            "sRGB",
+            "2.8",
+            "log 100",
+            "log 316",
+            "BT.709 sym",
+            "BT.2020 const",
+            "BT.2020",
+            "2.6",
+            "ST 2084 (PQ)",
+            "HLG",
+        ]
+    } else {
+        return None;
+    };
+    table
+        .get(value as usize)
+        .copied()
+        .filter(|label| !label.is_empty())
+}
+
 fn describe(media_type: &IMFMediaType) -> MediaTypeInfo {
     // MF packs two u32 into one u64: high half first (width / numerator).
     let split = |v: u64| ((v >> 32) as u32, v as u32);
@@ -270,6 +474,65 @@ mod tests {
         assert_eq!(subtype_name(hevc), "HEVC");
         let random = GUID::from_u128(0x12345678_1234_1234_1234_123456789abc);
         assert!(subtype_name(random).contains("12345678"));
+    }
+
+    /// The label tables are hand-written; check them against the crate's
+    /// enum constants.
+    #[test]
+    fn enum_labels_match_the_sdk_values() {
+        use windows::Win32::Media::MediaFoundation::{
+            MFNominalRange_0_255, MFNominalRange_16_235, MFVideoInterlace_Progressive,
+            MFVideoPrimaries_BT709, MFVideoPrimaries_BT2020, MFVideoTransFunc_709,
+            MFVideoTransFunc_2084, MFVideoTransFunc_HLG, MFVideoTransFunc_sRGB,
+            MFVideoTransferMatrix_BT601, MFVideoTransferMatrix_BT709,
+        };
+        let label = |key: &GUID, value: i32| enum_label(key, value as u32);
+        assert_eq!(
+            label(&MF_MT_INTERLACE_MODE, MFVideoInterlace_Progressive.0),
+            Some("progressive")
+        );
+        assert_eq!(
+            label(&MF_MT_YUV_MATRIX, MFVideoTransferMatrix_BT709.0),
+            Some("BT.709")
+        );
+        assert_eq!(
+            label(&MF_MT_YUV_MATRIX, MFVideoTransferMatrix_BT601.0),
+            Some("BT.601")
+        );
+        assert_eq!(
+            label(&MF_MT_VIDEO_NOMINAL_RANGE, MFNominalRange_0_255.0),
+            Some("0-255 (full)")
+        );
+        assert_eq!(
+            label(&MF_MT_VIDEO_NOMINAL_RANGE, MFNominalRange_16_235.0),
+            Some("16-235 (limited)")
+        );
+        assert_eq!(
+            label(&MF_MT_VIDEO_PRIMARIES, MFVideoPrimaries_BT709.0),
+            Some("BT.709")
+        );
+        assert_eq!(
+            label(&MF_MT_VIDEO_PRIMARIES, MFVideoPrimaries_BT2020.0),
+            Some("BT.2020")
+        );
+        assert_eq!(
+            label(&MF_MT_TRANSFER_FUNCTION, MFVideoTransFunc_709.0),
+            Some("BT.709")
+        );
+        assert_eq!(
+            label(&MF_MT_TRANSFER_FUNCTION, MFVideoTransFunc_sRGB.0),
+            Some("sRGB")
+        );
+        assert_eq!(
+            label(&MF_MT_TRANSFER_FUNCTION, MFVideoTransFunc_2084.0),
+            Some("ST 2084 (PQ)")
+        );
+        assert_eq!(
+            label(&MF_MT_TRANSFER_FUNCTION, MFVideoTransFunc_HLG.0),
+            Some("HLG")
+        );
+        assert_eq!(label(&MF_MT_INTERLACE_MODE, 1), None);
+        assert_eq!(label(&MF_MT_SUBTYPE, 1), None);
     }
 
     #[test]
