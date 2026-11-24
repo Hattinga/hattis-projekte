@@ -164,9 +164,13 @@ else
 	end
 end
 local stored: any = nil
+-- P09-04: P0904SaveDelay (seconds) lets in-memory saves stay in flight like DataStore writes.
+local saveDelay = workspace:GetAttribute("P0904SaveDelay")
+assert(saveDelay == nil or (type(saveDelay) == "number" and saveDelay > 0 and saveDelay <= 2), "Invalid P0904SaveDelay")
 local backend: Persistence.Backend = {
 	read = function(_: string): any return stored end,
 	update = function(_: string, transform: (any) -> any): any
+		if saveDelay then task.wait(saveDelay :: number) end
 		local proposed = transform(stored)
 		if proposed ~= nil then stored = proposed end
 		return proposed
@@ -378,6 +382,8 @@ local function render()
 		end)
 	end
 	LineView.syncWares(demo, state, places)
+	-- P09-04: a rebuilt Band.First view takes its belt pose before the frame ends.
+	if beltShift then BeltShift.place(beltShift, os.clock(), state) end
 	if workerShift then
 		local hold = state.reservations[WorkerRoute.SOURCE]
 		local cargo = if hold and hold.kind == "Return" and hold.carrierId == State.FIRST_WORKER.carrier then hold.batchId else nil
@@ -867,6 +873,10 @@ rs.Heartbeat:Connect(function(dt: number)
 		Trips.sample(trips, snapshot.confirmed.data.state, os.clock())
 	end
 end)
+-- P09-04: the belt kit moves every frame from the cached confirmed state (no per-frame snapshot copy).
+rs.Heartbeat:Connect(function()
+	if beltShift and not closing and demo.Parent then BeltShift.place(beltShift, os.clock()) end
+end)
 render()
 
 -- Server-only hook for the automated proof. Players use the native prompts.
@@ -926,6 +936,7 @@ reader.OnInvoke = function(): any
 	local advanceReceipts = {}
 	local workerReceipts = {}
 	local beltReceipts = {}
+	local beltActions = {}
 	for id, receipt in state.receipts do
 		if receipt.action == "Sale" then saleReceipts[id] = receipt.result end
 		if receipt.action == "Advance" then advanceReceipts[id] = receipt.result end
@@ -933,6 +944,9 @@ reader.OnInvoke = function(): any
 			workerReceipts[id] = receipt.result
 		end
 		if receipt.action == "Commit" and receipt.actorId == State.FIRST_BELT.carrier then beltReceipts[id] = receipt.result end
+		if receipt.actorId == State.FIRST_BELT.carrier then
+			beltActions[id] = {action = receipt.action, claimId = receipt.result.claimId, code = receipt.result.code}
+		end
 	end
 	local sellPrompts = {}
 	for buyer, prompt in salePrompts do sellPrompts[buyer] = {enabled = prompt.Enabled, text = prompt.ObjectText} end
@@ -943,10 +957,21 @@ reader.OnInvoke = function(): any
 		workerStatus = if workerShift then workerShift.status else nil,
 		workerPaused = workerShift ~= nil and workerShift.paused, workerAttempts = if workerShift then workerShift.attempts else 0,
 		workerReceipts = workerReceipts, claims = state.claims, firstBelt = confirmed().data.progress.firstBelt,
-		beltLocation = state.locations[State.FIRST_BELT.carrier], beltReceipts = beltReceipts,
+		beltLocation = state.locations[State.FIRST_BELT.carrier], beltReceipts = beltReceipts, beltActions = beltActions,
 		beltStatus = if beltShift then beltShift.status else nil}
 end
 reader.Parent = game:GetService("ServerStorage")
+if saveDelay then
+	-- P09-04: one extra save from another writer, like the lease renewal above. It leaves busy unset on purpose,
+	-- so the belt meets a save in flight at its exit.
+	local renew = Instance.new("BindableFunction")
+	renew.Name = "P0904Renew"
+	renew.OnInvoke = function(): string
+		local saved = confirmed()
+		return controller.save(saved.data, TTL).code
+	end
+	renew.Parent = serverStorage
+end
 if resumeRig then
 	local function release(): Persistence.Result
 		if closing then return controller.snapshot() end

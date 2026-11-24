@@ -66,6 +66,10 @@ function BeltTransport.finish(controller: Persistence.Controller, claimId: strin
 	local claim = data.state.claims[claimId]
 	if not claim or claim.sourceId ~= route.carrier or claim.targetId ~= route.target or claim.actorId ~= route.carrier
 		or claim.actorKind ~= "Band" then return {ok = false, code = "CLAIM_NOT_FOUND"} end
+	-- P09-04: a stopped belt never delivers; its exit claim can only be released.
+	if deliver and (data.progress.firstBelt :: Profiles.BeltPermit).stopped then
+		return {ok = false, code = "BELT_STOPPED", batchId = claim.batchId}
+	end
 	local store = Transfers.new(data.state)
 	local result
 	if deliver then
