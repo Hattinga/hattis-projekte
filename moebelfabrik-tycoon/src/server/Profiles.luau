@@ -3,7 +3,7 @@
 -- A trusted reader returns the raw saved value (nil only for confirmed absence), or throws.
 local State = require(script.Parent.State)
 
-export type WorkerHire = {revision: number, price: number, assigned: boolean?}
+export type WorkerHire = {revision: number, price: number, assigned: boolean?, route: string?}
 export type BeltPermit = {revision: number, price: number, sourceId: string, targetId: string, stopped: boolean?}
 export type Progress = {version: number, selectedRecipeId: string, selectedRecipeVersion: number,
 	firstWorker: WorkerHire?, firstBelt: BeltPermit?}
@@ -17,7 +17,7 @@ Profiles.PROGRESS_VERSION = 1
 local MAX_INTEGER = 9007199254740991
 local ENVELOPE_FIELDS = {profileVersion=true, state=true, progress=true}
 local PROGRESS_FIELDS = {version=true, selectedRecipeId=true, selectedRecipeVersion=true, firstWorker=true, firstBelt=true}
-local WORKER_HIRE_FIELDS = {revision=true, price=true, assigned=true}
+local WORKER_HIRE_FIELDS = {revision=true, price=true, assigned=true, route=true}
 local BELT_PERMIT_FIELDS = {revision=true, price=true, sourceId=true, targetId=true, stopped=true}
 local MESSAGES: {[string]: string} = {
 	LOADED="Gespeichertes Profil geladen; wirtschaftliche Freigabe steht noch aus.",
@@ -66,7 +66,9 @@ local function validate(data: any, ownerUserId: number): string?
 	if worker~=nil and (not record(worker, WORKER_HIRE_FIELDS) or not positiveInteger(worker.price)
 		or not positiveInteger(worker.revision) or worker.revision>data.state.revision
 		or (worker.assigned~=nil and worker.assigned~=true)
-		or (worker.assigned==true and worker.revision==data.state.revision)) then
+		or (worker.assigned==true and worker.revision==data.state.revision)
+		-- P09-06: only the Finish leg can replace the saw leg, and only once the belt exists.
+		or (worker.route~=nil and (worker.route~="Finish" or worker.assigned~=true or progress.firstBelt==nil))) then
 		return "INVALID_PROGRESS"
 	end
 	local belt=progress.firstBelt

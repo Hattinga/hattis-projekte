@@ -95,7 +95,8 @@ function Actions.checkTransfer(profile: any, actor: any, request: any, now: numb
 		if source.kind~="StationOutput" or not nextTarget or nextTarget.kind~="StationInput" then
 			return result("UNKNOWN_LOCATION")
 		end
-		if batch.stage~=State.FIRST_WORKER.stage or not accepts(nextTarget,batch.stage) then return result("WRONG_STAGE") end
+		local leg=State.workerLeg(source.id,nextTargetId)
+		if not leg or batch.stage~=leg.stage or not accepts(nextTarget,batch.stage) then return result("WRONG_STAGE") end
 		if State.countAt(profile,nextTargetId)>=nextTarget.capacity then return result("TARGET_FULL") end
 		if profile.reservations[nextTargetId] then return result("TARGET_RESERVED") end
 	end

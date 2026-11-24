@@ -190,7 +190,7 @@ function Transfers.commit(store: any, actor: any, request: any, now: any): Resul
 	local batch=candidate.batches[claim.batchId]
 	if claim.targetId==actor.carrierLocationId then
 		-- Recovery hands over the kit at the worker and preserves its reserved return to the saw.
-		local originId=if claim.recoverWorker then State.FIRST_WORKER.source else claim.sourceId
+		local originId=if claim.recoverWorker then State.workerReturnOrigin(candidate,batch.id) else claim.sourceId
 		candidate.reservations[originId]={kind="Return",batchId=batch.id,actorId=actor.actorId,
 			actorKind=actor.kind,carrierId=actor.carrierLocationId,recipeId=batch.recipeId,
 			recipeVersion=batch.recipeVersion,stage=batch.stage,quantity=batch.quantity}

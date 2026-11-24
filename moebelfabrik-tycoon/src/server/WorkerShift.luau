@@ -7,7 +7,6 @@ local Persistence = require(script.Parent.Persistence)
 local State = require(script.Parent.State)
 
 local WorkerShift = {}
-local route = State.FIRST_WORKER
 
 export type Shift = {
 	binding: WorkerRoute.Binding, rig: WorkerRoute.Rig,
@@ -37,6 +36,15 @@ function WorkerShift.retry(shift: Shift)
 	end
 end
 
+-- P09-06: the worker changed legs. Only called while idle (the confirmed reassignment requires it).
+function WorkerShift.rebind(shift: Shift, binding: WorkerRoute.Binding)
+	shift.binding = binding
+	shift.status = "Material fehlt"
+	shift.paused = false
+	shift.attempts = 0
+	shift.retryAt = 0
+end
+
 function WorkerShift.stop(shift: Shift)
 	shift.stopped = true
 	shift.rig.humanoid:Move(Vector3.zero)
@@ -44,6 +52,7 @@ end
 
 function WorkerShift.tick(shift: Shift, controller: Persistence.Controller, lease: number)
 	if shift.stopped or shift.paused or os.clock() < shift.retryAt then return end
+	local route = shift.binding.route
 	local snapshot = controller.snapshot()
 	if snapshot.status ~= "Confirmed" or snapshot.inFlight or not snapshot.confirmed then return end
 	local state = snapshot.confirmed.data.state

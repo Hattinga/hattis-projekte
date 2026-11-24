@@ -6,7 +6,7 @@ local State = require(script.Parent.State)
 local Transfers = require(script.Parent.Transfers)
 
 local WorkerTransport = {}
-local route = State.FIRST_WORKER
+local CARRIER = State.FIRST_WORKER.carrier
 local CLAIM_SECONDS = 20
 
 export type Result = {ok: boolean, code: string, claimId: string?, batchId: string?}
@@ -21,9 +21,15 @@ local function load(controller: Persistence.Controller): (Profiles.Envelope?, st
 	return profile, nil
 end
 
+-- P09-06: the assigned leg (the saw leg unless the profile moved the worker to Finish -> Packen).
+local function legOf(profile: Profiles.Envelope): State.WorkerLeg
+	local worker = profile.progress.firstWorker :: Profiles.WorkerHire
+	return State.WORKER_ROUTES[worker.route or "Saw"]
+end
+
 local function actor(profile: Profiles.Envelope): any
 	return {ready = true, ownerUserId = profile.state.ownerUserId, kind = "Worker",
-		actorId = route.carrier, carrierLocationId = route.carrier}
+		actorId = CARRIER, carrierLocationId = CARRIER}
 end
 
 local function save(controller: Persistence.Controller, profile: Profiles.Envelope, store: Transfers.Store,
@@ -37,6 +43,7 @@ end
 function WorkerTransport.reserve(controller: Persistence.Controller, id: string, now: number, lease: number): Result
 	local profile, problem = load(controller)
 	if not profile then return {ok = false, code = problem :: string} end
+	local route = legOf(profile)
 	local state = profile.state
 	local batchId: string? = nil
 	for stockId, batch in state.batches do
@@ -62,6 +69,7 @@ end
 function WorkerTransport.take(controller: Persistence.Controller, claimId: string, now: number, lease: number): Result
 	local profile, problem = load(controller)
 	if not profile then return {ok = false, code = problem :: string} end
+	local route = legOf(profile)
 	local state = profile.state
 	local claim = state.claims[claimId]
 	if not claim or claim.nextTargetId ~= route.target then return {ok = false, code = "CLAIM_NOT_FOUND"} end
@@ -81,6 +89,7 @@ end
 function WorkerTransport.put(controller: Persistence.Controller, claimId: string, now: number, lease: number): Result
 	local profile, problem = load(controller)
 	if not profile then return {ok = false, code = problem :: string} end
+	local route = legOf(profile)
 	local state = profile.state
 	local claim = state.claims[claimId]
 	if not claim or claim.sourceId ~= route.carrier or claim.targetId ~= route.target then
@@ -99,7 +108,7 @@ function WorkerTransport.cancel(controller: Persistence.Controller, claimId: str
 	local store = Transfers.new(profile.state)
 	local claim = store.profile.claims[claimId]
 	if not claim then return {ok = true, code = "CLAIM_NOT_FOUND"} end
-	if claim.carrierId ~= route.carrier or claim.actorId ~= route.carrier or claim.actorKind ~= "Worker" then
+	if claim.carrierId ~= CARRIER or claim.actorId ~= CARRIER or claim.actorKind ~= "Worker" then
 		return {ok = false, code = "NOT_AUTHORIZED"}
 	end
 	local cancelled
@@ -117,6 +126,7 @@ end
 function WorkerTransport.restore(controller: Persistence.Controller, operationId: string, now: number, lease: number): Result
 	local profile, problem = load(controller)
 	if not profile then return {ok = false, code = problem :: string} end
+	local route = legOf(profile)
 	local state = profile.state
 	local held = state.reservations[route.source]
 	if not held or held.kind ~= "Return" or held.carrierId ~= route.carrier or held.actorId ~= route.carrier then
@@ -138,6 +148,7 @@ function WorkerTransport.recover(controller: Persistence.Controller, userId: num
 	operationId: string, now: number, lease: number): Result
 	local profile, problem = load(controller)
 	if not profile then return {ok = false, code = problem :: string} end
+	local route = legOf(profile)
 	local state = profile.state
 	if state.ownerUserId ~= userId then return {ok = false, code = "NOT_AUTHORIZED"} end
 	local held = state.reservations[route.source]

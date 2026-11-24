@@ -5,7 +5,7 @@ local RunService = game:GetService("RunService")
 local State = require(script.Parent.State)
 
 type Stop = {stand: BasePart, point: Attachment}
-export type Binding = {source: Stop, target: Stop, rest: Vector3}
+export type Binding = {source: Stop, target: Stop, rest: Vector3, routeId: string, route: State.WorkerLeg}
 export type Rig = {model: Model, root: BasePart, humanoid: Humanoid}
 
 local WorkerRoute = {}
@@ -27,12 +27,21 @@ local function stop(station: Instance, name: string): Stop
 	return {stand = stand, point = point}
 end
 
-function WorkerRoute.bind(stations: Instance): Binding
-	local source = stop(assert(stations:FindFirstChild("Saege")), "Output")
-	local target = stop(assert(stations:FindFirstChild("Montage")), "Input")
+-- P09-06: the two registered legs, each between neighbouring stations of one row.
+local LEGS: {[string]: {string}} = {
+	Saw = {"Saege", "Output", "Montage", "Input"},
+	Finish = {"Finish", "Output", "Packen", "Input"},
+}
+
+function WorkerRoute.bind(stations: Instance, routeId: string?): Binding
+	local id = routeId or "Saw"
+	local leg = assert(LEGS[id], "Unknown worker route")
+	local source = stop(assert(stations:FindFirstChild(leg[1])), leg[2])
+	local target = stop(assert(stations:FindFirstChild(leg[3])), leg[4])
 	local along = target.stand.Position - source.stand.Position
 	assert(math.abs(along.Y) < 0.05 and along.Magnitude > 2 and along.Magnitude < 6, "Worker stops do not share the aisle")
-	return {source = source, target = target, rest = source.stand.Position - (along * FLAT).Unit * 8}
+	return {source = source, target = target, rest = source.stand.Position - (along * FLAT).Unit * 8,
+		routeId = id, route = State.WORKER_ROUTES[id]}
 end
 
 function WorkerRoute.clear(from: Vector3, to: Vector3, ignore: {Instance}): boolean

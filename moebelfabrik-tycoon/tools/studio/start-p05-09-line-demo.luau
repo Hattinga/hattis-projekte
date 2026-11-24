@@ -44,7 +44,11 @@ local body = character:FindFirstChild("HumanoidRootPart") :: BasePart
 local hand = "Demo.Hand"
 local TTL = 600
 local logisticsEnabled = workspace:GetAttribute("P06LoadingDemo") == true
-local workerRoute = if logisticsEnabled then WorkerRoute.bind(line.Stations) else nil
+local workerBindings: {[string]: WorkerRoute.Binding} = {}
+if logisticsEnabled then
+	workerBindings.Saw = WorkerRoute.bind(line.Stations)
+	workerBindings.Finish = WorkerRoute.bind(line.Stations, "Finish") -- P09-06
+end
 local beltRoute = if logisticsEnabled then BeltRoute.bind(line.Stations) else nil
 local resumeScope = workspace:GetAttribute("P0607ResumeScope")
 if resumeScope ~= nil then
@@ -143,6 +147,7 @@ if logisticsEnabled then
 	end
 	-- Only the in-memory test bankroll (with a resume scope only on the first start). P0707Broke tests the advance.
 	profile.money = if workspace:GetAttribute("P0707Broke") == true then 0
+		elseif workspace:GetAttribute("P0906Funds") == true then 400
 		elseif workspace:GetAttribute("P0901Funds") == true then 260 else 180
 	if workspace:GetAttribute("P07SaleStock") == true then -- With a resume scope only the first start seeds it.
 		for index, id in vehicleSlots.slotIds do
@@ -155,6 +160,15 @@ if logisticsEnabled then
 		if workspace:GetAttribute("P0804WorkerTargetFull") == true then
 			profile.batches.TestMontageInput = State.newBatch("TestMontageInput", player.UserId, "Bausatz", WorkerRoute.TARGET)
 			profile.batches.TestMontageOutput = State.newBatch("TestMontageOutput", player.UserId, "Rohhocker", "Montage.Output")
+		end
+		-- P09-06: one finished stool waits at the finishing output, the start of the second worker leg.
+		if workspace:GetAttribute("P0906FinishStock") == true then
+			profile.batches.TestFertig = State.newBatch("TestFertig", player.UserId, "Fertig", "Finish.Output")
+		end
+		-- P09-06: a taken packing input that cannot start (its output holds a carton) keeps the second leg's target full.
+		if workspace:GetAttribute("P0906PackenFull") == true then
+			profile.batches.TestPackenInput = State.newBatch("TestPackenInput", player.UserId, "Fertig", "Packen.Input")
+			profile.batches.TestPackenOutput = State.newBatch("TestPackenOutput", player.UserId, "Karton", "Packen.Output")
 		end
 		-- P09-05: one wood package waits at the saw so a backlog at the belt can be seen to hold it back.
 		if workspace:GetAttribute("P0905SawStock") == true then
@@ -202,8 +216,8 @@ if resumeRig then
 		places.points[State.FIRST_BELT.carrier] = beltFixture.buffer
 	end
 	local hire = progress.firstWorker
-	if workerRoute and hire and hire.assigned then
-		local ok, rig = pcall(WorkerRoute.spawn, workerRoute, demo)
+	if hire and hire.assigned then
+		local ok, rig = pcall(WorkerRoute.spawn, workerBindings[hire.route or "Saw"], demo)
 		if not ok then
 			demo:Destroy()
 			controller.release()
@@ -250,6 +264,7 @@ local nextTarget = {Holzpaket = "Säge · Eingang", Bausatz = "Montagebank · Ei
 local prompts: {[string]: ProximityPrompt} = {}
 local hirePrompt: ProximityPrompt? = nil
 local assignPrompt: ProximityPrompt? = nil
+local reassignPrompt: ProximityPrompt? = nil
 local beltPrompt: ProximityPrompt? = nil
 local powerPrompt: ProximityPrompt? = nil
 local beltShift: BeltShift.Shift? = nil
@@ -318,7 +333,14 @@ local function render()
 		assignPrompt.ActionText = if workerShift and workerShift.paused then "Weg erneut versuchen"
 			elseif assigned then "Route ansehen" else "Route zuweisen"
 	end
-	local route = workerRoute
+	local route = workerBindings[(worker and worker.route) or "Saw"]
+	if reassignPrompt then
+		reassignPrompt.Enabled = assigned and permit ~= nil
+		reassignPrompt.ActionText = if worker and worker.route then "Route ansehen" else "Route zuweisen"
+	end
+	if workerShift and worker and workerShift.binding.routeId ~= (worker.route or "Saw") then
+		WorkerShift.rebind(workerShift, route)
+	end
 	if assigned and route and not workerStarted then
 		workerStarted = true
 		task.spawn(function()
@@ -389,7 +411,7 @@ local function render()
 	-- P09-04: a rebuilt Band.First view takes its belt pose before the frame ends.
 	if beltShift then BeltShift.place(beltShift, os.clock(), state) end
 	if workerShift then
-		local hold = state.reservations[WorkerRoute.SOURCE]
+		local hold = state.reservations[workerShift.binding.route.source]
 		local cargo = if hold and hold.kind == "Return" and hold.carrierId == State.FIRST_WORKER.carrier then hold.batchId else nil
 		if cargo ~= workerCargo then
 			workerShift.rig.root:SetNetworkOwner(nil)
@@ -724,6 +746,10 @@ if logisticsEnabled then
 		ALREADY_HIRED = "Dein Mitarbeiter ist bereits angestellt.",
 		ASSIGNED = "Arbeitsweg zugewiesen: Sägeausgang → Montageeingang.",
 		ALREADY_ASSIGNED = "Dein Mitarbeiter hat bereits den Weg von der Säge zur Montage.",
+		REASSIGNED = "Neuer Arbeitsweg: Finish-Ausgang → Packtisch-Eingang.",
+		ALREADY_REASSIGNED = "Dein Mitarbeiter arbeitet bereits von Finish zum Packtisch.",
+		NOT_ASSIGNED = "Weise dem Mitarbeiter zuerst den Weg von der Säge zur Montage zu.",
+		WORKER_BUSY = "Der Mitarbeiter arbeitet noch. Warte, bis er fertig ist.",
 		NOT_HIRED = "Stelle zuerst am Fertiglager einen Mitarbeiter an.",
 		BELT_INSTALLED = "Förderband zwischen Säge und Montage installiert.",
 		BELT_OWNED = "Dieses Förderband ist bereits installiert.",
@@ -782,6 +808,8 @@ if logisticsEnabled then
 		endpoints["FinishedStore.Slot2"], Workers.hire, "P0801HireWorker")
 	assignPrompt = workshopPrompt("P0802Assign", "Sägeausgang → Montageeingang", Enum.KeyCode.J, Enum.KeyCode.ButtonR1,
 		endpoints[WorkerRoute.SOURCE], Workers.assign, "P0802AssignWorker")
+	reassignPrompt = workshopPrompt("P0906Reassign", "Finish-Ausgang → Packtisch-Eingang", Enum.KeyCode.K, Enum.KeyCode.ButtonL3,
+		endpoints["Finish.Output"], Workers.reassign, "P0906ReassignWorker")
 	beltPrompt = workshopPrompt("P0901Belt", "Förderband · Säge → Montage", Enum.KeyCode.B, Enum.KeyCode.ButtonL2,
 		endpoints[State.FIRST_BELT.source], Belts.install, "P0901InstallBelt")
 	powerPrompt = workshopPrompt("P0905Power", "Förderband", Enum.KeyCode.T, Enum.KeyCode.ButtonR2,
@@ -965,7 +993,8 @@ reader.OnInvoke = function(): any
 		advance = state.advance, advanceReceipts = advanceReceipts, firstWorker = confirmed().data.progress.firstWorker,
 		workerStatus = if workerShift then workerShift.status else nil,
 		workerPaused = workerShift ~= nil and workerShift.paused, workerAttempts = if workerShift then workerShift.attempts else 0,
-		workerReceipts = workerReceipts, claims = state.claims, firstBelt = confirmed().data.progress.firstBelt,
+		workerReceipts = workerReceipts, workerLeg = if workerShift then workerShift.binding.routeId else nil,
+		workerLocation = state.locations[State.FIRST_WORKER.carrier], claims = state.claims, firstBelt = confirmed().data.progress.firstBelt,
 		beltLocation = state.locations[State.FIRST_BELT.carrier], beltReceipts = beltReceipts, beltActions = beltActions,
 		beltStatus = if beltShift then beltShift.status else nil}
 end

@@ -56,8 +56,16 @@ for _, rule in State.STATIONS do
 end
 State.STATION_BY_ID = table.freeze(stationById)
 State.SAW = State.STATIONS[1]
+export type WorkerLeg = {carrier: string, source: string, target: string, stage: Stage}
 State.FIRST_WORKER = table.freeze({carrier="Worker.First",source=State.SAW.output,
 	target=stationById.Montage.input,stage=State.SAW.outputStage})
+-- P09-06: the legs the first worker can be assigned to. They share one carrier; the profile selects one
+-- (progress.firstWorker.route, nil = Saw). Finish -> Packen is the next same-row hand leg after the belt took over the saw leg.
+State.WORKER_ROUTES = table.freeze({
+	Saw=State.FIRST_WORKER,
+	Finish=table.freeze({carrier="Worker.First",source=stationById.Finish.output,
+		target=stationById.Packen.input,stage=stationById.Finish.outputStage}),
+})
 State.FIRST_BELT = table.freeze({carrier="Band.First",source=State.SAW.output,
 	target=stationById.Montage.input,stage=State.SAW.outputStage})
 local MAX_INTEGER = 9007199254740991
@@ -145,11 +153,18 @@ local function playerActor(profile: any): string
 	return "Player/"..string.format("%.0f",profile.ownerUserId)
 end
 
+-- The registered worker leg from `sourceId` to `targetId`, nil when there is none.
+function State.workerLeg(sourceId: any, targetId: any): WorkerLeg?
+	for _,leg in State.WORKER_ROUTES do
+		if leg.source==sourceId and leg.target==targetId then return leg end
+	end
+	return nil
+end
+
 function State.isFirstWorkerPickup(actorKind: string, carrierId: string, sourceId: string, targetId: string,
 	nextTargetId: string): boolean
-	local route=State.FIRST_WORKER
-	return actorKind=="Worker" and carrierId==route.carrier and sourceId==route.source
-		and targetId==route.carrier and nextTargetId==route.target
+	local leg=State.workerLeg(sourceId,nextTargetId)
+	return actorKind=="Worker" and leg~=nil and carrierId==leg.carrier and targetId==leg.carrier
 end
 
 function State.isWorkerRecovery(profile: Profile, actorKind: string, actorId: string, carrierId: string,
@@ -160,13 +175,29 @@ end
 
 -- Used after the ordinary stock and Return invariants have been checked.
 function State.hasWorkerRecoveryReturn(profile: Profile, batch: Batch): boolean
-	local route=State.FIRST_WORKER
-	local origin=profile.locations[route.source]
-	local reservation=profile.reservations[route.source]
-	return batch.locationId==route.carrier and batch.stage==route.stage and origin~=nil
-		and origin.kind=="StationOutput" and reservation~=nil and reservation.kind=="Return"
-		and reservation.batchId==batch.id and reservation.actorKind=="Worker"
-		and reservation.actorId==route.carrier and reservation.carrierId==route.carrier
+	for _,route in State.WORKER_ROUTES do
+		local origin=profile.locations[route.source]
+		local reservation=profile.reservations[route.source]
+		if batch.locationId==route.carrier and batch.stage==route.stage and origin~=nil
+			and origin.kind=="StationOutput" and reservation~=nil and reservation.kind=="Return"
+			and reservation.batchId==batch.id and reservation.actorKind=="Worker"
+			and reservation.actorId==route.carrier and reservation.carrierId==route.carrier then
+			return true
+		end
+	end
+	return false
+end
+
+-- The station output whose Return reservation the worker holds for `batchId` (the saw output if there is none).
+function State.workerReturnOrigin(profile: Profile, batchId: string): string
+	for _,route in State.WORKER_ROUTES do
+		local reservation=profile.reservations[route.source]
+		if reservation~=nil and reservation.kind=="Return" and reservation.batchId==batchId
+			and reservation.actorKind=="Worker" then
+			return route.source
+		end
+	end
+	return State.FIRST_WORKER.source
 end
 
 function State.claimTouches(claim: Claim, locationId: string): boolean
@@ -369,8 +400,9 @@ function State.validate(profile: any): (boolean, string?)
 				if not State.isFirstWorkerPickup(receipt.actorKind,receipt.carrierId,request.sourceId,request.targetId,
 					request.nextTargetId) then return false,"INVALID_RECEIPT_REQUEST" end
 				local nextTarget=profile.locations[request.nextTargetId]
-				if profile.locations[request.sourceId].kind~="StationOutput" or not nextTarget
-					or nextTarget.kind~="StationInput" or not table.find(nextTarget.acceptedStages,State.FIRST_WORKER.stage) then
+				local leg=State.workerLeg(request.sourceId,request.nextTargetId)
+				if profile.locations[request.sourceId].kind~="StationOutput" or not nextTarget or not leg
+					or nextTarget.kind~="StationInput" or not table.find(nextTarget.acceptedStages,leg.stage) then
 					return false,"INVALID_RECEIPT_REQUEST"
 				end
 			end
@@ -506,7 +538,8 @@ function State.validate(profile: any): (boolean, string?)
 		end
 		local nextTargetId=claim.nextTargetId
 		if nextTargetId~=nil then
-			if batch.stage~=State.FIRST_WORKER.stage or counts[nextTargetId]~=0 or lockedSlots[nextTargetId]
+			local leg=State.workerLeg(claim.sourceId,nextTargetId)
+			if not leg or batch.stage~=leg.stage or counts[nextTargetId]~=0 or lockedSlots[nextTargetId]
 				or profile.reservations[nextTargetId] then return false,"INVALID_CLAIM_LOCATIONS" end
 			lockedSlots[nextTargetId]=true
 		end
