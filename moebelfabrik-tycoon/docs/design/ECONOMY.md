@@ -37,4 +37,6 @@ Die erste Anstellung kostet im Prototyp einmalig 120 Spielgeld. Im Test entsprec
 
 Das erste feste Förderband kostet im Prototyp einmalig 200 Spielgeld. Das entspricht fünf regulären Händlerzyklen mit 40 Gewinn je Charge. Der Kauf bindet die Verbindung von der Säge zur Montagebank dauerhaft an die Werkstatt.
 
+Nach dem Bandkauf empfiehlt die Demo einen Betriebsschritt aus dem bestätigten Bestand. Verkaufsfertige Kartons gehen zum Möbelhändler, bestelltes Holz wird abgeholt und Zwischenware weiterverarbeitet. Bei leerer Werkstatt zeigt sie abhängig vom Guthaben den Holzkauf oder den Materialvorschuss. [Playtest](../evidence/P09.md#p09-08--nächster-betriebsschritt-nach-dem-bandkauf)
+
 Die Prüfungen für Bestände, Verkäufe, Wiederanlauf und Bedienbarkeit stehen in der [Testübersicht](../qa/TESTS.md).

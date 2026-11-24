@@ -746,6 +746,24 @@ if purchaseSlots then
 end
 
 if logisticsEnabled then
+	local function nextBeltStep(state: State.Profile): string
+		if state.pendingSale then return "Schließe zuerst den offenen Verkauf ab." end
+		local woodAtSupplier = false
+		for _, batch in state.batches do
+			local price = Sales.PRICES[batch.recipeId]
+			if batch.stage == "Karton" and price then
+				return "Verkaufe einen Karton beim Möbelhändler für " .. price.dealer .. " Spielgeld."
+			end
+			if state.locations[batch.locationId].kind == "Supplier" then woodAtSupplier = true end
+		end
+		if woodAtSupplier then return "Hole dein Holzpaket beim Lieferanten ab." end
+		if next(state.batches) then return "Verarbeite deine vorhandene Ware bis zum Karton für den Verkauf." end
+		if state.money >= Purchases.PRICE then
+			return "Kaufe beim Holzlieferanten das nächste Paket für " .. Purchases.PRICE .. " Spielgeld."
+		end
+		return "Hole beim Holzlieferanten einen Materialvorschuss."
+	end
+
 	local messages = {
 		HIRED = "Mitarbeiter angestellt.",
 		ALREADY_HIRED = "Dein Mitarbeiter ist bereits angestellt.",
@@ -756,8 +774,8 @@ if logisticsEnabled then
 		NOT_ASSIGNED = "Weise dem Mitarbeiter zuerst den Weg von der Säge zur Montage zu.",
 		WORKER_BUSY = "Der Mitarbeiter arbeitet noch. Warte, bis er fertig ist.",
 		NOT_HIRED = "Stelle zuerst am Fertiglager einen Mitarbeiter an.",
-		BELT_INSTALLED = "Förderband zwischen Säge und Montage installiert.",
-		BELT_OWNED = "Dieses Förderband ist bereits installiert.",
+		BELT_INSTALLED = "Förderband installiert.",
+		BELT_OWNED = "Förderband vorhanden.",
 		NOT_ENOUGH_FOR_BELT = "Das Förderband kostet " .. Belts.PRICE .. " Spielgeld.",
 		BELT_NOT_INSTALLED = "Installiere zuerst das Förderband.",
 		BELT_STOPPED = "Förderband angehalten.",
@@ -785,6 +803,9 @@ if logisticsEnabled then
 			busy = false
 			local code = if ran then result.code else "ERROR"
 			lastMessage = messages[code] or fallback
+			if code == "BELT_INSTALLED" or code == "BELT_OWNED" then
+				lastMessage ..= " " .. nextBeltStep(confirmed().data.state)
+			end
 			if (code == "ALREADY_ASSIGNED" or code == "ALREADY_REASSIGNED") and workerShift and workerShift.paused then
 				WorkerShift.retry(workerShift)
 				lastMessage = "Der Mitarbeiter versucht es erneut."

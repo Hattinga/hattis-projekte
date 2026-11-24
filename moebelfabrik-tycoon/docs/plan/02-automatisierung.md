@@ -31,7 +31,7 @@
 - [x] **P09-05** Das Band bei vollem Ziel anhalten und nach freiem Platz fortsetzen. Der Stillstand wird bis zur Quelle als kontrollierter Rückstau sichtbar.
 - [x] **P09-06** Den bisherigen Träger nach Übernahme seines Wegs einem anderen vorgesehenen Werkstattweg zuweisen.
 - [x] **P09-07** Konkurrierende Abholungen durch Spieler, Mitarbeiter und Band mit den zutreffenden Fällen der [Prüfmatrix](../qa/TESTS.md) prüfen.
-- [ ] **P09-08** Nach Bandfreischaltung eine konkrete Betriebsentscheidung wie Lagerausbau, Nachschub oder Verkauf anbieten und beobachten.
+- [x] **P09-08** Nach Bandfreischaltung eine konkrete Betriebsentscheidung wie Lagerausbau, Nachschub oder Verkauf anbieten und beobachten.
 - [ ] **P09-09** Die vereinbarte Geräteprüfung mit sichtbarer Bewegung, Rückstau und mehreren aktiven Werkstätten durchführen. Messergebnisse und beobachtete Grenzen dokumentieren.
 
 **Abnahme** Das Band übernimmt eine bisher manuelle oder personelle Strecke. Puffer und Lage der Ware bleiben bei vollem Ziel und Wiederbeitritt nachvollziehbar. In Konkurrenzfällen erfolgt jede Umbuchung einmal. Weitere Rezepte und freie Bandnetze erhalten ihre eigene spätere Abnahme.
