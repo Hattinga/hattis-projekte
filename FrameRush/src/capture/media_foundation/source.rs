@@ -629,7 +629,7 @@ fn select_device(
             )
         })
         .collect();
-    let index = match_device(&described, selector).map_err(SourceError::Device)?;
+    let index = match_device(&described, selector).map_err(SourceError::NotFound)?;
     let activate = activates
         .into_iter()
         .nth(index)
@@ -643,7 +643,10 @@ fn select_device(
 /// a friendly name, so `--device 25854` finds "UGREEN 25854". Plain
 /// substring matching would let a mistyped index open whichever device has
 /// that digit somewhere in its USB id.
-fn match_device(devices: &[(String, String)], selector: &DeviceSelector) -> Result<usize, String> {
+pub(super) fn match_device(
+    devices: &[(String, String)],
+    selector: &DeviceSelector,
+) -> Result<usize, String> {
     let list = || {
         if devices.is_empty() {
             return "no video capture devices found".to_string();
@@ -687,14 +690,27 @@ fn match_device(devices: &[(String, String)], selector: &DeviceSelector) -> Resu
                 )),
             }
         }
-        DeviceSelector::Name(pattern) => match by_name(pattern).as_slice() {
-            [index] => Ok(*index),
-            [] => Err(format!("no device matches {pattern:?}; {}", list())),
-            _ => Err(format!(
-                "{pattern:?} matches several devices, use a longer name or the index; {}",
-                list()
-            )),
-        },
+        DeviceSelector::Name(pattern) => {
+            // A full name (as remembered in the settings) wins over parts of
+            // other names.
+            let exact: Vec<usize> = devices
+                .iter()
+                .enumerate()
+                .filter(|(_, (name, _))| name.eq_ignore_ascii_case(pattern.trim()))
+                .map(|(i, _)| i)
+                .collect();
+            if let [index] = exact.as_slice() {
+                return Ok(*index);
+            }
+            match by_name(pattern).as_slice() {
+                [index] => Ok(*index),
+                [] => Err(format!("no device matches {pattern:?}; {}", list())),
+                _ => Err(format!(
+                    "{pattern:?} matches several devices, use a longer name or the index; {}",
+                    list()
+                )),
+            }
+        }
     }
 }
 
@@ -740,6 +756,7 @@ fn match_native_type(
         }
     };
     let index = match selector {
+        ModeSelector::Best => best_nv12_mode(types).ok_or_else(nv12_list)?,
         ModeSelector::Index(index) => {
             let index = *index as usize;
             if index >= types.len() {
@@ -780,6 +797,31 @@ fn match_native_type(
         ));
     }
     Ok(index)
+}
+
+/// Highest frame rate (counted up to 60 fps: smooth 60 matters more than
+/// resolution, but 120 fps is no reason to drop to a small picture), then
+/// the largest picture; the first reported mode wins a tie.
+fn best_nv12_mode(types: &[MediaTypeInfo]) -> Option<usize> {
+    let mut best: Option<(usize, (u64, u64))> = None;
+    for (index, t) in types.iter().enumerate() {
+        let (Some((w, h)), Some((n, d))) = (t.frame_size, t.frame_rate) else {
+            continue;
+        };
+        if t.subtype != Some(MFVideoFormat_NV12)
+            || d == 0
+            || PixelFormat::Nv12.frame_len(w, h).is_none()
+        {
+            continue;
+        }
+        // Millihertz, capped at 60 Hz.
+        let fps = (u64::from(n) * 1000 / u64::from(d)).min(60_000);
+        let key = (fps, u64::from(w) * u64::from(h));
+        if best.is_none_or(|(_, best_key)| key > best_key) {
+            best = Some((index, key));
+        }
+    }
+    best.map(|(index, _)| index)
 }
 
 fn short_mode(t: &MediaTypeInfo) -> String {
@@ -1178,7 +1220,12 @@ fn device_error(context: &str, err: &windows::core::Error) -> SourceError {
     } else {
         ""
     };
-    SourceError::Device(format!("{context}: {err}{hint}"))
+    let message = format!("{context}: {err}{hint}");
+    if code == MF_E_HW_MFT_FAILED_START_STREAMING || code == MF_E_VIDEO_RECORDING_DEVICE_PREEMPTED {
+        SourceError::Busy(message)
+    } else {
+        SourceError::Device(message)
+    }
 }
 
 impl From<windows::core::Error> for SourceError {
@@ -1341,6 +1388,29 @@ mod tests {
     }
 
     #[test]
+    fn best_mode_prefers_60_fps_then_size() {
+        use windows::Win32::Media::MediaFoundation::{MFVideoFormat_MJPG, MFVideoFormat_YUY2};
+        // Shaped like the UGREEN 25854 list (excerpt).
+        let card = [
+            info(MFVideoFormat_NV12, 3840, 2160, 30),
+            info(MFVideoFormat_MJPG, 1920, 1080, 60),
+            info(MFVideoFormat_NV12, 1280, 720, 60),
+            info(MFVideoFormat_NV12, 1920, 1080, 60),
+            info(MFVideoFormat_NV12, 1920, 1080, 50),
+            info(MFVideoFormat_YUY2, 640, 480, 60),
+        ];
+        assert_eq!(match_native_type(&card, &ModeSelector::Best, false), Ok(3));
+        // 120 fps counts as 60: the larger picture wins.
+        let fast = [
+            info(MFVideoFormat_NV12, 1280, 720, 120),
+            info(MFVideoFormat_NV12, 1920, 1080, 60),
+        ];
+        assert_eq!(best_nv12_mode(&fast), Some(1));
+        let no_nv12 = [info(MFVideoFormat_YUY2, 640, 480, 30)];
+        assert!(match_native_type(&no_nv12, &ModeSelector::Best, false).is_err());
+    }
+
+    #[test]
     fn device_selection() {
         let devices = vec![
             (
@@ -1365,6 +1435,13 @@ mod tests {
         assert!(match_device(&devices, &DeviceSelector::Index(505)).is_err());
         assert!(match_device(&devices, &DeviceSelector::Index(50)).is_err());
         assert_eq!(match_device(&devices, &name("c505")), Ok(1));
+        // A full name beats a substring hit in another name.
+        let similar = vec![
+            ("Capture".to_string(), "a".to_string()),
+            ("Capture 2".to_string(), "b".to_string()),
+        ];
+        assert_eq!(match_device(&similar, &name("capture")), Ok(0));
+        assert!(match_device(&similar, &name("Capt")).is_err());
         assert_eq!(match_device(&devices, &name("VID_2B89")), Ok(2));
         assert_eq!(match_device(&devices, &DeviceSelector::Index(0)), Ok(0));
         assert!(

@@ -1,20 +1,79 @@
-//! `--probe`: headless capture diagnostics for one device and mode.
+//! `--probe` and `--probe-audio`: headless diagnostics for one device.
 //!
-//! Opens the device exactly like the viewer does, reads frames for a fixed
-//! time without a window and prints what was negotiated and measured: every
-//! attribute of the current media type, the buffer layout, frame counts and
-//! intervals, and the value ranges of the last frame (useful to tell limited
-//! from full range). All timing is software timing of this process.
+//! `--probe` opens the device exactly like the viewer does, reads frames for
+//! a fixed time without a window and prints what was negotiated and
+//! measured: every attribute of the current media type, the buffer layout,
+//! frame counts and intervals, and the value ranges of the last frame
+//! (useful to tell limited from full range). All timing is software timing
+//! of this process.
+//!
+//! `--probe-audio` plays the device's audio like the viewer does and prints
+//! the audio thread's status once per second.
 
 use std::sync::mpsc;
 use std::thread;
 use std::time::{Duration, Instant};
 
-use crate::capture::media_foundation::{MediaFoundationSource, ReaderOptions};
+use crate::audio::{AudioHandle, AudioOptions};
+use crate::capture::media_foundation::{MediaFoundationSource, ReaderOptions, device_name};
 use crate::capture::{Frame, PixelFormat, STOP_TIMEOUT, SourceError, VideoSource};
-use crate::cli::ProbeConfig;
+use crate::cli::{AudioProbeConfig, ProbeConfig};
 use crate::error::AppError;
 use crate::metrics::DurationStats;
+
+/// Plays the device's audio for the configured time and prints its status.
+pub fn run_audio(config: &AudioProbeConfig) -> Result<(), AppError> {
+    let name =
+        device_name(&config.device).map_err(|e| AppError::Source(SourceError::NotFound(e)))?;
+    println!("video device  {name}");
+    println!(
+        "output        {}",
+        config.output.as_deref().unwrap_or("Windows default")
+    );
+    println!(
+        "playing for {:.1} s at full volume ...\n",
+        config.duration.as_secs_f64()
+    );
+    let mut audio = AudioHandle::start(AudioOptions {
+        video_device: name,
+        output: config.output.clone(),
+        volume: 100,
+        muted: false,
+    })
+    .map_err(|e| AppError::DeviceProbe(format!("cannot start the audio thread: {e}")))?;
+    let end = Instant::now() + config.duration;
+    let mut last = None;
+    while Instant::now() < end {
+        thread::sleep(Duration::from_secs(1).min(end.saturating_duration_since(Instant::now())));
+        let s = audio.status();
+        println!(
+            "{:<70} buffer {:>5.1} ms  underruns {}  dropped {}  repeated {}  trimmed {}",
+            format!("{:?}", s.state),
+            s.buffer_ms,
+            s.stats.underruns,
+            s.stats.dropped,
+            s.stats.inserted,
+            s.stats.trimmed
+        );
+        last = Some(s);
+    }
+    let stopped = audio.stop();
+    println!(
+        "\naudio thread {}",
+        if stopped {
+            "stopped"
+        } else {
+            "did NOT stop within 2 s"
+        }
+    );
+    match last.map(|s| s.state) {
+        Some(crate::audio::AudioState::Playing { .. }) => Ok(()),
+        Some(state) => Err(AppError::DeviceProbe(format!(
+            "audio not playing: {state:?}"
+        ))),
+        None => Ok(()),
+    }
+}
 
 /// Extra time for opening the device on top of the capture duration.
 const OPEN_ALLOWANCE: Duration = Duration::from_secs(10);

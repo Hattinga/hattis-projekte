@@ -188,6 +188,9 @@ impl fmt::Display for DeviceSelector {
 /// Which of a device's reported media types to use.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ModeSelector {
+    /// The best NV12 mode the device reports: highest frame rate up to 60,
+    /// then the largest picture (1920×1080 @ 60 on the UGREEN 25854).
+    Best,
     /// Index into the native media types, as `--list-devices` prints them.
     Index(u32),
     /// Exactly this size, pixel format and frame rate.
@@ -197,6 +200,7 @@ pub enum ModeSelector {
 impl fmt::Display for ModeSelector {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Best => write!(f, "best NV12 mode"),
             Self::Index(i) => write!(f, "mode #{i}"),
             Self::Match(mode) => write!(f, "{mode}"),
         }
@@ -231,7 +235,12 @@ pub struct Frame {
 pub enum SourceError {
     /// The requested mode cannot be produced by this source.
     UnsupportedMode(String),
-    /// The device could not be found, opened or read (unplugged, in use,
+    /// No device matches the selection (not plugged in?). Cheap to retry:
+    /// nothing was opened.
+    NotFound(String),
+    /// The device is held by another app or a stuck process.
+    Busy(String),
+    /// The device could not be opened or read (unplugged while running,
     /// driver error).
     Device(String),
 }
@@ -240,6 +249,8 @@ impl fmt::Display for SourceError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::UnsupportedMode(msg) => write!(f, "unsupported video mode: {msg}"),
+            Self::NotFound(msg) => write!(f, "capture device not found: {msg}"),
+            Self::Busy(msg) => write!(f, "capture device busy: {msg}"),
             Self::Device(msg) => write!(f, "capture device: {msg}"),
         }
     }
@@ -324,11 +335,40 @@ impl CaptureHandle {
             }
         }
     }
+
+    /// Asks the capture thread to stop without waiting for it.
+    pub fn request_stop(&self) {
+        self.stop.store(true, Ordering::Relaxed);
+    }
+
+    /// Joins the thread if it has finished; never blocks. Returns whether it
+    /// is gone.
+    pub fn try_join(&mut self) -> bool {
+        if self.thread.is_none() {
+            return true;
+        }
+        match self.finished.try_recv() {
+            Err(mpsc::TryRecvError::Empty) => false,
+            Ok(()) | Err(mpsc::TryRecvError::Disconnected) => {
+                if let Some(thread) = self.thread.take()
+                    && thread.join().is_err()
+                {
+                    tracing::error!("capture thread panicked");
+                }
+                true
+            }
+        }
+    }
 }
 
 impl Drop for CaptureHandle {
+    /// Never blocks: a thread that has not finished is asked to stop and
+    /// left behind. Use [`CaptureHandle::stop`] to wait (bounded).
     fn drop(&mut self) {
-        let _ = self.stop();
+        self.request_stop();
+        if !self.try_join() {
+            tracing::debug!("capture thread still closing its device; detached");
+        }
     }
 }
 
