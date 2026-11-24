@@ -1,8 +1,12 @@
 --!strict
--- Run directly in a fresh Studio Play Server without LineDemo. Two temporary, independently active workshops.
+-- Run directly in Studio or via the dedicated device QA bootstrap.
 assert(game.PlaceId == 79033653140107 and game.GameId == 10776116608)
 local runService = game:GetService("RunService")
-assert(runService:IsStudio() and runService:IsServer() and runService:IsRunning())
+local players = game:GetService("Players")
+local testerMarker = if script and script:IsA("ModuleScript") then script:FindFirstChild("Tester") else nil
+local tester = if testerMarker and testerMarker:IsA("ObjectValue") then testerMarker.Value else nil
+local deviceTester = if tester and tester:IsA("Player") and tester.Parent == players then tester else nil
+assert(runService:IsServer() and runService:IsRunning() and (runService:IsStudio() or deviceTester))
 assert(not workspace:FindFirstChild("P0909WorkshopLoad") and not workspace:FindFirstChild("P0509LineDemo"),
 	"Start a fresh Play Server")
 local factory = game:GetService("ServerScriptService").Factory
@@ -10,6 +14,7 @@ local State = require(factory.State)
 local Recipe = require(factory.Recipe)
 local Persistence = require(factory.Persistence)
 local Transfers = require(factory.Transfers)
+local HandMoves = require(factory.HandMoves)
 local Workers = require(factory.Workers)
 local WorkerRoute = require(factory.WorkerRoute)
 local WorkerShift = require(factory.WorkerShift)
@@ -19,11 +24,15 @@ local BeltShift = require(factory.BeltShift)
 local Line = require(factory.Line)
 local LineView = require(factory.LineView)
 
-local lease = 120
+local lease = if deviceTester then 600 else 120
 local hallTemplate = workspace.CityGreybox.Buildings.Tischlerei_West :: Model
 local lineTemplate = workspace.P02Line :: Model
 local test = Instance.new("Folder")
 test.Name = "P0909WorkshopLoad"
+if deviceTester then
+	test:SetAttribute("TesterUserId", deviceTester.UserId)
+	test:SetAttribute("Phase", "Aufbau")
+end
 test.Parent = workspace
 local hand = "Load.Hand"
 local function stock(controller: Persistence.Controller): State.Profile
@@ -105,9 +114,10 @@ local function refresh(plot: Workshop, now: number, clock: number)
 	BeltShift.place(plot.belt, clock, state)
 end
 
-local function waitFor(label: string, predicate: () -> boolean)
-	local deadline = os.clock() + 22
+local function waitFor(label: string, predicate: () -> boolean, seconds: number?)
+	local deadline = os.clock() + (seconds or 22)
 	repeat
+		assert(not deviceTester or deviceTester.Parent == players, "Tester left")
 		if predicate() then return end
 		runService.Heartbeat:Wait()
 	until os.clock() >= deadline
@@ -143,35 +153,150 @@ local function unblock(plot: Workshop)
 	assert(plot.controller.save(current, lease).ok)
 end
 
+local function deviceControls(player: Player, plot: Workshop)
+	local stations = plot.root.P02Line.Stations
+	local output, input = "Montage.Output", "Finish.Input"
+	local endpoints: {[string]: HandMoves.Endpoint} = {
+		[output] = {point = plot.places.points[output], stand = stations.Montage.Standpoints.Output},
+		[input] = {point = plot.places.points[input], stand = stations.Finish.Standpoints.Input},
+	}
+	local function position(character: Model)
+		local root = character:WaitForChild("HumanoidRootPart", 15)
+		local humanoid = character:WaitForChild("Humanoid", 15)
+		if not root or not root:IsA("BasePart") or not humanoid or not humanoid:IsA("Humanoid")
+			or player.Character ~= character then return end
+		local stand = assert(endpoints[output].stand)
+		local toward = endpoints[output].point.WorldPosition
+		local edge = ((toward - stand.Position) * Vector3.new(1, 0, 1)).Unit * 2.25
+		local at = stand.Position + edge + Vector3.new(0, humanoid.HipHeight + root.Size.Y / 2, 0)
+		character:PivotTo(CFrame.lookAt(at, Vector3.new(toward.X, at.Y, toward.Z)))
+		plot.places.carriers = {[State.FIRST_WORKER.carrier] = plot.worker.rig.root, [hand] = root}
+		local wares = plot.root:FindFirstChild("Wares")
+		if wares and stock(plot.controller).batches.BlockingOutput.locationId == hand then
+			local oldView = wares:FindFirstChild("BlockingOutput")
+			if oldView then oldView:Destroy() end
+			plot.revision = -1
+		end
+	end
+	local respawn = player.CharacterAdded:Connect(position)
+	position(assert(player.Character))
+
+	local function prompt(name: string, target: string, action: string, object: string): ProximityPrompt
+		local result = Instance.new("ProximityPrompt")
+		result.Name, result.ActionText, result.ObjectText = name, action, object
+		result.MaxActivationDistance, result.ClickablePrompt = 6, true
+		result.Enabled = false
+		result.Parent = endpoints[target].point
+		return result
+	end
+	local start = prompt("DeviceStart", output, "Test starten", "Förderband")
+	local take = prompt("DeviceTake", output, "Aufnehmen", "Rohhocker am Montageausgang")
+	local put = prompt("DevicePut", input, "Ablegen", "Finish-Eingang")
+	local started, finished = false, false
+	local function authorized(user: Player, enabled: boolean): boolean
+		return enabled and user == player and user.UserId == plot.owner and user.Parent == players
+	end
+	local function move(location: string, direction: "Take" | "Put"): boolean
+		local profile = assert(plot.controller.snapshot().confirmed).data
+		local store = Transfers.new(profile.state)
+		local outcome = HandMoves.interact(store, player, true, hand, endpoints, location, direction,
+			"device/" .. direction, os.time(), nil)
+		if not outcome.ok then
+			test:SetAttribute("Notice", outcome.message)
+			return false
+		end
+		profile.state = store.profile
+		local saved = plot.controller.save(profile, lease)
+		test:SetAttribute("Notice", if saved.ok then nil else saved.message)
+		return saved.ok
+	end
+	start.Triggered:Connect(function(user)
+		if not authorized(user, start.Enabled) then return end
+		local problem = HandMoves.checkReach(user, endpoints[output])
+		if problem then test:SetAttribute("Notice", problem.message) return end
+		test:SetAttribute("Notice", nil)
+		start.Enabled, started = false, true
+	end)
+	take.Triggered:Connect(function(user)
+		if authorized(user, take.Enabled) and move(output, "Take") then
+			take.Enabled, put.Enabled = false, true
+			test:SetAttribute("Phase", "Wiederanlauf")
+		end
+	end)
+	put.Triggered:Connect(function(user)
+		if authorized(user, put.Enabled) and move(input, "Put") then
+			put.Enabled, finished = false, true
+		end
+	end)
+	local function cleanup()
+		respawn:Disconnect()
+		start:Destroy()
+		take:Destroy()
+		put:Destroy()
+	end
+	return {
+		start = function()
+			test:SetAttribute("Phase", "Bereit")
+			start.Enabled = true
+			waitFor("tester starts the load", function() return started end, 180)
+			test:SetAttribute("Phase", "Band läuft")
+		end,
+		unblock = function()
+			test:SetAttribute("Phase", "Freiräumen")
+			take.Enabled = true
+			waitFor("tester clears the assembly output", function() return finished end, 180)
+		end,
+		cleanup = cleanup,
+	}
+end
+
 local first = workshop("A", 101, Vector3.new(0, 48, 0), false)
-local second = workshop("B", 102, Vector3.new(76, 48, 0), true)
+local second = workshop("B", if deviceTester then deviceTester.UserId else 102, Vector3.new(76, 48, 0), true)
 local plots = {first, second}
-local active = true
-for _, plot in plots do
-	task.spawn(function()
-		while active do
-			WorkerShift.tick(plot.worker, plot.controller, lease)
-			task.wait(0.25)
+local controls = if deviceTester then deviceControls(deviceTester, second) else nil
+local active = false
+local frames: RBXScriptConnection? = nil
+
+local function startTicks()
+	active = true
+	for _, plot in plots do
+		task.spawn(function()
+			while active do
+				WorkerShift.tick(plot.worker, plot.controller, lease)
+				task.wait(0.25)
+			end
+		end)
+	end
+	local accumulated = 0.25
+	frames = runService.Heartbeat:Connect(function(dt)
+		accumulated += dt
+		local now, clock = os.time(), os.clock()
+		if accumulated >= 0.25 then
+			accumulated = 0
+			for _, plot in plots do
+				Line.tick(plot.controller, now, lease)
+				BeltShift.tick(plot.belt, plot.controller, lease)
+				refresh(plot, now, clock)
+			end
+		else
+			for _, plot in plots do BeltShift.place(plot.belt, clock) end
+		end
+		if controls then
+			local exit = second.belt.exit
+			local sample = test:GetAttribute("SamplePhase")
+			local moving = exit and exit.batchId == "Kit" and exit.started and clock < exit.started + BeltShift.EXIT_SECONDS
+			if moving then
+				if sample ~= "Bandfahrt" then test:SetAttribute("SamplePhase", "Bandfahrt") end
+			elseif sample == "Bandfahrt" then
+				test:SetAttribute("SamplePhase", nil)
+			end
 		end
 	end)
 end
-local accumulated = 0.25
-local frames = runService.Heartbeat:Connect(function(dt)
-	accumulated += dt
-	local now, clock = os.time(), os.clock()
-	if accumulated >= 0.25 then
-		accumulated = 0
-		for _, plot in plots do
-			Line.tick(plot.controller, now, lease)
-			BeltShift.tick(plot.belt, plot.controller, lease)
-			refresh(plot, now, clock)
-		end
-	else
-		for _, plot in plots do BeltShift.place(plot.belt, clock) end
-	end
-end)
 
 local ok, result = xpcall(function()
+	if controls then controls.start() end
+	startTicks()
 	local movedBy = 0
 	local horizontal = Vector3.new(1, 0, 1)
 	waitFor("A moving while B waits at the buffer", function()
@@ -186,16 +311,25 @@ local ok, result = xpcall(function()
 	assert(held.batches.Kit.locationId == "Band.First" and held.batches.Wood.locationId == "Saege.Input")
 	assert(second.root.Signs.Status_Belt:GetAttribute("StatusCode") == "BACKLOG"
 		and second.root.Signs.Status_Saege:GetAttribute("StatusCode") == "BACKLOG")
+	if controls then
+		test:SetAttribute("Phase", "Rückstau")
+		test:SetAttribute("SamplePhase", "Rückstau")
+	end
 	local holdingSince = os.clock()
 	task.wait(3)
+	if controls then test:SetAttribute("SamplePhase", nil) end
 	local heldAgain = stock(second.controller)
 	assert(heldAgain.batches.Kit.locationId == "Band.First" and heldAgain.batches.Wood.locationId == "Saege.Input"
 		and heldAgain.reservations["Saege.Output"].batchId == "Kit" and deliveries(heldAgain, "Kit", "Montage.Input") == 0)
 	assert(deliveries(stock(first.controller), "Kit", "Montage.Input") == 1)
 	local holdSeconds = os.clock() - holdingSince
-	local firstRevision = stock(first.controller).revision
-	unblock(second)
-	assert(stock(first.controller).revision == firstRevision, "Opening B affected A")
+	if controls then
+		controls.unblock()
+	else
+		local firstRevision = stock(first.controller).revision
+		unblock(second)
+		assert(stock(first.controller).revision == firstRevision, "Opening B affected A")
+	end
 	waitFor("both independent kit, stool and saw cycles", function()
 		for _, plot in plots do
 			local state = stock(plot.controller)
@@ -216,7 +350,12 @@ local ok, result = xpcall(function()
 		motionWhileBacklogStuds = movedBy, backlogSeconds = holdSeconds}
 end, debug.traceback)
 active = false
-frames:Disconnect()
+if frames then frames:Disconnect() end
 for _, plot in plots do WorkerShift.stop(plot.worker) end
+if controls then
+	test:SetAttribute("SamplePhase", nil)
+	controls.cleanup()
+end
 assert(ok, result)
+if deviceTester then test:SetAttribute("Phase", "Fertig") end
 return result
