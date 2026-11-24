@@ -20,7 +20,7 @@
 use std::thread;
 use std::time::Instant;
 
-use super::{Frame, PixelFormat, SourceError, SourceInfo, VideoMode, VideoSource};
+use super::{ColorSpace, Frame, PixelFormat, SourceError, SourceInfo, VideoMode, VideoSource};
 use crate::font;
 
 /// 75 % colour bars (white, yellow, cyan, green, magenta, red, blue, black).
@@ -165,7 +165,7 @@ impl VideoSource for SyntheticSource {
         &self.info
     }
 
-    fn next_frame(&mut self) -> Result<Frame, SourceError> {
+    fn next_frame(&mut self) -> Result<Option<Frame>, SourceError> {
         let rate = self.info.mode.frame_rate;
         let start = *self.start.get_or_insert_with(Instant::now);
         let index = self.next_index;
@@ -183,14 +183,16 @@ impl VideoSource for SyntheticSource {
         let current_slot = rate.frame_at(ready_at - start);
         self.next_index = (index + 1).max(current_slot + 1);
 
-        Ok(Frame {
+        Ok(Some(Frame {
             sequence: index,
             width: self.info.mode.width,
             height: self.info.mode.height,
             format: self.info.mode.format,
             data,
+            // Matches rgb_to_ycbcr709 below.
+            color: ColorSpace::BT709_LIMITED,
             ready_at,
-        })
+        }))
     }
 }
 
@@ -416,10 +418,16 @@ mod tests {
             frame_rate: FrameRate::new(fps, 1).unwrap(),
         })
         .unwrap();
-        let first = source.next_frame().unwrap();
+        let first = source
+            .next_frame()
+            .unwrap()
+            .expect("synthetic always delivers");
         let mut last = first.sequence;
         for _ in 0..9 {
-            let frame = source.next_frame().unwrap();
+            let frame = source
+                .next_frame()
+                .unwrap()
+                .expect("synthetic always delivers");
             assert!(frame.sequence > last);
             last = frame.sequence;
         }

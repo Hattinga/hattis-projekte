@@ -1,7 +1,8 @@
 //! FrameRush: low-latency capture viewer for Windows.
 //!
-//! Current state (milestone M0): synthetic video source, GPU viewer and
-//! Media Foundation device listing. See README.md and docs/ARCHITECTURE.md.
+//! Current state (milestone M2): GPU viewer for a synthetic test pattern or a
+//! Media Foundation capture device (NV12), device listing and a headless
+//! capture probe. See README.md and docs/ARCHITECTURE.md.
 
 mod app;
 mod capture;
@@ -9,6 +10,8 @@ mod cli;
 mod error;
 mod font;
 mod metrics;
+#[cfg(windows)]
+mod probe;
 mod render;
 
 use std::process::ExitCode;
@@ -40,11 +43,31 @@ fn run() -> Result<(), AppError> {
             Ok(())
         }
         Command::ListDevices => list_devices(),
+        Command::Probe(config) => probe(&config),
         Command::Run(config) => {
-            tracing::info!(mode = %config.mode, present_mode = config.present_mode.name(), "starting viewer");
+            match &config.source {
+                cli::SourceChoice::Synthetic => {
+                    tracing::info!(mode = %config.mode, present_mode = config.present_mode.name(), "starting viewer, synthetic source");
+                }
+                cli::SourceChoice::Device { device, mode } => {
+                    tracing::info!(%device, %mode, present_mode = config.present_mode.name(), "starting viewer, capture device");
+                }
+            }
             app::run(config)
         }
     }
+}
+
+#[cfg(windows)]
+fn probe(config: &cli::ProbeConfig) -> Result<(), AppError> {
+    probe::run(config)
+}
+
+#[cfg(not(windows))]
+fn probe(_config: &cli::ProbeConfig) -> Result<(), AppError> {
+    Err(AppError::DeviceProbe(
+        "Media Foundation is only available on Windows".into(),
+    ))
 }
 
 #[cfg(windows)]
@@ -80,9 +103,8 @@ fn list_devices() -> Result<(), AppError> {
         }
         println!();
     }
-    println!(
-        "These are the formats the driver *reports*; capturing in them is not implemented or verified yet."
-    );
+    println!("These are the formats the driver *reports*. FrameRush captures NV12 modes");
+    println!("(--device N --mode M); --probe shows what a mode actually delivers.");
     Ok(())
 }
 
