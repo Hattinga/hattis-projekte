@@ -1,5 +1,11 @@
 # Hardware-Befund: UGREEN-Karte, Formatliste (2026-11-23)
 
+> **Korrektur vom 2026-11-24:** Das hier beschriebene Gerät „UGREEN Camera
+> 4K“ (`VID_EBA4&PID_6579`) ist eine **Webcam**, nicht die Capture-Karte.
+> Die Karte ist „UGREEN 25854“ (`VID_2B89&PID_5854`), siehe
+> [hardware-probe-2026-11-24.md](hardware-probe-2026-11-24.md). Der Text
+> unten bleibt als Protokoll unverändert.
+
 Ausgabe von `framerush --list-devices` auf dem Entwicklungs-PC (Windows 11,
 i7-14700K, RTX 5060 Ti). Die Karte steckte am USB, ob ein HDMI-Signal anlag,
 ist nicht festgehalten.

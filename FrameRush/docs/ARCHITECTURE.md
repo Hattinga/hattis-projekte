@@ -1,6 +1,8 @@
 # FrameRush: Architektur
 
-Stand: Meilenstein M0, Prototyp mit synthetischer Quelle (2026-11-23).
+Stand: Meilenstein M2 (2026-11-24). Live-Vorschau von der UGREEN-Karte
+(NV12 1080p60) über Media Foundation läuft; die synthetische Quelle bleibt
+für Tests ohne Karte.
 
 ## Überblick
 
@@ -31,12 +33,14 @@ verworfen statt gepuffert.
 | Datei | Aufgabe |
 |---|---|
 | `src/main.rs` | Logging, CLI-Auswertung, `--list-devices` |
+| `src/probe.rs` | `--probe`: Gerät ohne Fenster öffnen, Medientyp, Puffer, Zeiten, Wertebereiche |
 | `src/cli.rs` | Optionen (handgeschrieben, wenige Flags), mit Tests |
 | `src/app.rs` | winit-`ApplicationHandler`: Fenster, Tasten, Weckrufe, Statistik-Takt |
 | `src/capture/mod.rs` | `Frame`, `PixelFormat`, `VideoMode`, `VideoSource`-Trait, Capture-Thread |
 | `src/capture/mailbox.rs` | Latest-Frame-Mailbox mit Weck-Vertrag, mit Tests |
 | `src/capture/synthetic.rs` | synthetische Quelle mit Testbild und Takt, mit Tests |
-| `src/capture/media_foundation.rs` | MF-Geräte und gemeldete Medientypen auflisten, nur lesend |
+| `src/capture/media_foundation.rs` | MF-Geräte, gemeldete Medientypen und alle Attribute auflisten, COM/MF-Sitzung |
+| `src/capture/media_foundation/source.rs` | `MediaFoundationSource`: asynchroner Source Reader, NV12-Kopie, Farbraum, mit Tests |
 | `src/render/mod.rs` | wgpu/DX12: Surface, Pipelines, Upload, Present, Letterbox |
 | `src/render/*.wgsl` | Fullscreen-Dreieck, BGRA- und NV12-Shader, Overlay |
 | `src/metrics.rs` | FPS, Drops, Software-Zeiten |
@@ -117,35 +121,52 @@ wgpu ist ohne Vulkan, GL und Metal gebaut. Die Gründe:
   sichtbar macht, eine Frame-Uhr aus 60 Zellen (`frame % 60`), 75-%-Farbbalken
   und ein Graukeil für die YUV-Prüfung.
 
-## Media Foundation: was da ist und was fehlt
+## Media Foundation
 
-**Vorhanden** (`--list-devices`, nur lesend):
+Stand 2026-11-24: Live-Vorschau mit der UGREEN 25854 in NV12 1080p60 geprüft
+(siehe
+[hardware-probe-2026-11-24.md](hardware-probe-2026-11-24.md)).
+
+**Geräte auflisten** (`--list-devices`, `media_foundation.rs`):
 
 - `MFEnumDeviceSources` mit Video-Capture-Filter: Name und symbolischer Link.
 - Für jedes Gerät `ActivateObject` → `IMFSourceReader` →
   `GetNativeMediaType` bis `MF_E_NO_MORE_TYPES`: Subtype, Größe, Framerate.
-- Läuft auf einem eigenen Thread mit COM im MTA. Der winit-Thread
-  initialisiert OLE als STA und darf nicht umgeschaltet werden.
-- Erster Befund mit der echten Karte:
-  [hardware-probe-2026-11-23.md](hardware-probe-2026-11-23.md).
+- `dump_attributes` gibt alle Attribute eines Medientyps aus, unbekannte als
+  GUID.
+- Jeder Thread mit MF-Objekten initialisiert COM im MTA (`MfSession`). Der
+  winit-Thread initialisiert OLE als STA und darf nicht umgeschaltet werden.
 
-**Bewusst noch nicht implementiert** (M2, braucht die echte Karte zum
-Prüfen):
+**Aufnehmen** (`media_foundation/source.rs`, `MediaFoundationSource`):
 
-- `MediaFoundationSource: VideoSource`. Sie wird in der `SourceFactory` auf
-  dem Capture-Thread erzeugt, das ist schon so verdrahtet, weil die
+- Wird in der `SourceFactory` auf dem Capture-Thread erzeugt, weil die
   windows-rs-COM-Typen nicht `Send` sind.
-- Medientyp wählen: einen der *gemeldeten* nativen Typen mit
-  `SetCurrentMediaType`, bevorzugt NV12, damit der vorhandene Renderpfad
-  passt. Nichts davon wird vorab angenommen.
-- `ReadSample` lesen, Puffer mit `IMF2DBuffer::Lock2D` (Stride oder Padding)
-  in das dichte `Frame`-Layout kopieren oder Stride im Renderer unterstützen.
-- Matrix und Range aus `MF_MT_YUV_MATRIX` und `MF_MT_VIDEO_NOMINAL_RANGE`
-  lesen. Der Shader nimmt im Moment fest BT.709 Limited an.
-- Stoppen: `ReadSample` blockiert. Beenden über `IMFMediaSource::Shutdown`
-  oder den asynchronen Callback-Modus.
-- Abziehen und Wiederanstecken, Gerät belegt, Standby: Fehler aus
-  `ReadSample` → `CaptureEvent::Failed` (gibt es schon) → neu öffnen.
+- Gerät per Nummer oder Namensteil (`DeviceSelector`), Modus per Nummer oder
+  passend zu Größe, Format und Bildrate (`ModeSelector`). Nur gemeldete
+  native Typen, `MF_READWRITE_DISABLE_CONVERTERS`; der Viewer nimmt nur NV12.
+- `IMFSourceReader` im asynchronen Modus. Es ist immer genau ein
+  `ReadSample` unterwegs. `next_frame` wartet höchstens 200 ms und gibt
+  sonst `Ok(None)` zurück, damit ein Stopp auch ohne Signal ankommt.
+- Puffer: `IMF2DBuffer2::Lock2DSize` → Pitch und Länge; die CbCr-Ebene liegt
+  hinter den *allokierten* Y-Zeilen (z. B. 1088 statt 1080), zeilenweise in
+  das dichte `Frame`-Layout kopiert. Ohne 2D-Schnittstelle:
+  `MF_MT_DEFAULT_STRIDE`.
+- Farbe: `MF_MT_YUV_MATRIX` und `MF_MT_VIDEO_NOMINAL_RANGE` →
+  `Frame::color` → Uniform im NV12-Shader (BT.601/BT.709, Limited/Full).
+  Fehlen die Angaben: BT.601 bis 576 Zeilen, sonst BT.709, Limited Range.
+- Sequenznummern aus den Zeitstempeln der Samples, damit Lücken als
+  `DROPS SOURCE` sichtbar werden.
+- Abbau: `Flush` → auf `OnFlush` warten → Reader freigeben → Quelle
+  `Shutdown` → `MFShutdown`. Das Freigeben des Readers hing, solange
+  Kaspersky den Stream sperrte (siehe Befund). Deshalb wartet
+  `CaptureHandle::stop` höchstens 2 s und lässt den Thread dann zurück,
+  statt das Fenster einzufrieren.
+- `--probe` öffnet das Gerät genauso, aber ohne Fenster, auf einem eigenen
+  Thread mit begrenztem Warten. Es zählt auch YUY2 und MJPG.
+
+**Offen:** Neu-Öffnen nach Abziehen, Belegung oder Standby (heute: Fehler
+im Overlay); Latenzvergleich NV12 (vermutlich von Windows aus MJPG
+dekodiert) gegen MJPG mit eigener Dekodierung (M3).
 
 ## Fehler und Beenden
 
@@ -153,18 +174,27 @@ Prüfen):
   Meldung und Exit-Code 1.
 - Fehler der Quelle zur Laufzeit kommen als `CaptureEvent::Failed` an. Das
   Fenster bleibt offen und zeigt den Fehler im Overlay.
-- Beim Schließen stoppt `exiting()` den Capture-Thread und wartet auf ihn
-  (`join`), danach steht die Endstatistik im Log.
+- Beim Schließen stoppt `exiting()` den Capture-Thread und wartet höchstens
+  2 s auf ihn (`CaptureHandle::stop`), danach steht die Endstatistik im Log.
+  Hängt das Gerät beim Schließen, bleibt der Thread zurück, und im Log steht
+  ein Fehler. Getestet mit einer Quelle, deren Abbau absichtlich hängt.
 - Device-Lost der GPU wird nur geloggt. Ein Neuaufbau ist offen (M5).
 
-## Ohne Hardware nicht prüfbar
+## Mit Hardware geprüft (2026-11-24)
 
-- Ob die UGREEN-Karte die gemeldeten Formate (z. B. NV12 1080p60) wirklich
-  liefert, und mit welcher Bildrate, welchem USB-Modus und welcher Latenz
+- NV12 1920×1080 @ 60 von der UGREEN 25854: 60 fps, keine Lücken laut
+  Zeitstempel, Puffer ohne Padding, Farbraum BT.601 Full aus dem Medientyp.
+  Das PS5-Bild sah im Screenshot natürlich aus. Gemessen ist der Farbraum
+  damit nicht.
+- Ohne HDMI-Signal liefert die Karte ihr eigenes „No Signal“-Bild.
+
+## Noch nicht geprüft
+
+- USB-Modus der Karte und ob NV12 wirklich aus MJPG dekodiert wird
 - echte HDMI-zu-Photon-Latenz; dafür braucht es Kamera oder Fotodiode
 - Vergleich mit OBS/PotPlayer unter gleichen Bedingungen
-- Farbmatrix und Range des echten Signals
-- Abziehen und Wiederanstecken, Gerät von einer anderen App belegt, Standby
-  mit laufender Karte
-- Teilen in Discord (Fenster teilen); geht ohne Discord-Sitzung nicht
+- Abziehen und Wiederanstecken während der Aufnahme, Standby mit laufender
+  Karte
+- Betrieb mit eingeschaltetem Kaspersky und einer Ausnahme für FrameRush
+- Teilen in Discord (Fenster teilen)
 - Ton (M4)
