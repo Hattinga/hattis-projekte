@@ -28,7 +28,7 @@
 - [x] **P09-02** Ein definiertes Transportformat und einen sichtbaren Zwischenpuffer festlegen. Quellstation, Band und Zielstation akzeptieren dieselbe Größe und Verarbeitungsstufe.
 - [x] **P09-03** Eine Charge über die gemeinsame Reservierung vom Quellausgang auf den Bandabschnitt und anschließend zum Zieleingang umbuchen.
 - [x] **P09-04** Die sichtbare Bewegung der Charge am verbindlichen Transportzustand ausrichten. Beim Wiederbeitritt den bestätigten Band- oder Pufferzustand wiederherstellen.
-- [ ] **P09-05** Das Band bei vollem Ziel anhalten und nach freiem Platz fortsetzen. Der Stillstand wird bis zur Quelle als kontrollierter Rückstau sichtbar.
+- [x] **P09-05** Das Band bei vollem Ziel anhalten und nach freiem Platz fortsetzen. Der Stillstand wird bis zur Quelle als kontrollierter Rückstau sichtbar.
 - [ ] **P09-06** Den bisherigen Träger nach Übernahme seines Wegs einem anderen vorgesehenen Werkstattweg zuweisen.
 - [ ] **P09-07** Konkurrierende Abholungen durch Spieler, Mitarbeiter und Band mit den zutreffenden Fällen der [Prüfmatrix](../qa/TESTS.md) prüfen.
 - [ ] **P09-08** Nach Bandfreischaltung eine konkrete Betriebsentscheidung wie Lagerausbau, Nachschub oder Verkauf anbieten und beobachten.

@@ -32,6 +32,13 @@ Labels.entries = table.freeze({
 	table.freeze({key = "collect.Karton", en = "COLLECT STOOL CARTON", de = "HOCKERKARTON ABHOLEN"}),
 	table.freeze({key = "store.name", en = "FINISHED STORE", de = "FERTIGLAGER"}),
 	table.freeze({key = "store.full", en = "STORE FULL – FREE A SLOT", de = "FERTIGLAGER VOLL – PLATZ FREIMACHEN"}),
+	-- P09-05 first belt and backlog back to the saw.
+	table.freeze({key = "status.backlog", en = "BACKLOG", de = "RÜCKSTAU"}),
+	table.freeze({key = "status.cause.assembly", en = "ASSEMBLY INPUT FULL", de = "MONTAGE-EINGANG VOLL"}),
+	table.freeze({key = "status.cause.stopped", en = "BELT STOPPED", de = "BAND ANGEHALTEN"}),
+	table.freeze({key = "belt.running", en = "BELT RUNNING", de = "BAND LÄUFT"}),
+	table.freeze({key = "belt.idle", en = "BELT WAITING", de = "BAND WARTET"}),
+	table.freeze({key = "belt.stopped", en = "BELT STOPPED", de = "BAND ANGEHALTEN"}),
 	-- P06-01 buyer drop-off pads.
 	table.freeze({key = "dropoff.dealer", en = "DEALER DROP-OFF", de = "HÄNDLERANNAHME"}),
 	table.freeze({key = "dropoff.private", en = "PRIVATE DROP-OFF", de = "PRIVATANNAHME"}),

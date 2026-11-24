@@ -12,6 +12,9 @@ local COLORS = {
 	OUTPUT_FULL = Color3.fromRGB(255, 176, 80),
 	OUTPUT_RESERVED = Color3.fromRGB(140, 190, 255),
 	INPUT_MISSING = Color3.fromRGB(215, 215, 205),
+	BACKLOG = Color3.fromRGB(255, 120, 90),
+	STOPPED = Color3.fromRGB(215, 215, 205),
+	IDLE = Color3.fromRGB(215, 215, 205),
 }
 
 export type Places = {
@@ -21,6 +24,7 @@ export type Places = {
 	stationPads: {[string]: BasePart}, -- station id -> pad above which the sign floats
 	storeSlots: {string}?,
 	storePad: BasePart?,
+	beltStopped: boolean?, -- the first belt is switched off; a station that waits on it shows the cause
 }
 
 local function folder(parent: Instance, name: string): Folder
@@ -144,10 +148,26 @@ local function setText(label: TextLabel, text: string, localize: boolean)
 	label.Text = text
 end
 
+-- P09-05: the sign above the first belt. It names the state and, while the kit waits, the cause.
+function LineView.syncBelt(root: Instance, state: State.Profile, now: number, adornee: BasePart, stopped: boolean): Line.BeltStatus
+	local status = Line.beltStatus(state, now, stopped)
+	local board, head, detail = sign(folder(root, "Signs"), "Status_Belt", adornee, 6.0)
+	board:SetAttribute("StatusCode", status.code)
+	head.TextColor3 = COLORS[status.code] or Color3.new(1, 1, 1)
+	if status.code == "BACKLOG" then
+		setText(head, Labels.text("status.backlog"), true)
+		setText(detail, Labels.text("status.cause." .. (status.cause :: string)), true)
+	else
+		setText(head, Labels.text(if status.code == "STOPPED" then "belt.stopped" elseif status.code == "RUNNING" then "belt.running" else "belt.idle"), true)
+		setText(detail, "", false)
+	end
+	return status
+end
+
 -- Station and store signs following PRODUCTION feedback; returns the shown status per station.
 function LineView.syncSigns(root: Instance, state: State.Profile, now: number, places: Places): {[string]: Line.Status}
 	local signs = folder(root, "Signs")
-	local statuses = Line.status(state, now)
+	local statuses = Line.status(state, now, places.beltStopped)
 	for stationId, status in statuses do
 		local pad = places.stationPads[stationId]
 		if not pad then continue end
@@ -163,6 +183,9 @@ function LineView.syncSigns(root: Instance, state: State.Profile, now: number, p
 		elseif status.code == "OUTPUT_FULL" then
 			setText(head, Labels.text("status.outputFull"), true)
 			setText(detail, Labels.text("collect." .. status.outputStage), true)
+		elseif status.code == "BACKLOG" then
+			setText(head, Labels.text("status.backlog"), true)
+			setText(detail, Labels.text("status.cause." .. (status.cause :: string)), true)
 		elseif status.code == "OUTPUT_RESERVED" then
 			setText(head, Labels.text("status.transport"), true)
 			setText(detail, Labels.text("status.reserved"), true)

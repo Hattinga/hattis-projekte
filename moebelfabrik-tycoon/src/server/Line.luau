@@ -7,9 +7,11 @@ local Line = {}
 
 export type Event = {stationId: string, code: string, ok: boolean, unknown: boolean, batchId: string?}
 -- RUNNING > OUTPUT_FULL > OUTPUT_RESERVED > READY > INPUT_MISSING (PRODUCTION "Stoppfälle").
+-- BACKLOG (P09-05) replaces OUTPUT_RESERVED while the first belt holds this station's output and cannot move on.
 export type Status = {stationId: string, code: string, inputStage: State.Stage, outputStage: State.Stage,
-	remaining: number?, batchId: string?, inputWaiting: boolean}
+	remaining: number?, batchId: string?, inputWaiting: boolean, cause: string?}
 export type StoreStatus = {used: number, capacity: number, full: boolean}
+export type BeltStatus = {code: string, cause: string?, batchId: string?}
 
 local function confirmedState(controller: Persistence.Controller): any?
 	local snapshot = controller.snapshot()
@@ -46,8 +48,45 @@ function Line.tick(controller: Persistence.Controller, now: number, ttlSeconds: 
 	return events
 end
 
--- Read-only station feedback for signs and HUD; never changes stock.
-function Line.status(state: State.Profile, now: number): {[string]: Status}
+-- P09-05: why the first belt cannot move its kit on: "stopped" (switched off) or "assembly" (the target is taken by
+-- stock, a reservation or another actor's open claim). nil while the belt has an open claim of its own or is free to go.
+local function beltCause(state: State.Profile, now: number, stopped: boolean): string?
+	local belt = State.FIRST_BELT
+	if stopped then return "stopped" end
+	for _, claim in state.claims do
+		if claim.actorKind == "Band" and claim.actorId == belt.carrier and claim.expiresAt > now then return nil end
+	end
+	if State.countAt(state, belt.target) ~= 0 or state.reservations[belt.target] then return "assembly" end
+	for _, claim in state.claims do
+		if claim.expiresAt > now and State.claimTouches(claim, belt.target) then return "assembly" end
+	end
+	return nil
+end
+
+-- Read-only belt feedback for its sign; never changes stock.
+function Line.beltStatus(state: State.Profile, now: number, stopped: boolean): BeltStatus
+	local belt = State.FIRST_BELT
+	local onBelt: string? = nil
+	local waiting: string? = nil
+	for id, batch in state.batches do
+		if batch.locationId == belt.carrier then
+			onBelt = id
+		elseif batch.locationId == belt.source and batch.stage == belt.stage then
+			waiting = id
+		end
+	end
+	if stopped then return {code = "STOPPED", cause = "stopped", batchId = onBelt or waiting} end
+	if onBelt then
+		local cause = beltCause(state, now, false)
+		if cause then return {code = "BACKLOG", cause = cause, batchId = onBelt} end
+		return {code = "RUNNING", batchId = onBelt}
+	end
+	if waiting then return {code = "RUNNING", batchId = waiting} end
+	return {code = "IDLE"}
+end
+
+-- Read-only station feedback for signs and HUD; never changes stock. `beltStopped` marks the first belt as switched off.
+function Line.status(state: State.Profile, now: number, beltStopped: boolean?): {[string]: Status}
 	local result: {[string]: Status} = {}
 	for _, rule in State.STATIONS do
 		local inputBatch: State.Batch? = nil
@@ -67,6 +106,12 @@ function Line.status(state: State.Profile, now: number): {[string]: Status}
 			status.code, status.batchId = "OUTPUT_FULL", outputBatch.id
 		elseif lock then
 			status.code, status.batchId = "OUTPUT_RESERVED", lock.batchId
+			local carried = state.batches[lock.batchId]
+			if rule.output == State.FIRST_BELT.source and lock.kind == "Return" and lock.carrierId == State.FIRST_BELT.carrier
+				and carried and carried.locationId == State.FIRST_BELT.carrier then
+				local cause = beltCause(state, now, beltStopped == true)
+				if cause then status.code, status.cause = "BACKLOG", cause end
+			end
 		elseif waiting then
 			status.code = "READY"
 		end

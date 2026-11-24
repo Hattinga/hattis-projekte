@@ -156,6 +156,10 @@ if logisticsEnabled then
 			profile.batches.TestMontageInput = State.newBatch("TestMontageInput", player.UserId, "Bausatz", WorkerRoute.TARGET)
 			profile.batches.TestMontageOutput = State.newBatch("TestMontageOutput", player.UserId, "Rohhocker", "Montage.Output")
 		end
+		-- P09-05: one wood package waits at the saw so a backlog at the belt can be seen to hold it back.
+		if workspace:GetAttribute("P0905SawStock") == true then
+			profile.batches.TestHolz = State.newBatch("TestHolz", player.UserId, "Holzpaket", "Saege.Input")
+		end
 	end
 else
 	for i = 1, 2 do
@@ -411,7 +415,11 @@ local function render()
 			trips = Trips.new(trips.binding)
 		end
 	end
+	places.beltStopped = permit ~= nil and permit.stopped == true
 	LineView.syncSigns(demo, state, os.time(), places)
+	if beltFixture then
+		LineView.syncBelt(demo, state, os.time(), beltFixture.model.PrimaryPart :: BasePart, places.beltStopped == true)
+	end
 	local held = heldBatch(state)
 	local store = Line.storeStatus(state, storeSlots)
 	local target = if held then nextTarget[held.stage] else nil
@@ -916,7 +924,8 @@ reader.OnInvoke = function(): any
 	local signs = {}
 	for _, board in demo.Signs:GetChildren() do
 		local head = board:FindFirstChild("Head") :: TextLabel
-		signs[board.Name] = {code = board:GetAttribute("StatusCode"), head = head.Text}
+		local detail = board:FindFirstChild("Detail") :: TextLabel
+		signs[board.Name] = {code = board:GetAttribute("StatusCode"), head = head.Text, detail = detail.Text}
 	end
 	local views = {}
 	for _, view in demo.Wares:GetChildren() do
