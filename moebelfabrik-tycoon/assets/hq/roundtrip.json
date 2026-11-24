@@ -1,0 +1,266 @@
+{
+ "Hocker01_Raw.glb": {
+  "ok": true,
+  "size_m": [
+   0.4,
+   0.4,
+   0.45
+  ],
+  "dev_m": 0.0,
+  "floor_z": 0.0,
+  "mesh_parts": 2,
+  "tris": 1848
+ },
+ "Hocker01_Finish.glb": {
+  "ok": true,
+  "size_m": [
+   0.4,
+   0.4,
+   0.45
+  ],
+  "dev_m": 0.0,
+  "floor_z": 0.0,
+  "mesh_parts": 2,
+  "tris": 1848
+ },
+ "Hocker01_Kit.glb": {
+  "ok": true,
+  "size_m": [
+   0.6,
+   0.5,
+   0.1788
+  ],
+  "dev_m": 0.0,
+  "floor_z": 0.0,
+  "mesh_parts": 4,
+  "tris": 2052
+ },
+ "Holzpaket01.glb": {
+  "ok": true,
+  "size_m": [
+   0.5833,
+   0.4396,
+   0.1448
+  ],
+  "dev_m": 0.0,
+  "floor_z": 0.0,
+  "mesh_parts": 4,
+  "tris": 1688
+ },
+ "Hockerkarton01.glb": {
+  "ok": true,
+  "size_m": [
+   0.459,
+   0.459,
+   0.5092
+  ],
+  "dev_m": 0.0,
+  "floor_z": 0.0,
+  "mesh_parts": 4,
+  "tris": 920
+ },
+ "Saege01.glb": {
+  "ok": true,
+  "size_m": [
+   2.37,
+   0.8,
+   1.43
+  ],
+  "dev_m": 0.0,
+  "floor_z": 0.0,
+  "mesh_parts": 10,
+  "tris": 7636
+ },
+ "Montagebank01.glb": {
+  "ok": true,
+  "size_m": [
+   2.4,
+   0.8,
+   1.43
+  ],
+  "dev_m": 0.0,
+  "floor_z": 0.0,
+  "mesh_parts": 8,
+  "tris": 5272
+ },
+ "Finishplatz01.glb": {
+  "ok": true,
+  "size_m": [
+   2.37,
+   0.7815,
+   1.44
+  ],
+  "dev_m": 0.0,
+  "floor_z": 0.0,
+  "mesh_parts": 10,
+  "tris": 6788
+ },
+ "Packtisch01.glb": {
+  "ok": true,
+  "size_m": [
+   2.39,
+   0.8,
+   1.43
+  ],
+  "dev_m": 0.0,
+  "floor_z": 0.0,
+  "mesh_parts": 7,
+  "tris": 5680
+ },
+ "Band01_1m.glb": {
+  "ok": true,
+  "size_m": [
+   1.0,
+   0.8,
+   0.916
+  ],
+  "dev_m": 0.0,
+  "floor_z": 0.0,
+  "mesh_parts": 6,
+  "tris": 1776
+ },
+ "Band01_030.glb": {
+  "ok": true,
+  "size_m": [
+   0.3,
+   0.8,
+   0.916
+  ],
+  "dev_m": 0.0,
+  "floor_z": 0.0,
+  "mesh_parts": 5,
+  "tris": 840
+ },
+ "Hocker01_Raw.fbx": {
+  "ok": true,
+  "size_m": [
+   0.4,
+   0.4,
+   0.45
+  ],
+  "dev_m": 0.0,
+  "floor_z": -0.0,
+  "mesh_parts": 2,
+  "tris": 1848
+ },
+ "Hocker01_Finish.fbx": {
+  "ok": true,
+  "size_m": [
+   0.4,
+   0.4,
+   0.45
+  ],
+  "dev_m": 0.0,
+  "floor_z": -0.0,
+  "mesh_parts": 2,
+  "tris": 1848
+ },
+ "Hocker01_Kit.fbx": {
+  "ok": true,
+  "size_m": [
+   0.6,
+   0.5,
+   0.1788
+  ],
+  "dev_m": 0.0,
+  "floor_z": -0.0,
+  "mesh_parts": 4,
+  "tris": 2052
+ },
+ "Holzpaket01.fbx": {
+  "ok": true,
+  "size_m": [
+   0.5833,
+   0.4396,
+   0.1448
+  ],
+  "dev_m": 0.0,
+  "floor_z": -0.0,
+  "mesh_parts": 4,
+  "tris": 1688
+ },
+ "Hockerkarton01.fbx": {
+  "ok": true,
+  "size_m": [
+   0.459,
+   0.459,
+   0.5092
+  ],
+  "dev_m": 0.0,
+  "floor_z": -0.0,
+  "mesh_parts": 4,
+  "tris": 920
+ },
+ "Saege01.fbx": {
+  "ok": true,
+  "size_m": [
+   2.37,
+   0.8,
+   1.43
+  ],
+  "dev_m": 0.0,
+  "floor_z": -0.0,
+  "mesh_parts": 10,
+  "tris": 7636
+ },
+ "Montagebank01.fbx": {
+  "ok": true,
+  "size_m": [
+   2.4,
+   0.8,
+   1.43
+  ],
+  "dev_m": 0.0,
+  "floor_z": -0.0,
+  "mesh_parts": 8,
+  "tris": 5272
+ },
+ "Finishplatz01.fbx": {
+  "ok": true,
+  "size_m": [
+   2.37,
+   0.7815,
+   1.44
+  ],
+  "dev_m": 0.0,
+  "floor_z": -0.0,
+  "mesh_parts": 10,
+  "tris": 6788
+ },
+ "Packtisch01.fbx": {
+  "ok": true,
+  "size_m": [
+   2.39,
+   0.8,
+   1.43
+  ],
+  "dev_m": 0.0,
+  "floor_z": -0.0,
+  "mesh_parts": 7,
+  "tris": 5680
+ },
+ "Band01_1m.fbx": {
+  "ok": true,
+  "size_m": [
+   1.0,
+   0.8,
+   0.916
+  ],
+  "dev_m": 0.0,
+  "floor_z": -0.0,
+  "mesh_parts": 6,
+  "tris": 1776
+ },
+ "Band01_030.fbx": {
+  "ok": true,
+  "size_m": [
+   0.3,
+   0.8,
+   0.916
+  ],
+  "dev_m": 0.0,
+  "floor_z": -0.0,
+  "mesh_parts": 5,
+  "tris": 840
+ }
+}

@@ -7,3 +7,4 @@
 *.blend1
 *.blend2
 *.rbxl.lock
+__pycache__/

@@ -1,0 +1,465 @@
+{
+ "generated_by": "assets/hq/tools",
+ "units": "metres, Blender Z up, front +Y",
+ "roblox_axes": "(X,Y,Z)->(X,Z,-Y), 25/7 studs per metre applied once in Studio",
+ "tile_m": 0.5,
+ "assets": {
+  "Hocker01_Raw": {
+   "tris": 1848,
+   "mesh_parts": 2,
+   "parts": [
+    {
+     "object": "Hocker01_Raw__WallWhite",
+     "group": "Main",
+     "material": "WallWhite",
+     "tris": 12
+    },
+    {
+     "object": "Hocker01_Raw__WoodRaw",
+     "group": "Main",
+     "material": "WoodRaw",
+     "tris": 1836
+    }
+   ],
+   "materials": [
+    "WallWhite",
+    "WoodRaw"
+   ],
+   "bounds_m": {
+    "min": [
+     -0.2,
+     -0.2,
+     0.0
+    ],
+    "max": [
+     0.2,
+     0.2,
+     0.45
+    ],
+    "size": [
+     0.4,
+     0.4,
+     0.45
+    ]
+   },
+   "markers": {
+    "Label": {
+     "blender_m": [
+      0,
+      0.1762,
+      0.33
+     ],
+     "roblox_studs": [
+      0.0,
+      1.1786,
+      -0.6293
+     ],
+     "rot_deg": [
+      90,
+      0,
+      0
+     ]
+    },
+    "Grip": {
+     "blender_m": [
+      0,
+      0,
+      0.36
+     ],
+     "roblox_studs": [
+      0.0,
+      1.2857,
+      0.0
+     ],
+     "rot_deg": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
+  },
+  "Hocker01_Finish": {
+   "tris": 1848,
+   "mesh_parts": 2,
+   "parts": [
+    {
+     "object": "Hocker01_Finish__WallWhite",
+     "group": "Main",
+     "material": "WallWhite",
+     "tris": 12
+    },
+    {
+     "object": "Hocker01_Finish__WoodFinish",
+     "group": "Main",
+     "material": "WoodFinish",
+     "tris": 1836
+    }
+   ],
+   "materials": [
+    "WallWhite",
+    "WoodFinish"
+   ],
+   "bounds_m": {
+    "min": [
+     -0.2,
+     -0.2,
+     0.0
+    ],
+    "max": [
+     0.2,
+     0.2,
+     0.45
+    ],
+    "size": [
+     0.4,
+     0.4,
+     0.45
+    ]
+   },
+   "markers": {
+    "Label": {
+     "blender_m": [
+      0,
+      0.1762,
+      0.33
+     ],
+     "roblox_studs": [
+      0.0,
+      1.1786,
+      -0.6293
+     ],
+     "rot_deg": [
+      90,
+      0,
+      0
+     ]
+    },
+    "Grip": {
+     "blender_m": [
+      0,
+      0,
+      0.36
+     ],
+     "roblox_studs": [
+      0.0,
+      1.2857,
+      0.0
+     ],
+     "rot_deg": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
+  },
+  "Hocker01_Kit": {
+   "tris": 2052,
+   "mesh_parts": 4,
+   "parts": [
+    {
+     "object": "Hocker01_Kit__SafetyOrange",
+     "group": "Main",
+     "material": "SafetyOrange",
+     "tris": 288
+    },
+    {
+     "object": "Hocker01_Kit__SteelDark",
+     "group": "Main",
+     "material": "SteelDark",
+     "tris": 540
+    },
+    {
+     "object": "Hocker01_Kit__WallWhite",
+     "group": "Main",
+     "material": "WallWhite",
+     "tris": 12
+    },
+    {
+     "object": "Hocker01_Kit__WoodRaw",
+     "group": "Main",
+     "material": "WoodRaw",
+     "tris": 1212
+    }
+   ],
+   "materials": [
+    "SafetyOrange",
+    "SteelDark",
+    "WallWhite",
+    "WoodRaw"
+   ],
+   "bounds_m": {
+    "min": [
+     -0.3,
+     -0.25,
+     0.0
+    ],
+    "max": [
+     0.3,
+     0.25,
+     0.1788
+    ],
+    "size": [
+     0.6,
+     0.5,
+     0.1788
+    ]
+   },
+   "markers": {
+    "Label": {
+     "blender_m": [
+      0.12,
+      0.25,
+      0.015
+     ],
+     "roblox_studs": [
+      0.4286,
+      0.0536,
+      -0.8929
+     ],
+     "rot_deg": [
+      90,
+      0,
+      0
+     ]
+    },
+    "GripL": {
+     "blender_m": [
+      -0.295,
+      0,
+      0.174
+     ],
+     "roblox_studs": [
+      -1.0536,
+      0.6214,
+      0.0
+     ],
+     "rot_deg": [
+      0,
+      0,
+      0
+     ]
+    },
+    "GripR": {
+     "blender_m": [
+      0.295,
+      0,
+      0.174
+     ],
+     "roblox_studs": [
+      1.0536,
+      0.6214,
+      0.0
+     ],
+     "rot_deg": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
+  },
+  "Holzpaket01": {
+   "tris": 1688,
+   "mesh_parts": 4,
+   "parts": [
+    {
+     "object": "Holzpaket01__Cardboard",
+     "group": "Main",
+     "material": "Cardboard",
+     "tris": 704
+    },
+    {
+     "object": "Holzpaket01__SafetyOrange",
+     "group": "Main",
+     "material": "SafetyOrange",
+     "tris": 356
+    },
+    {
+     "object": "Holzpaket01__WallWhite",
+     "group": "Main",
+     "material": "WallWhite",
+     "tris": 12
+    },
+    {
+     "object": "Holzpaket01__WoodRaw",
+     "group": "Main",
+     "material": "WoodRaw",
+     "tris": 616
+    }
+   ],
+   "materials": [
+    "Cardboard",
+    "SafetyOrange",
+    "WallWhite",
+    "WoodRaw"
+   ],
+   "bounds_m": {
+    "min": [
+     -0.2932,
+     -0.2198,
+     0.0
+    ],
+    "max": [
+     0.2901,
+     0.2198,
+     0.1448
+    ],
+    "size": [
+     0.5833,
+     0.4396,
+     0.1448
+    ]
+   },
+   "markers": {
+    "Label": {
+     "blender_m": [
+      -0.01,
+      0.2167,
+      0.063
+     ],
+     "roblox_studs": [
+      -0.0357,
+      0.225,
+      -0.7739
+     ],
+     "rot_deg": [
+      90,
+      0,
+      0
+     ]
+    }
+   }
+  },
+  "Hockerkarton01": {
+   "tris": 920,
+   "mesh_parts": 4,
+   "parts": [
+    {
+     "object": "Hockerkarton01__Black",
+     "group": "Main",
+     "material": "Black",
+     "tris": 632
+    },
+    {
+     "object": "Hockerkarton01__Cardboard",
+     "group": "Main",
+     "material": "Cardboard",
+     "tris": 132
+    },
+    {
+     "object": "Hockerkarton01__SafetyOrange",
+     "group": "Main",
+     "material": "SafetyOrange",
+     "tris": 132
+    },
+    {
+     "object": "Hockerkarton01__WallWhite",
+     "group": "Main",
+     "material": "WallWhite",
+     "tris": 24
+    }
+   ],
+   "materials": [
+    "Black",
+    "Cardboard",
+    "SafetyOrange",
+    "WallWhite"
+   ],
+   "bounds_m": {
+    "min": [
+     -0.2295,
+     -0.2295,
+     0.0
+    ],
+    "max": [
+     0.2295,
+     0.2295,
+     0.5092
+    ],
+    "size": [
+     0.459,
+     0.459,
+     0.5092
+    ]
+   },
+   "markers": {
+    "Label_Front": {
+     "blender_m": [
+      -0.07,
+      0.2292,
+      0.12
+     ],
+     "roblox_studs": [
+      -0.25,
+      0.4286,
+      -0.8186
+     ],
+     "rot_deg": [
+      90,
+      0,
+      180
+     ]
+    },
+    "Label_Top": {
+     "blender_m": [
+      0.0,
+      -0.14,
+      0.5092
+     ],
+     "roblox_studs": [
+      0.0,
+      1.8186,
+      0.5
+     ],
+     "rot_deg": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
+  }
+ },
+ "materials": {
+  "Black": {
+   "kind": "flat",
+   "Color": "#1C1E20",
+   "Material": "Rubber"
+  },
+  "Cardboard": {
+   "kind": "SurfaceAppearance",
+   "ColorMap": "Cardboard_Color.png",
+   "NormalMap": "Cardboard_Normal.png",
+   "RoughnessMap": "Cardboard_Roughness.png"
+  },
+  "SafetyOrange": {
+   "kind": "flat",
+   "Color": "#D88B3D",
+   "Material": "SmoothPlastic"
+  },
+  "SteelDark": {
+   "kind": "flat",
+   "Color": "#34383C",
+   "Material": "SmoothPlastic"
+  },
+  "WallWhite": {
+   "kind": "flat",
+   "Color": "#E8E0D1",
+   "Material": "SmoothPlastic"
+  },
+  "WoodFinish": {
+   "kind": "SurfaceAppearance",
+   "ColorMap": "WoodFinish_Color.png",
+   "NormalMap": "WoodFinish_Normal.png",
+   "RoughnessMap": "WoodFinish_Roughness.png"
+  },
+  "WoodRaw": {
+   "kind": "SurfaceAppearance",
+   "ColorMap": "WoodRaw_Color.png",
+   "NormalMap": "WoodRaw_Normal.png",
+   "RoughnessMap": "WoodRaw_Roughness.png"
+  }
+ }
+}

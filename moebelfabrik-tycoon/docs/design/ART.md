@@ -55,6 +55,20 @@ Die [Blender-Rolle](../roles/BLENDER.md) liefert bemaßte Quelldateien, Exporte 
 
 Freigegeben wird die importierte Probe anhand der dokumentierten Passungen, Lesbarkeit und gemeinsamen Wirkung. Größensprünge, Texturverzerrungen, kollidierende Werkstücke und unlesbare Ladungszustände erfordern eine Korrektur am Muster. Leistungsgrenzen ergeben sich aus Messungen am festgelegten Testgerät.
 
+## Vorläufiges Asset-Budget
+
+Stand 20. November 2026, vorgeschlagen mit der [HQ-Serie 1](../../assets/hq/README.md). Es gilt bis zur Messung am Zielgerät (P11-05) und wird danach bestätigt oder angepasst.
+
+| Gruppe | Dreiecke | MeshParts |
+|---|---:|---:|
+| Ware | ≤ 2.500 | ≤ 4 |
+| Station | ≤ 8.000 | ≤ 10 |
+| Bandmodul | ≤ 2.500 | ≤ 6 |
+| Halle mit 4 Stationen, 2 Bändern und 12 Waren | ≤ 60.000 | ≤ 90 |
+
+- **Texturen:** Holz, Karton und Bandgummi teilen fünf kachelbare Sätze mit 512 px je 0,5 m. Lackierte, metallische und Kunststoffflächen bleiben ohne Textur und verwenden MeshPart-Farbe und -Material.
+- **Geometrie:** Sie wird je Material zu einem MeshPart zusammengefasst. Bewegliche oder umfärbbare Teile wie Sägeblatt, Drehteller, Lüfter und Statuslampe bleiben eigene MeshParts.
+
 
 ## Modellierungsvergleich
 

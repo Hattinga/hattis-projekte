@@ -1,0 +1,1242 @@
+{
+ "generated_by": "assets/hq/tools",
+ "units": "metres, Blender Z up, front +Y",
+ "roblox_axes": "(X,Y,Z)->(X,Z,-Y), 25/7 studs per metre applied once in Studio",
+ "tile_m": 0.5,
+ "assets": {
+  "Saege01": {
+   "tris": 7636,
+   "mesh_parts": 10,
+   "parts": [
+    {
+     "object": "Saege01__BareSteel",
+     "group": "Main",
+     "material": "BareSteel",
+     "tris": 1504
+    },
+    {
+     "object": "Saege01__Black",
+     "group": "Main",
+     "material": "Black",
+     "tris": 1492
+    },
+    {
+     "object": "Saege01__Blade__BareSteel",
+     "group": "Blade",
+     "material": "BareSteel",
+     "tris": 440
+    },
+    {
+     "object": "Saege01__ClearGuard",
+     "group": "Main",
+     "material": "ClearGuard",
+     "tris": 136
+    },
+    {
+     "object": "Saege01__SafetyOrange",
+     "group": "Main",
+     "material": "SafetyOrange",
+     "tris": 1232
+    },
+    {
+     "object": "Saege01__SignalRed",
+     "group": "Main",
+     "material": "SignalRed",
+     "tris": 124
+    },
+    {
+     "object": "Saege01__StatusLamp__WallWhite",
+     "group": "StatusLamp",
+     "material": "WallWhite",
+     "tris": 60
+    },
+    {
+     "object": "Saege01__SteelDark",
+     "group": "Main",
+     "material": "SteelDark",
+     "tris": 2248
+    },
+    {
+     "object": "Saege01__SteelGreen",
+     "group": "Main",
+     "material": "SteelGreen",
+     "tris": 340
+    },
+    {
+     "object": "Saege01__WallWhite",
+     "group": "Main",
+     "material": "WallWhite",
+     "tris": 60
+    }
+   ],
+   "materials": [
+    "BareSteel",
+    "Black",
+    "ClearGuard",
+    "SafetyOrange",
+    "SignalRed",
+    "SteelDark",
+    "SteelGreen",
+    "WallWhite"
+   ],
+   "bounds_m": {
+    "min": [
+     -1.18,
+     -0.4,
+     0.0
+    ],
+    "max": [
+     1.19,
+     0.4,
+     1.43
+    ],
+    "size": [
+     2.37,
+     0.8,
+     1.43
+    ]
+   },
+   "markers": {
+    "Label_In": {
+     "blender_m": [
+      -0.84,
+      0.3815,
+      0.795
+     ],
+     "roblox_studs": [
+      -3.0,
+      2.8393,
+      -1.3625
+     ],
+     "rot_deg": [
+      90,
+      0,
+      180
+     ]
+    },
+    "Label_Process": {
+     "blender_m": [
+      -0.04,
+      0.3815,
+      0.795
+     ],
+     "roblox_studs": [
+      -0.1429,
+      2.8393,
+      -1.3625
+     ],
+     "rot_deg": [
+      90,
+      0,
+      180
+     ]
+    },
+    "Label_Out": {
+     "blender_m": [
+      0.76,
+      0.3815,
+      0.795
+     ],
+     "roblox_studs": [
+      2.7143,
+      2.8393,
+      -1.3625
+     ],
+     "rot_deg": [
+      90,
+      0,
+      180
+     ]
+    },
+    "Label_Name": {
+     "blender_m": [
+      -0.8,
+      -0.3685,
+      1.365
+     ],
+     "roblox_studs": [
+      -2.8571,
+      4.875,
+      1.3161
+     ],
+     "rot_deg": [
+      90,
+      0,
+      180
+     ]
+    },
+    "StatusLamp": {
+     "blender_m": [
+      1.16,
+      -0.37,
+      1.3675
+     ],
+     "roblox_studs": [
+      4.1429,
+      4.8839,
+      1.3214
+     ],
+     "rot_deg": [
+      0,
+      0,
+      0
+     ]
+    },
+    "BladeAxis": {
+     "blender_m": [
+      0.0,
+      -0.35,
+      0.8
+     ],
+     "roblox_studs": [
+      0.0,
+      2.8571,
+      1.25
+     ],
+     "rot_deg": [
+      90,
+      0,
+      0
+     ]
+    },
+    "Pad_In": {
+     "blender_m": [
+      -0.8,
+      0,
+      0.9
+     ],
+     "roblox_studs": [
+      -2.8571,
+      3.2143,
+      0.0
+     ],
+     "rot_deg": [
+      0,
+      0,
+      0
+     ]
+    },
+    "Pad_Process": {
+     "blender_m": [
+      0.0,
+      0,
+      0.9
+     ],
+     "roblox_studs": [
+      0.0,
+      3.2143,
+      0.0
+     ],
+     "rot_deg": [
+      0,
+      0,
+      0
+     ]
+    },
+    "Pad_Out": {
+     "blender_m": [
+      0.8,
+      0,
+      0.9
+     ],
+     "roblox_studs": [
+      2.8571,
+      3.2143,
+      0.0
+     ],
+     "rot_deg": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
+  },
+  "Montagebank01": {
+   "tris": 5272,
+   "mesh_parts": 8,
+   "parts": [
+    {
+     "object": "Montagebank01__BareSteel",
+     "group": "Main",
+     "material": "BareSteel",
+     "tris": 388
+    },
+    {
+     "object": "Montagebank01__Black",
+     "group": "Main",
+     "material": "Black",
+     "tris": 1024
+    },
+    {
+     "object": "Montagebank01__SafetyOrange",
+     "group": "Main",
+     "material": "SafetyOrange",
+     "tris": 736
+    },
+    {
+     "object": "Montagebank01__StatusLamp__WallWhite",
+     "group": "StatusLamp",
+     "material": "WallWhite",
+     "tris": 60
+    },
+    {
+     "object": "Montagebank01__SteelDark",
+     "group": "Main",
+     "material": "SteelDark",
+     "tris": 1532
+    },
+    {
+     "object": "Montagebank01__SteelGreen",
+     "group": "Main",
+     "material": "SteelGreen",
+     "tris": 500
+    },
+    {
+     "object": "Montagebank01__WallWhite",
+     "group": "Main",
+     "material": "WallWhite",
+     "tris": 232
+    },
+    {
+     "object": "Montagebank01__WoodBench",
+     "group": "Main",
+     "material": "WoodBench",
+     "tris": 800
+    }
+   ],
+   "materials": [
+    "BareSteel",
+    "Black",
+    "SafetyOrange",
+    "SteelDark",
+    "SteelGreen",
+    "WallWhite",
+    "WoodBench"
+   ],
+   "bounds_m": {
+    "min": [
+     -1.2,
+     -0.4,
+     0.0
+    ],
+    "max": [
+     1.2,
+     0.4,
+     1.43
+    ],
+    "size": [
+     2.4,
+     0.8,
+     1.43
+    ]
+   },
+   "markers": {
+    "Label_In": {
+     "blender_m": [
+      -0.84,
+      0.3815,
+      0.795
+     ],
+     "roblox_studs": [
+      -3.0,
+      2.8393,
+      -1.3625
+     ],
+     "rot_deg": [
+      90,
+      0,
+      180
+     ]
+    },
+    "Label_Process": {
+     "blender_m": [
+      -0.04,
+      0.3815,
+      0.795
+     ],
+     "roblox_studs": [
+      -0.1429,
+      2.8393,
+      -1.3625
+     ],
+     "rot_deg": [
+      90,
+      0,
+      180
+     ]
+    },
+    "Label_Out": {
+     "blender_m": [
+      0.76,
+      0.3815,
+      0.795
+     ],
+     "roblox_studs": [
+      2.7143,
+      2.8393,
+      -1.3625
+     ],
+     "rot_deg": [
+      90,
+      0,
+      180
+     ]
+    },
+    "Pad_In": {
+     "blender_m": [
+      -0.8,
+      0,
+      0.9
+     ],
+     "roblox_studs": [
+      -2.8571,
+      3.2143,
+      0.0
+     ],
+     "rot_deg": [
+      0,
+      0,
+      0
+     ]
+    },
+    "Pad_Process": {
+     "blender_m": [
+      0.0,
+      0,
+      0.9
+     ],
+     "roblox_studs": [
+      0.0,
+      3.2143,
+      0.0
+     ],
+     "rot_deg": [
+      0,
+      0,
+      0
+     ]
+    },
+    "Pad_Out": {
+     "blender_m": [
+      0.8,
+      0,
+      0.9
+     ],
+     "roblox_studs": [
+      2.8571,
+      3.2143,
+      0.0
+     ],
+     "rot_deg": [
+      0,
+      0,
+      0
+     ]
+    },
+    "Label_Name": {
+     "blender_m": [
+      -0.8,
+      -0.3685,
+      1.365
+     ],
+     "roblox_studs": [
+      -2.8571,
+      4.875,
+      1.3161
+     ],
+     "rot_deg": [
+      90,
+      0,
+      180
+     ]
+    },
+    "StatusLamp": {
+     "blender_m": [
+      1.16,
+      -0.37,
+      1.3675
+     ],
+     "roblox_studs": [
+      4.1429,
+      4.8839,
+      1.3214
+     ],
+     "rot_deg": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
+  },
+  "Finishplatz01": {
+   "tris": 6788,
+   "mesh_parts": 10,
+   "parts": [
+    {
+     "object": "Finishplatz01__BareSteel",
+     "group": "Main",
+     "material": "BareSteel",
+     "tris": 880
+    },
+    {
+     "object": "Finishplatz01__Black",
+     "group": "Main",
+     "material": "Black",
+     "tris": 1284
+    },
+    {
+     "object": "Finishplatz01__Fan__BareSteel",
+     "group": "Fan",
+     "material": "BareSteel",
+     "tris": 104
+    },
+    {
+     "object": "Finishplatz01__SafetyOrange",
+     "group": "Main",
+     "material": "SafetyOrange",
+     "tris": 500
+    },
+    {
+     "object": "Finishplatz01__StatusLamp__WallWhite",
+     "group": "StatusLamp",
+     "material": "WallWhite",
+     "tris": 60
+    },
+    {
+     "object": "Finishplatz01__SteelDark",
+     "group": "Main",
+     "material": "SteelDark",
+     "tris": 2668
+    },
+    {
+     "object": "Finishplatz01__SteelGreen",
+     "group": "Main",
+     "material": "SteelGreen",
+     "tris": 396
+    },
+    {
+     "object": "Finishplatz01__Turntable__SafetyOrange",
+     "group": "Turntable",
+     "material": "SafetyOrange",
+     "tris": 48
+    },
+    {
+     "object": "Finishplatz01__Turntable__SteelDark",
+     "group": "Turntable",
+     "material": "SteelDark",
+     "tris": 476
+    },
+    {
+     "object": "Finishplatz01__WallWhite",
+     "group": "Main",
+     "material": "WallWhite",
+     "tris": 372
+    }
+   ],
+   "materials": [
+    "BareSteel",
+    "Black",
+    "SafetyOrange",
+    "SteelDark",
+    "SteelGreen",
+    "WallWhite"
+   ],
+   "bounds_m": {
+    "min": [
+     -1.18,
+     -0.4,
+     0.0
+    ],
+    "max": [
+     1.19,
+     0.3815,
+     1.44
+    ],
+    "size": [
+     2.37,
+     0.7815,
+     1.44
+    ]
+   },
+   "markers": {
+    "Label_In": {
+     "blender_m": [
+      -0.84,
+      0.3815,
+      0.795
+     ],
+     "roblox_studs": [
+      -3.0,
+      2.8393,
+      -1.3625
+     ],
+     "rot_deg": [
+      90,
+      0,
+      180
+     ]
+    },
+    "Label_Process": {
+     "blender_m": [
+      -0.04,
+      0.3815,
+      0.795
+     ],
+     "roblox_studs": [
+      -0.1429,
+      2.8393,
+      -1.3625
+     ],
+     "rot_deg": [
+      90,
+      0,
+      180
+     ]
+    },
+    "Label_Out": {
+     "blender_m": [
+      0.76,
+      0.3815,
+      0.795
+     ],
+     "roblox_studs": [
+      2.7143,
+      2.8393,
+      -1.3625
+     ],
+     "rot_deg": [
+      90,
+      0,
+      180
+     ]
+    },
+    "Label_Name": {
+     "blender_m": [
+      -0.8,
+      -0.3685,
+      1.365
+     ],
+     "roblox_studs": [
+      -2.8571,
+      4.875,
+      1.3161
+     ],
+     "rot_deg": [
+      90,
+      0,
+      180
+     ]
+    },
+    "StatusLamp": {
+     "blender_m": [
+      1.16,
+      -0.37,
+      1.3675
+     ],
+     "roblox_studs": [
+      4.1429,
+      4.8839,
+      1.3214
+     ],
+     "rot_deg": [
+      0,
+      0,
+      0
+     ]
+    },
+    "Pad_In": {
+     "blender_m": [
+      -0.8,
+      0,
+      0.9
+     ],
+     "roblox_studs": [
+      -2.8571,
+      3.2143,
+      0.0
+     ],
+     "rot_deg": [
+      0,
+      0,
+      0
+     ]
+    },
+    "Pad_Out": {
+     "blender_m": [
+      0.8,
+      0,
+      0.9
+     ],
+     "roblox_studs": [
+      2.8571,
+      3.2143,
+      0.0
+     ],
+     "rot_deg": [
+      0,
+      0,
+      0
+     ]
+    },
+    "Pad_Process": {
+     "blender_m": [
+      0,
+      0,
+      0.9
+     ],
+     "roblox_studs": [
+      0.0,
+      3.2143,
+      0.0
+     ],
+     "rot_deg": [
+      0,
+      0,
+      0
+     ]
+    },
+    "TurntableAxis": {
+     "blender_m": [
+      0,
+      0,
+      0.9
+     ],
+     "roblox_studs": [
+      0.0,
+      3.2143,
+      0.0
+     ],
+     "rot_deg": [
+      0,
+      0,
+      0
+     ]
+    },
+    "FanAxis": {
+     "blender_m": [
+      0,
+      -0.372,
+      1.21
+     ],
+     "roblox_studs": [
+      0.0,
+      4.3214,
+      1.3286
+     ],
+     "rot_deg": [
+      90,
+      0,
+      0
+     ]
+    }
+   }
+  },
+  "Packtisch01": {
+   "tris": 5680,
+   "mesh_parts": 7,
+   "parts": [
+    {
+     "object": "Packtisch01__BareSteel",
+     "group": "Main",
+     "material": "BareSteel",
+     "tris": 692
+    },
+    {
+     "object": "Packtisch01__Black",
+     "group": "Main",
+     "material": "Black",
+     "tris": 1028
+    },
+    {
+     "object": "Packtisch01__Cardboard",
+     "group": "Main",
+     "material": "Cardboard",
+     "tris": 960
+    },
+    {
+     "object": "Packtisch01__SafetyOrange",
+     "group": "Main",
+     "material": "SafetyOrange",
+     "tris": 920
+    },
+    {
+     "object": "Packtisch01__StatusLamp__WallWhite",
+     "group": "StatusLamp",
+     "material": "WallWhite",
+     "tris": 60
+    },
+    {
+     "object": "Packtisch01__SteelDark",
+     "group": "Main",
+     "material": "SteelDark",
+     "tris": 1864
+    },
+    {
+     "object": "Packtisch01__WallWhite",
+     "group": "Main",
+     "material": "WallWhite",
+     "tris": 156
+    }
+   ],
+   "materials": [
+    "BareSteel",
+    "Black",
+    "Cardboard",
+    "SafetyOrange",
+    "SteelDark",
+    "WallWhite"
+   ],
+   "bounds_m": {
+    "min": [
+     -1.2,
+     -0.4,
+     0.0
+    ],
+    "max": [
+     1.19,
+     0.4,
+     1.43
+    ],
+    "size": [
+     2.39,
+     0.8,
+     1.43
+    ]
+   },
+   "markers": {
+    "Label_In": {
+     "blender_m": [
+      -0.84,
+      0.3815,
+      0.795
+     ],
+     "roblox_studs": [
+      -3.0,
+      2.8393,
+      -1.3625
+     ],
+     "rot_deg": [
+      90,
+      0,
+      180
+     ]
+    },
+    "Label_Process": {
+     "blender_m": [
+      -0.04,
+      0.3815,
+      0.795
+     ],
+     "roblox_studs": [
+      -0.1429,
+      2.8393,
+      -1.3625
+     ],
+     "rot_deg": [
+      90,
+      0,
+      180
+     ]
+    },
+    "Label_Out": {
+     "blender_m": [
+      0.76,
+      0.3815,
+      0.795
+     ],
+     "roblox_studs": [
+      2.7143,
+      2.8393,
+      -1.3625
+     ],
+     "rot_deg": [
+      90,
+      0,
+      180
+     ]
+    },
+    "Pad_In": {
+     "blender_m": [
+      -0.8,
+      0,
+      0.9
+     ],
+     "roblox_studs": [
+      -2.8571,
+      3.2143,
+      0.0
+     ],
+     "rot_deg": [
+      0,
+      0,
+      0
+     ]
+    },
+    "Pad_Process": {
+     "blender_m": [
+      0.0,
+      0,
+      0.9
+     ],
+     "roblox_studs": [
+      0.0,
+      3.2143,
+      0.0
+     ],
+     "rot_deg": [
+      0,
+      0,
+      0
+     ]
+    },
+    "Pad_Out": {
+     "blender_m": [
+      0.8,
+      0,
+      0.9
+     ],
+     "roblox_studs": [
+      2.8571,
+      3.2143,
+      0.0
+     ],
+     "rot_deg": [
+      0,
+      0,
+      0
+     ]
+    },
+    "Label_Name": {
+     "blender_m": [
+      -0.8,
+      -0.3685,
+      1.365
+     ],
+     "roblox_studs": [
+      -2.8571,
+      4.875,
+      1.3161
+     ],
+     "rot_deg": [
+      90,
+      0,
+      180
+     ]
+    },
+    "StatusLamp": {
+     "blender_m": [
+      1.16,
+      -0.37,
+      1.3675
+     ],
+     "roblox_studs": [
+      4.1429,
+      4.8839,
+      1.3214
+     ],
+     "rot_deg": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
+  },
+  "Band01_1m": {
+   "tris": 1776,
+   "mesh_parts": 6,
+   "parts": [
+    {
+     "object": "Band01_1m__BareSteel",
+     "group": "Main",
+     "material": "BareSteel",
+     "tris": 160
+    },
+    {
+     "object": "Band01_1m__BeltRubber",
+     "group": "Main",
+     "material": "BeltRubber",
+     "tris": 100
+    },
+    {
+     "object": "Band01_1m__Black",
+     "group": "Main",
+     "material": "Black",
+     "tris": 416
+    },
+    {
+     "object": "Band01_1m__SafetyOrange",
+     "group": "Main",
+     "material": "SafetyOrange",
+     "tris": 256
+    },
+    {
+     "object": "Band01_1m__SteelDark",
+     "group": "Main",
+     "material": "SteelDark",
+     "tris": 508
+    },
+    {
+     "object": "Band01_1m__SteelGreen",
+     "group": "Main",
+     "material": "SteelGreen",
+     "tris": 336
+    }
+   ],
+   "materials": [
+    "BareSteel",
+    "BeltRubber",
+    "Black",
+    "SafetyOrange",
+    "SteelDark",
+    "SteelGreen"
+   ],
+   "bounds_m": {
+    "min": [
+     -0.5,
+     -0.4,
+     0.0
+    ],
+    "max": [
+     0.5,
+     0.4,
+     0.916
+    ],
+    "size": [
+     1.0,
+     0.8,
+     0.916
+    ]
+   },
+   "markers": {
+    "In": {
+     "blender_m": [
+      -0.5,
+      0,
+      0.9
+     ],
+     "roblox_studs": [
+      -1.7857,
+      3.2143,
+      0.0
+     ],
+     "rot_deg": [
+      0,
+      0,
+      0
+     ]
+    },
+    "Out": {
+     "blender_m": [
+      0.5,
+      0,
+      0.9
+     ],
+     "roblox_studs": [
+      1.7857,
+      3.2143,
+      0.0
+     ],
+     "rot_deg": [
+      0,
+      0,
+      0
+     ]
+    },
+    "Buffer": {
+     "blender_m": [
+      0,
+      0,
+      0.9
+     ],
+     "roblox_studs": [
+      0.0,
+      3.2143,
+      0.0
+     ],
+     "rot_deg": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
+  },
+  "Band01_030": {
+   "tris": 840,
+   "mesh_parts": 5,
+   "parts": [
+    {
+     "object": "Band01_030__BareSteel",
+     "group": "Main",
+     "material": "BareSteel",
+     "tris": 160
+    },
+    {
+     "object": "Band01_030__BeltRubber",
+     "group": "Main",
+     "material": "BeltRubber",
+     "tris": 100
+    },
+    {
+     "object": "Band01_030__Black",
+     "group": "Main",
+     "material": "Black",
+     "tris": 232
+    },
+    {
+     "object": "Band01_030__SafetyOrange",
+     "group": "Main",
+     "material": "SafetyOrange",
+     "tris": 216
+    },
+    {
+     "object": "Band01_030__SteelDark",
+     "group": "Main",
+     "material": "SteelDark",
+     "tris": 132
+    }
+   ],
+   "materials": [
+    "BareSteel",
+    "BeltRubber",
+    "Black",
+    "SafetyOrange",
+    "SteelDark"
+   ],
+   "bounds_m": {
+    "min": [
+     -0.15,
+     -0.4,
+     0.0
+    ],
+    "max": [
+     0.15,
+     0.4,
+     0.916
+    ],
+    "size": [
+     0.3,
+     0.8,
+     0.916
+    ]
+   },
+   "markers": {
+    "In": {
+     "blender_m": [
+      -0.15,
+      0,
+      0.9
+     ],
+     "roblox_studs": [
+      -0.5357,
+      3.2143,
+      0.0
+     ],
+     "rot_deg": [
+      0,
+      0,
+      0
+     ]
+    },
+    "Out": {
+     "blender_m": [
+      0.15,
+      0,
+      0.9
+     ],
+     "roblox_studs": [
+      0.5357,
+      3.2143,
+      0.0
+     ],
+     "rot_deg": [
+      0,
+      0,
+      0
+     ]
+    },
+    "Buffer": {
+     "blender_m": [
+      0,
+      0,
+      0.9
+     ],
+     "roblox_studs": [
+      0.0,
+      3.2143,
+      0.0
+     ],
+     "rot_deg": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
+  }
+ },
+ "materials": {
+  "BareSteel": {
+   "kind": "flat",
+   "Color": "#A3A8AD",
+   "Material": "Metal"
+  },
+  "BeltRubber": {
+   "kind": "SurfaceAppearance",
+   "ColorMap": "Rubber_Color.png",
+   "NormalMap": "Rubber_Normal.png",
+   "RoughnessMap": "Rubber_Roughness.png"
+  },
+  "Black": {
+   "kind": "flat",
+   "Color": "#1C1E20",
+   "Material": "Rubber"
+  },
+  "Cardboard": {
+   "kind": "SurfaceAppearance",
+   "ColorMap": "Cardboard_Color.png",
+   "NormalMap": "Cardboard_Normal.png",
+   "RoughnessMap": "Cardboard_Roughness.png"
+  },
+  "ClearGuard": {
+   "kind": "flat",
+   "Color": "#D5E4EA",
+   "Material": "Glass",
+   "Transparency": 0.6
+  },
+  "SafetyOrange": {
+   "kind": "flat",
+   "Color": "#D88B3D",
+   "Material": "SmoothPlastic"
+  },
+  "SignalRed": {
+   "kind": "flat",
+   "Color": "#B8382E",
+   "Material": "SmoothPlastic"
+  },
+  "SteelDark": {
+   "kind": "flat",
+   "Color": "#34383C",
+   "Material": "SmoothPlastic"
+  },
+  "SteelGreen": {
+   "kind": "flat",
+   "Color": "#788678",
+   "Material": "SmoothPlastic"
+  },
+  "WallWhite": {
+   "kind": "flat",
+   "Color": "#E8E0D1",
+   "Material": "SmoothPlastic"
+  },
+  "WoodBench": {
+   "kind": "SurfaceAppearance",
+   "ColorMap": "WoodBench_Color.png",
+   "NormalMap": "WoodBench_Normal.png",
+   "RoughnessMap": "WoodBench_Roughness.png"
+  }
+ }
+}
