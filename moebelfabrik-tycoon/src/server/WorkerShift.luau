@@ -53,6 +53,10 @@ end
 function WorkerShift.tick(shift: Shift, controller: Persistence.Controller, lease: number)
 	if shift.stopped or shift.paused or os.clock() < shift.retryAt then return end
 	local route = shift.binding.route
+	local finish = shift.binding.routeId == "Finish"
+	local toSource = if finish then "Zum Finish unterwegs" else "Zur Säge unterwegs"
+	local toTarget = if finish then "Zum Packtisch unterwegs" else "Zur Montage unterwegs"
+	local atSource = if finish then "Ware am Finish-Ausgang" else "Ware am Sägeausgang"
 	local snapshot = controller.snapshot()
 	if snapshot.status ~= "Confirmed" or snapshot.inFlight or not snapshot.confirmed then return end
 	local state = snapshot.confirmed.data.state
@@ -74,7 +78,7 @@ function WorkerShift.tick(shift: Shift, controller: Persistence.Controller, leas
 			if not cancelled.ok then return end
 			active = nil
 			if not carrying then
-				shift.status = "Ware am Sägeausgang"
+				shift.status = atSource
 				shift.paused = true
 			end
 		end
@@ -87,7 +91,7 @@ function WorkerShift.tick(shift: Shift, controller: Persistence.Controller, leas
 			WorkerTransport.cancel(controller, active.id, now, lease)
 			return
 		end
-		shift.status = if picking then "Zur Säge unterwegs" else "Zur Montage unterwegs"
+		shift.status = if picking then toSource else toTarget
 		local reached = walk(shift, if picking then source else target)
 		if shift.stopped then return end
 		if not reached then
@@ -104,7 +108,7 @@ function WorkerShift.tick(shift: Shift, controller: Persistence.Controller, leas
 		local result = if picking then WorkerTransport.take(controller, active.id, os.time(), lease)
 			else WorkerTransport.put(controller, active.id, os.time(), lease)
 		if result.ok then
-			shift.status = if picking then "Zur Montage unterwegs" else "Abgeliefert"
+			shift.status = if picking then toTarget else "Abgeliefert"
 			if not picking then walk(shift, shift.binding.rest) end
 		end
 		return
@@ -116,7 +120,7 @@ function WorkerShift.tick(shift: Shift, controller: Persistence.Controller, leas
 		if reached then
 			local restored = WorkerTransport.restore(controller, operation(), os.time(), lease)
 			if not restored.ok then return end
-			shift.status = "Ware am Sägeausgang"
+			shift.status = atSource
 			walk(shift, shift.binding.rest)
 		else
 			shift.status = "Weg blockiert · trägt Ware"
@@ -126,11 +130,11 @@ function WorkerShift.tick(shift: Shift, controller: Persistence.Controller, leas
 	end
 	local reserved = WorkerTransport.reserve(controller, operation(), now, lease)
 	if reserved.ok then
-		shift.status = "Zur Säge unterwegs"
+		shift.status = toSource
 	elseif reserved.code == "NO_MATERIAL" then
 		shift.status = "Material fehlt"
 	elseif reserved.code == "TARGET_FULL" or reserved.code == "TARGET_RESERVED" then
-		shift.status = "Montageeingang belegt"
+		shift.status = if finish then "Packtisch-Eingang belegt" else "Montageeingang belegt"
 	end
 end
 

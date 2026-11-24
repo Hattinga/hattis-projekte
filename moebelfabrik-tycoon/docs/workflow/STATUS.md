@@ -1,12 +1,12 @@
 # Projektstatus
 
-Stand 24. November 2026. **P02, P04 bis P08 sowie P09-01 bis P09-05 sind abgenommen.** Das erste Förderband bucht einen Bausatz über den gemeinsamen Bestand von der Säge auf seinen Puffer und an die Montage. Die sichtbare Bewegung folgt dem bestätigten Stand. Bei vollem Ziel hält das Band an, Band und Säge zeigen den Rückstau mit Ursache, und nach freiem Platz läuft alles ohne Eingriff weiter. **Als Nächstes folgt P09-06: Der Mitarbeiter, dessen Weg das Band übernommen hat, erhält einen anderen vorgesehenen Werkstattweg. Der Code dafür liegt im Repo, der Studio-Test hat noch kein Ergebnis, die Checkbox bleibt offen ([Stand](#p09-06-begonnen-nicht-abgenommen-2411)).**
+Stand 24. November 2026. **P02, P04 bis P08 sowie P09-01 bis P09-06 sind abgenommen.** Das erste Förderband übernimmt Sägeausgang → Montageeingang. Der Mitarbeiter kann anschließend den Weg Finish-Ausgang → Packtisch-Eingang übernehmen. Die Zuweisung bleibt beim Wiederbeitritt erhalten. **Als Nächstes folgt P09-07, die Konkurrenzprüfung für Spieler, Mitarbeiter und Band.**
 
 | Feld | Aktuell |
 |---|---|
-| Letzter abgeschlossener Schritt | **P09-05** – `Line.beltStatus` und `Line.status` leiten `BACKLOG` mit Ursache (Montageeingang belegt oder Band angehalten) aus dem bestätigten Stand ab. Neues Bandschild, Säge zeigt „Rückstau“ statt „Transport läuft“, sechs EN/DE-Schlüssel. Geprüft: Halt über 3 s ohne Save, Claim oder Materialverbrauch, Ursachenwechsel beim Ausschalten, Lieferung und Wiederanlauf der Säge nach freiem Platz. Direkte B/T-Tastatureingabe noch offen. [Beleg](../evidence/P09.md#p09-05--halt-bei-vollem-ziel-und-rückstau-bis-zur-säge) |
-| Davor | **P09-04** – Die Pose des Bausatzes folgt dem bestätigten Stand, auch bei Save-Kollision und Serverwechsel mitten in der Ausfahrt ([Beleg](../evidence/P09.md#p09-04--bewegung-am-bestätigten-transportzustand)). **P09-03** – Sägeausgang → `Band.First` → Montageeingang ([Beleg](../evidence/P09.md#p09-03--umbuchung-über-den-bandpuffer)). |
-| Naechster Umsetzungsschritt | **P09-06** – Den bisherigen Träger nach Übernahme seines Wegs einem anderen vorgesehenen Werkstattweg zuweisen. **Begonnen, nicht abgenommen.** Wiederaufnahme: [P09-06 begonnen](#p09-06-begonnen-nicht-abgenommen-2411). |
+| Letzter abgeschlossener Schritt | **P09-06** – Der untätige Mitarbeiter wechselt nach der Bandinstallation per K am Finish-Ausgang zu Finish → Packtisch. Geprüft sind Sperren während der Arbeit und ohne Band, einmalige Lieferung und Wiederbeitritt. [Beleg](../evidence/P09.md#p09-06--zweiter-mitarbeiterweg) |
+| Davor | **P09-05** – Halt bei vollem Ziel, sichtbarer Rückstau bis zur Säge und Wiederanlauf. Direkte B/T-Tastatureingabe offen. [Beleg](../evidence/P09.md#p09-05--halt-bei-vollem-ziel-und-rückstau-bis-zur-säge) · **P09-04** – bestätigte Bandbewegung bei Save-Kollision und Wiederbeitritt. [Beleg](../evidence/P09.md#p09-04--bewegung-am-bestätigten-transportzustand) |
+| Naechster Umsetzungsschritt | **P09-07** – Konkurrierende Abholungen durch Spieler, Mitarbeiter und Band gemäß QA-P04-02 und QA-P09-02 prüfen. [Plan und Prüfmatrix](../plan/02-automatisierung.md#p09--erstes-festes-förderband) |
 | Entscheidungen 18.11. (delegiert) | Hallentor: Laden nur auf dem Hof, Halle wird nicht befahren, Tor bleibt 4 m ([MAP](../design/MAP.md)). Oberfläche: eine Finish-Oberfläche in Hocker01 v1 ([PRODUCTION](../design/PRODUCTION.md)). P00-03: Zielprofil schwächeres Android-Phone 1600×720, Touch, Grafikstufe 1; bis zum echten Gerät Studio-Emulator als Stellvertreter, Checkbox bleibt offen ([P00](../plan/00-start.md)) |
 | Paralleles Paket | **P03-04 abgenommen (19.11.)**: Karton liegt auf, Last im Fahrzeugprofil, Torfahrt, Bild aus der Spielkamera ([Beleg](../evidence/P03-04.md)). **P03-05 abgenommen (19.11.)**: Die fünf FBX sind kalibriert in `ServerStorage.P03ArtProbe`, die Labels sind im Play-Client in DE und EN geprüft, `TextScaled` ist korrigiert ([Beleg](../evidence/P03-05.md)). Offen sind P03-06 (Spielkamera-Ansichten) und P03-07 (Art-Freigabe durch Jonas). **P03-03** – die Gebäudeprobe benötigt eine eigene Upload-Freigabe. [Übergabe](HANDOFF-2026-11-19.md#p03-05--fünf-assets-importiert-und-kalibriert) |
 | HQ-Assets (20.11., außerhalb der Meilensteine) | Serie 1 Produktionslinie in Blender fertig: Hocker roh und fertig, Bausatz, Holzpaket, Karton, vier Stationen, Band 1 m und 0,30 m. Das vorläufige Budget ist eingehalten ([ART](../design/ART.md#vorläufiges-asset-budget)), 22 Rückimporte bestanden. Studio-Import wartet auf Upload-Freigabe, Art-Freigabe offen. [Paket](../../assets/hq/README.md) |
@@ -21,43 +21,17 @@ Stand 24. November 2026. **P02, P04 bis P08 sowie P09-01 bis P09-05 sind abgenom
 | Vergleichsobjekt | `Workspace.FableWorkshop`, Asset `106051543998570`; kein vorgesehenes Spielgebaeude |
 | Technikproben | `Workspace.P02Greybox` und `Workspace.P02Line`; Prueftraeger in `ServerStorage.P02CarryProbe`, nicht im Spielstart |
 | Arbeitsbranch | `work/p00-studio-import`; jeder Abschluss wird gepusht (Nutzerauftrag vom 18.11.: fortlaufend committen und pushen) |
-| Speicherung | TeamCreate **Version 93** = P09-05, privat, mit dem Repo abgeglichen. **Der Edit-Stand im Studio ist weiter:** Er enthält die ungespeicherten P09-06-Änderungen (zehn Quellen, Prüfsummen mit dem Arbeitsstand identisch). Vor dem Speichern den Test aus dem P09-06-Abschnitt wiederholen. Zum Verwerfen den Place auf Version 93 zurücksetzen. |
-| Wiederherstellbare Staende | Version 91 = P09-04, Version 89 = P09-03, Version 86 = P09-01/02, Version 85 = P08 abgeschlossen, Version 83 = Mitarbeitertransport, Version 82 = P08-Strecke, Version 81 = P08-Anstellung, Version 80 = P07 abgeschlossen, Version 78 = vor P07-07/08, Version 76 = lesbare P03-05-Labels, Version 67 = Art-Prüfinstanzen. |
+| Speicherung | Private TeamCreate-Version **98** enthält P09-06. Die Factory- und geprüften ToolRun-Quellen stimmen inhaltlich mit dem Repo überein. Rückfallpunkt auf P09-05 ist Version 93. |
+| Wiederherstellbare Staende | Version 93 = P09-05, Version 91 = P09-04, Version 89 = P09-03, Version 86 = P09-01/02, Version 85 = P08 abgeschlossen, Version 83 = Mitarbeitertransport, Version 82 = P08-Strecke, Version 81 = P08-Anstellung, Version 80 = P07 abgeschlossen, Version 78 = vor P07-07/08, Version 76 = lesbare P03-05-Labels, Version 67 = Art-Prüfinstanzen. |
 | Pruefbelege | [P02-06](../evidence/P02-06.md), [P02-05](../evidence/P02-05.md), [P02-04](../evidence/P02-04.md), [P02-03R](../evidence/P02-03R.md); Stadtentwurf [MAP](../design/MAP.md), Masse [DIMENSIONS](../design/DIMENSIONS.md) |
 
-## P09-06 begonnen, nicht abgenommen (24.11.)
+## P09-06 abgenommen (24.11.)
 
-**Entscheidung (Jonas hat die Entscheidungsgewalt übertragen).** Der „andere vorgesehene Werkstattweg“ ist **Finish-Ausgang → Packtisch-Eingang** (Stufe Fertig). Der Weg liegt wie Säge → Montage zwischen Nachbarstationen einer Reihe. Montage-Ausgang → Finish-Eingang scheidet aus, weil beide Stationen einen gemeinsamen Gangmarker teilen und `WorkerRoute.bind` einen Abstand von mindestens 2 Studs verlangt. Dass die Standpunkte der Finish-Strecke diese Prüfung erfüllen, ist **angenommen und noch nicht im Studio gemessen**.
+- Der zweite Werkstattweg führt vom Finish-Ausgang zum Packtisch-Eingang. Beide Wege teilen sich zwei Standpunkte im Gang. Abstand 3,57 Studs, Rastpunkt und Laufwege geprüft.
+- Bestanden sind die Studio-Fälle `full`, `leave`, `return`, die K-Eingabe im Play-Client und die Regressionen P04-01 bis P04-03, P08-03 bis P08-05, P08-07 sowie P09-03 bis P09-05. [Messwerte und Startbedingungen](../evidence/P09.md#p09-06--zweiter-mitarbeiterweg)
 
-**Im Repo, nicht committet als Abnahme (Commit trägt den Zusatz „nicht abgenommen“).**
+**Weitere Entscheidungen vom 24.11.**
 
-| Datei | Änderung |
-|---|---|
-| [State](../../src/server/State.luau) | `WORKER_ROUTES` mit den Wegen `Saw` und `Finish`, gemeinsamer Träger `Worker.First`. Neue Helfer `workerLeg` und `workerReturnOrigin`. Die drei Stellen, die bisher nur die Säge-Strecke kannten, prüfen jetzt gegen die registrierten Wege. |
-| [Actions](../../src/server/Actions.luau), [Transfers](../../src/server/Transfers.luau) | Stufenprüfung und Rückgabe-Ursprung über den jeweiligen Weg. |
-| [Profiles](../../src/server/Profiles.luau) | `firstWorker.route` (nur `Finish`, nur mit `assigned` und installiertem Band gültig). |
-| [Workers](../../src/server/Workers.luau) | `Workers.reassign`: nur bei zugewiesenem Mitarbeiter, ohne offenen Worker-Claim, ohne getragene Ware und ohne Rückgabezusage (`WORKER_BUSY`), nur mit installiertem Band (`BELT_NOT_INSTALLED`). Speichert Weg und neue Trägerstufe `Fertig` samt Revision. Wiederholung ergibt `ALREADY_REASSIGNED`. |
-| [WorkerRoute](../../src/server/WorkerRoute.luau), [WorkerShift](../../src/server/WorkerShift.luau), [WorkerTransport](../../src/server/WorkerTransport.luau) | Der Weg wird aus Bindung und Profil abgeleitet statt aus einer Konstante. `WorkerShift.rebind` schaltet im Betrieb um. |
-| [Demo](../../tools/studio/start-p05-09-line-demo.luau) | Taste K am Finish-Ausgang, beide Bindungen, Umschaltung nach der Bestätigung, Wiederherstellung auf dem gespeicherten Weg. Testschalter `P0906Funds` (400 Spielgeld), `P0906FinishStock`, `P0906PackenFull`. |
-| [Probe](../../tools/studio/test-p09-06-worker-reassign.luau) | `ToolRun.P0906ReassignProbe` mit den Fällen `full`, `leave`, `return`. Sie ist nur geschrieben und kompiliert. |
-
-**Geprüft.** Alle Dateien kompilieren (`luau-compile`). Lokale Suiten unverändert grün: P04-05 41/41, P04-06 35/35, P05-05 18/18, P07 12/12 und 11/11. Die zehn Studio-Kopien stimmen per Prüfsumme mit dem Repo überein.
-
-**Nicht geprüft (Checkbox bleibt deshalb offen).**
-1. Die Probe `full` ist gestartet worden, wurde aber beim Stoppen abgebrochen (`Target is closed`). Es gibt kein Ergebnis, auch nicht zum Start der Demo mit der zweiten Bindung.
-2. `leave` und `return` (Wiederbeitritt auf dem neuen Weg) sind nicht gelaufen.
-3. Die Regression der bisherigen Mitarbeiterproben fehlt: `test-p08-03-worker-transport`, `test-p08-04-05-worker-blocks`, `test-p08-07-worker-rejoin`, außerdem P09-03, P09-04 und P09-05 mit der geänderten `State`.
-4. Gehweg, Rastpunkt und freie Strecke (`WorkerRoute.clear`) auf der Finish-Strecke.
-5. Die Studio-Proben P04-01 bis P04-03 für `State`, `Actions` und `Transfers` nach der Verallgemeinerung.
-
-**Wiederaufnahme in dieser Reihenfolge.**
-1. Place im Edit-Modus prüfen: Quellen gegen das Repo abgleichen (Prüfsumme wie in [P09](../evidence/P09.md)). Version 93 ist der Rückfallpunkt.
-2. `full` in einem frischen Play-Server: `P06LoadingDemo`, `P0906Funds`, `P0803WorkerStock`, `P0906FinishStock`, `P0906Case=full`, dann `ToolRun.LineDemo`, dann `ToolRun.P0906ReassignProbe`. **Die Probe dauert bis zu mehrere Minuten.** Ein `execute_luau`-Aufruf wird dabei in den Hintergrund verschoben. Deshalb per `task.spawn` starten, das Ergebnis als JSON in einen `StringValue` in `ServerStorage` schreiben und mit kurzen Aufrufen abfragen (Muster aus dem Abschnitt „Arbeitsweise“ unten).
-3. `leave` und `return` in zwei Servern mit demselben neuen `P0607ResumeScope`. Beim ersten Start zusätzlich `P0906FinishStock` und `P0906PackenFull`.
-4. Regression laut Punkt 3 oben, Konsole prüfen.
-5. Bei Erfolg: Place speichern, Beleg in [P09](../evidence/P09.md#p09-06--zweiter-mitarbeiterweg-stand-der-prüfung) mit Ergebnissen füllen, Checkbox in [P09](../plan/02-automatisierung.md) setzen, diesen Abschnitt zu einem normalen Abnahmeblock kürzen. Bei Misserfolg Ursache klären. Gegebenenfalls ist die Geometrie der Finish-Strecke der erste Verdächtige.
-
-**Weitere Entscheidungen dieser Sitzung (24.11.).**
 - Das HQ-Paket (Serie 1) ist unter `assets/hq/` versioniert (`00ce148`). Die ungenutzten `Paint*`-Texturen sind entfernt, `__pycache__` wird ignoriert.
 - Der Roblox-Skill (`~/.claude/skills/roblox-dev`) steht auf Version 2.15.0 (Engine und Luau 0.748). Er liegt außerhalb des Repos.
 - Rohaufnahmen von P09-05 liegen lokal in `.local/evidence/` (nicht versioniert).

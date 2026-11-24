@@ -161,19 +161,18 @@ if logisticsEnabled then
 			profile.batches.TestMontageInput = State.newBatch("TestMontageInput", player.UserId, "Bausatz", WorkerRoute.TARGET)
 			profile.batches.TestMontageOutput = State.newBatch("TestMontageOutput", player.UserId, "Rohhocker", "Montage.Output")
 		end
-		-- P09-06: one finished stool waits at the finishing output, the start of the second worker leg.
-		if workspace:GetAttribute("P0906FinishStock") == true then
-			profile.batches.TestFertig = State.newBatch("TestFertig", player.UserId, "Fertig", "Finish.Output")
-		end
-		-- P09-06: a taken packing input that cannot start (its output holds a carton) keeps the second leg's target full.
-		if workspace:GetAttribute("P0906PackenFull") == true then
-			profile.batches.TestPackenInput = State.newBatch("TestPackenInput", player.UserId, "Fertig", "Packen.Input")
-			profile.batches.TestPackenOutput = State.newBatch("TestPackenOutput", player.UserId, "Karton", "Packen.Output")
-		end
 		-- P09-05: one wood package waits at the saw so a backlog at the belt can be seen to hold it back.
 		if workspace:GetAttribute("P0905SawStock") == true then
 			profile.batches.TestHolz = State.newBatch("TestHolz", player.UserId, "Holzpaket", "Saege.Input")
 		end
+	end
+	if workspace:GetAttribute("P0906FinishStock") == true then
+		profile.batches.TestFertig = State.newBatch("TestFertig", player.UserId, "Fertig", "Finish.Output")
+	end
+	-- A carton at the packing output keeps the occupied packing input from starting.
+	if workspace:GetAttribute("P0906PackenFull") == true then
+		profile.batches.TestPackenInput = State.newBatch("TestPackenInput", player.UserId, "Fertig", "Packen.Input")
+		profile.batches.TestPackenOutput = State.newBatch("TestPackenOutput", player.UserId, "Karton", "Packen.Output")
 	end
 else
 	for i = 1, 2 do
@@ -328,15 +327,20 @@ local function render()
 	if beltShift then beltShift.powered = permit ~= nil and not permit.stopped end
 	local hired = worker ~= nil
 	local assigned = worker ~= nil and worker.assigned == true
+	local onFinish = worker ~= nil and worker.route == "Finish"
 	if hirePrompt then hirePrompt.ActionText = if hired then "Anstellung ansehen" else "Anstellen · " .. Workers.PRICE end
 	if assignPrompt then
+		assignPrompt.Enabled = not onFinish
+		assignPrompt:SetAttribute("WorkshopAvailable", not onFinish)
 		assignPrompt.ActionText = if workerShift and workerShift.paused then "Weg erneut versuchen"
 			elseif assigned then "Route ansehen" else "Route zuweisen"
 	end
 	local route = workerBindings[(worker and worker.route) or "Saw"]
 	if reassignPrompt then
 		reassignPrompt.Enabled = assigned and permit ~= nil
-		reassignPrompt.ActionText = if worker and worker.route then "Route ansehen" else "Route zuweisen"
+		reassignPrompt:SetAttribute("WorkshopAvailable", reassignPrompt.Enabled)
+		reassignPrompt.ActionText = if onFinish and workerShift and workerShift.paused then "Weg erneut versuchen"
+			elseif onFinish then "Route ansehen" else "Route zuweisen"
 	end
 	if workerShift and worker and workerShift.binding.routeId ~= (worker.route or "Saw") then
 		WorkerShift.rebind(workerShift, route)
@@ -364,7 +368,7 @@ local function render()
 			point.Parent = workerRig.root
 			local prompt = Instance.new("ProximityPrompt")
 			prompt.Name = "P0805RecoverWorker"
-			prompt.ObjectText = "Bausatz beim Mitarbeiter"
+			prompt.ObjectText = "Ware beim Mitarbeiter"
 			prompt.ActionText = "Übernehmen"
 			prompt.KeyboardKeyCode = Enum.KeyCode.G
 			prompt.GamepadKeyCode = Enum.KeyCode.ButtonB
@@ -386,11 +390,12 @@ local function render()
 					"worker/recover/" .. http:GenerateGUID(false), os.time(), TTL)
 				busy = false
 				local recovered = ran and result.ok
-				if recovered then shift.status = "Bausatz übernommen" end
+				if recovered then shift.status = "Ware übernommen" end
 				local code = if ran then result.code else "ERROR"
-				lastMessage = if recovered then "Bausatz übernommen. Lege ihn an der Montage ab."
+				local target = if shift.binding.routeId == "Finish" then "am Packtisch" else "an der Montage"
+				lastMessage = if recovered then "Ware übernommen. Lege sie " .. target .. " ab."
 					elseif code == "TARGET_FULL" then "Lege zuerst die Ware in deiner Hand ab."
-					else "Bausatz gerade nicht übernehmbar."
+					else "Ware gerade nicht übernehmbar."
 				return {ok = recovered, code = code, message = lastMessage}
 			end
 			prompt.Triggered:Connect(recover)
@@ -780,7 +785,7 @@ if logisticsEnabled then
 			busy = false
 			local code = if ran then result.code else "ERROR"
 			lastMessage = messages[code] or fallback
-			if code == "ALREADY_ASSIGNED" and workerShift and workerShift.paused then
+			if (code == "ALREADY_ASSIGNED" or code == "ALREADY_REASSIGNED") and workerShift and workerShift.paused then
 				WorkerShift.retry(workerShift)
 				lastMessage = "Der Mitarbeiter versucht es erneut."
 			end
@@ -846,7 +851,7 @@ game:GetService("RunService").RenderStepped:Connect(function()
 					trailerPrompt, trailerScore = prompt, score
 				end
 			else
-				prompt.Enabled = score > 0.35
+				prompt.Enabled = score > 0.35 and prompt:GetAttribute("WorkshopAvailable") ~= false
 			end
 		end
 	end

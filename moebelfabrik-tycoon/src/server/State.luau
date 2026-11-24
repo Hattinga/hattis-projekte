@@ -56,16 +56,17 @@ for _, rule in State.STATIONS do
 end
 State.STATION_BY_ID = table.freeze(stationById)
 State.SAW = State.STATIONS[1]
-export type WorkerLeg = {carrier: string, source: string, target: string, stage: Stage}
+export type WorkerLeg = {read carrier: string, read source: string, read target: string, read stage: Stage}
 State.FIRST_WORKER = table.freeze({carrier="Worker.First",source=State.SAW.output,
 	target=stationById.Montage.input,stage=State.SAW.outputStage})
 -- P09-06: the legs the first worker can be assigned to. They share one carrier; the profile selects one
 -- (progress.firstWorker.route, nil = Saw). Finish -> Packen is the next same-row hand leg after the belt took over the saw leg.
-State.WORKER_ROUTES = table.freeze({
+local workerRoutes: {[string]: WorkerLeg} = {
 	Saw=State.FIRST_WORKER,
 	Finish=table.freeze({carrier="Worker.First",source=stationById.Finish.output,
 		target=stationById.Packen.input,stage=stationById.Finish.outputStage}),
-})
+}
+State.WORKER_ROUTES = table.freeze(workerRoutes)
 State.FIRST_BELT = table.freeze({carrier="Band.First",source=State.SAW.output,
 	target=stationById.Montage.input,stage=State.SAW.outputStage})
 local MAX_INTEGER = 9007199254740991
