@@ -13,6 +13,7 @@ local playerGui = player:WaitForChild("PlayerGui")
 local gui = Instance.new("ScreenGui")
 gui.Name = "P0909DeviceMetrics"
 gui.ResetOnSpawn = false
+gui.DisplayOrder = -1 -- prompts and touch controls stay above the metrics panel on short screens
 gui.Parent = playerGui
 local status = Instance.new("TextLabel")
 status.Name = "Status"
