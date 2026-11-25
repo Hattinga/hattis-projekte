@@ -15,9 +15,9 @@ const readSource = (name, path) => {
   return source;
 };
 // Only Roblox ModuleScript imports are adapted. Production source remains unchanged.
-for (const name of ['State', 'Actions', 'Transfers', 'Profiles', 'Sessions']) {
+for (const name of ['Recipes', 'State', 'Actions', 'Transfers', 'Profiles', 'Sessions']) {
   let source = readSource(name, `src/server/${name}.luau`)
-    .replace(/require\(script\.Parent\.(State|Actions|Transfers|Profiles)\)/g, 'require("./$1")');
+    .replace(/require\(script\.Parent\.(Recipes|State|Actions|Transfers|Profiles)\)/g, 'require("./$1")');
   if (name === 'State') {
     // CLI has no DataModel. Studio tests separately verify the real server-only guard.
     const guard = 'local runService = game:GetService("RunService")';

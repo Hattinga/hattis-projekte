@@ -9,7 +9,7 @@ Stand 25. November 2026. Entwurfsvertrag für **P10-01**, Rezept `Beistelltisch0
 1. **Gleiche Stationen, gleiche Plätze.** Der Tisch läuft über Säge, Montagebank, Finishplatz und Packtisch. Jede Station bearbeitet eine Charge und jede Stufe belegt genau einen Platz. Eingangs-, Ausgangs-, Lager- und Anhängerplätze bleiben unverändert.
 2. **Kein Gut, das mehrere Plätze belegt.** Reservierung, Umbuchung, Fahrzeugplätze und Bandpuffer rechnen mit einer Charge je Platz. Ein Tisch, der zwei Anhängerplätze braucht, würde diese Regeln in allen Modulen ändern. Der Unterschied beim Platz entsteht stattdessen über den Wert je Platz (siehe Vergleich).
 3. **Gleicher Träger, gleiches Band.** Der Tisch-Bausatz liegt im selben offenen Träger (0,60 × 0,18 × 0,50 m). Der Puffer `Band.First` und die Auflagen bleiben unverändert.
-4. **Stufen.** `Holzpaket`, `Bausatz` und `Karton` behalten ihre Namen, `recipeId` unterscheidet die Rezepte. Neu sind `Rohtisch` und `FertigTisch`. Die Hocker-Stufen (`Rohhocker`, `Fertig`) bleiben, damit bestehende Spielstände ohne Migration gültig sind. Eine Charge behält ihre Rezeptzuordnung bis zum Verkauf.
+4. **Stufen.** Eine Stufe ist ein Bearbeitungsstand, `recipeId` an der Charge nennt das Produkt. `Holzpaket`, `Bausatz`, `Fertig` und `Karton` gelten für beide Rezepte, neu ist nur `Rohtisch`. Der Mitarbeiter- und Bandweg und die Fahrzeug-, Lager- und Verkaufsprüfungen arbeiten mit Stufennamen und bleiben dadurch unverändert. Bestehende Spielstände bleiben ohne Migration gültig. Eine Charge behält ihre Rezeptzuordnung bis zum Verkauf.
 5. **Zwei Holzangebote.** Der Lieferant bietet ein Holzpaket für den Hocker (60) und ein Tischholzpaket (80) an. Der einmalige Materialvorschuss bei Stillstand bleibt auf das Hocker-Holzpaket (60) begrenzt.
 
 ## Rezept
@@ -82,10 +82,10 @@ Der Tischkarton bleibt unter dem freien Warenraum bis 1,45 m (Reserve 0,01 m) un
 
 Das gilt für P10-02 und später. P10-01 ändert weder Code noch Studio.
 
-- `State` prüft heute `recipeId == "Hocker01"` und kennt nur die fünf Hocker-Stufen. Es braucht eine Rezeptliste mit Stufen, Zeiten und akzeptierten Stufen je Rezept. `State.STATIONS` bleibt die Quelle der Stationsplätze, die Zeiten kommen aus dem Rezept der Charge.
-- Stationen, Plätze und Lager akzeptieren je Stufe beide Rezepte. Die Prüfung vergleicht Stufe und `recipeId` der gespeicherten Charge.
-- Der Verkauf braucht einen Preis je Rezept. Händlererlös und Privatspanne stehen oben.
-- Der Lieferant bietet zwei Holzpakete mit eigenem Preis. Die bestätigte Lieferzusage bindet das Rezept.
+- Umgesetzt in P10-02: [Recipes](../../src/server/Recipes.luau) hält Stufen, Zeiten und Preise beider Rezepte. `State` prüft Rezept und Stufe je Charge, `State.STATIONS` bleibt die Quelle der Stationsplätze, die Zeiten kommen über `State.ruleFor` aus dem Rezept der Charge.
+- Stationsplätze nehmen die Stufen beider Rezepte an (`Recipes.acceptedStages`). Die Säge startet nur Pakete des gewählten Rezepts, spätere Stationen folgen dem Rezept der Charge.
+- Der Verkauf nimmt den Preis aus dem Rezept der Charge. Händlererlös und Privatspanne stehen oben.
+- Der Einkauf liefert das Holzpaket des gewählten Rezepts zu dessen Preis, der Materialvorschuss bleibt beim Hocker.
 - Darstellung: eine `TableView` analog zu `StoolView` und `KitView` mit den Maßen oben, dazu Labels in Englisch und Deutsch.
 - Unverändert bleiben Band, Bandpuffer, Fahrzeugplätze, Lagerplätze und die Reservierungsregeln.
 

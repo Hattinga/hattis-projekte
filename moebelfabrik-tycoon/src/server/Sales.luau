@@ -2,6 +2,7 @@
 -- P07: one carton per sale. The world adapter observes arrival, reach and the buyer pad;
 -- this module changes stock and money only through confirmed saves of the owner's profile.
 local State = require(script.Parent.State)
+local Recipes = require(script.Parent.Recipes)
 local Profiles = require(script.Parent.Profiles)
 local Persistence = require(script.Parent.Persistence)
 local Transfers = require(script.Parent.Transfers)
@@ -19,7 +20,10 @@ export type Price = {dealer: number, privateMin: number, privateMax: number}
 
 local Sales = {}
 -- Prototype test economy (ECONOMY.md): known dealer price per model, private range shown before binding.
-local PRICES: {[string]: Price} = {Hocker01 = {dealer = 100, privateMin = 80, privateMax = 120}}
+local PRICES: {[string]: Price} = {}
+for _, recipe in Recipes.LIST do
+	PRICES[recipe.id] = {dealer = recipe.dealer, privateMin = recipe.privateMin, privateMax = recipe.privateMax}
+end
 for _, price in PRICES do table.freeze(price) end
 Sales.PRICES = table.freeze(PRICES)
 local MAX_INTEGER = 9007199254740991

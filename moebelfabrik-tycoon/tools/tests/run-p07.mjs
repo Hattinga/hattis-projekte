@@ -9,7 +9,7 @@ const staging=resolve(root,'.local/p07-tests/run');
 mkdirSync(staging,{recursive:true});
 const hashes={};
 function source(name,path){const s=readFileSync(resolve(root,path),'utf8');hashes[name]=createHash('sha256').update(s).digest('hex');return s;}
-const modules=['State','Actions','Transfers','Profiles','Sessions','Persistence','Purchases','Sales'];
+const modules=['Recipes','State','Actions','Transfers','Profiles','Sessions','Persistence','Purchases','Sales'];
 for(const name of modules){
  let s=source(name,`src/server/${name}.luau`).replace(/require\(script\.Parent\.(\w+)\)/g,'require("./$1")');
  if(name==='State'){

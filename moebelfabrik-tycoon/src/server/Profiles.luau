@@ -2,6 +2,7 @@
 -- P04-04: pure versioned loading boundary. No active registry, startup or storage access.
 -- A trusted reader returns the raw saved value (nil only for confirmed absence), or throws.
 local State = require(script.Parent.State)
+local Recipes = require(script.Parent.Recipes)
 
 export type WorkerHire = {revision: number, price: number, assigned: boolean?, route: string?}
 export type BeltPermit = {revision: number, price: number, sourceId: string, targetId: string, stopped: boolean?}
@@ -54,8 +55,10 @@ local function validate(data: any, ownerUserId: number): string?
 	if not record(data, ENVELOPE_FIELDS) or not positiveInteger(data.profileVersion) then return "INVALID_PROFILE" end
 	if data.profileVersion~=Profiles.VERSION then return "UNSUPPORTED_PROFILE_VERSION" end
 	local progress=data.progress
+	-- P10-02: any registered recipe may be selected; its version must match the registered one.
+	local selected=if type(progress)=="table" then Recipes.get(progress.selectedRecipeId) else nil
 	if not record(progress, PROGRESS_FIELDS) or progress.version~=Profiles.PROGRESS_VERSION
-		or progress.selectedRecipeId~="Hocker01" or progress.selectedRecipeVersion~=1 then
+		or not selected or progress.selectedRecipeVersion~=selected.version then
 		return "INVALID_PROGRESS"
 	end
 	if not plain(data.state) then return "INVALID_STATE" end
@@ -91,7 +94,7 @@ end
 local function initialData(ownerUserId: number): Envelope
 	-- A non-economic schema specimen, not balanced game start data or a durable creation.
 	return {profileVersion=Profiles.VERSION, state=State.newProfile(ownerUserId),
-		progress={version=Profiles.PROGRESS_VERSION, selectedRecipeId="Hocker01", selectedRecipeVersion=1}}
+		progress={version=Profiles.PROGRESS_VERSION, selectedRecipeId=Recipes.DEFAULT_ID, selectedRecipeVersion=1}}
 end
 
 function Profiles.load(ownerUserId: any, readProfile: any, initialize: any?): Result

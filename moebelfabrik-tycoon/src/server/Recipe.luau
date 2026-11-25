@@ -1,6 +1,7 @@
 --!strict
 -- P05-01: Hocker01's station contract and read-only binding to a workshop model.
 local State = require(script.Parent.State)
+local Recipes = require(script.Parent.Recipes)
 
 export type Station = {
 	read id: string,
@@ -58,8 +59,8 @@ function Recipe.bind(stationRoot: Instance): (Binding?, string?)
 				or not point or not point:IsA("Attachment") then
 				return nil, "INVALID_POINT:" .. id
 			end
-			local stage = if role == "Output" then rule.outputStage else rule.inputStage
-			binding.locations[id] = State.newLocation(id, "Station" .. role, 1, {stage})
+			-- P10-02: a station place accepts the stage of every registered recipe, not only the first recipe's.
+			binding.locations[id] = State.newLocation(id, "Station" .. role, 1, Recipes.acceptedStages(rule.id, role))
 			binding.points[id] = point
 		end
 	end

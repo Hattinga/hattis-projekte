@@ -26,12 +26,22 @@ local function confirmedCopy(controller: Persistence.Controller): (any?, Result?
 end
 
 function Stations.start(controller: Persistence.Controller, stationId: string, now: number, ttlSeconds: number): Result
-	local rule = State.STATION_BY_ID[stationId]
-	if not rule then return reject("UNKNOWN_STATION") end
-	if not validTime(now) or now > MAX_INTEGER - rule.durationSeconds then return reject("INVALID_TIME") end
+	local base = State.STATION_BY_ID[stationId]
+	if not base then return reject("UNKNOWN_STATION") end
+	if not validTime(now) or now > MAX_INTEGER - base.durationSeconds then return reject("INVALID_TIME") end
 	local candidate, problem = confirmedCopy(controller)
 	if not candidate then return assert(problem) end
 	local state = candidate.state
+	-- P10-02: the batch waiting at the input names the recipe, and with it the stages and the run time.
+	local inputBatch: State.Batch? = nil
+	for _, batch in state.batches do
+		if batch.locationId == base.input then inputBatch = batch; break end
+	end
+	local rule = base
+	if inputBatch then
+		rule = State.ruleFor(stationId, inputBatch.recipeId) or base
+		if now > MAX_INTEGER - rule.durationSeconds then return reject("INVALID_TIME") end
+	end
 	local input, process, output = state.locations[rule.input], state.locations[rule.process], state.locations[rule.output]
 	if not input or input.kind ~= "StationInput" or not process or process.kind ~= "StationProcess"
 		or not output or output.kind ~= "StationOutput"
@@ -42,11 +52,12 @@ function Stations.start(controller: Persistence.Controller, stationId: string, n
 	if lock and lock.kind == "Production" then return reject("ALREADY_RUNNING") end
 	if lock or State.countAt(state, rule.output) ~= 0 then return reject("OUTPUT_BLOCKED") end
 	if State.countAt(state, rule.process) ~= 0 or state.reservations[rule.process] then return reject("PROCESS_BLOCKED") end
-	local inputBatch: State.Batch? = nil
-	for _, batch in state.batches do
-		if batch.locationId == rule.input then inputBatch = batch; break end
-	end
 	if not inputBatch or inputBatch.stage ~= rule.inputStage then return reject("INPUT_REQUIRED") end
+	-- The saw takes only packages of the selected recipe. Later stations always follow the recipe of their batch.
+	if stationId == "Saege" and candidate.progress ~= nil
+		and inputBatch.recipeId ~= candidate.progress.selectedRecipeId then
+		return reject("WRONG_RECIPE")
+	end
 	if state.revision >= MAX_INTEGER - 1 then return reject("REVISION_OVERFLOW") end
 	for id, claim in state.claims do
 		if State.claimTouches(claim, rule.input) or State.claimTouches(claim, rule.output) then
@@ -77,7 +88,9 @@ function Stations.finish(controller: Persistence.Controller, stationId: string, 
 	if now < lock.finishAt then return reject("RUNNING") end
 	if state.revision == MAX_INTEGER then return reject("REVISION_OVERFLOW") end
 	local batch = state.batches[batchId]
-	batch.locationId, batch.stage = rule.output, rule.outputStage
+	-- The finished run delivers the stage its own recipe defines for this station.
+	local recipeRule = State.ruleFor(stationId, batch.recipeId) or rule
+	batch.locationId, batch.stage = recipeRule.output, recipeRule.outputStage
 	state.reservations[rule.output] = nil
 	state.revision += 1
 	local saved = controller.save(candidate, ttlSeconds)

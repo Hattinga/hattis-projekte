@@ -1,15 +1,18 @@
 --!strict
 -- P05-08: continuous station operation on the confirmed inventory. No automatic transport between stations.
 local State = require(script.Parent.State)
+local Recipes = require(script.Parent.Recipes)
 local Persistence = require(script.Parent.Persistence)
 local Stations = require(script.Parent.Stations)
 local Line = {}
 
 export type Event = {stationId: string, code: string, ok: boolean, unknown: boolean, batchId: string?}
--- RUNNING > OUTPUT_FULL > OUTPUT_RESERVED > READY > INPUT_MISSING (PRODUCTION "Stoppfälle").
+-- RUNNING > OUTPUT_FULL > OUTPUT_RESERVED > WRONG_RECIPE > READY > INPUT_MISSING (PRODUCTION "Stoppfälle").
 -- BACKLOG (P09-05) replaces OUTPUT_RESERVED while the first belt holds this station's output and cannot move on.
+-- WRONG_RECIPE (P10-02): the saw's waiting package belongs to another recipe than the selected one; `needed` names it.
+-- `recipeId` is the recipe the station shows: its running or finished batch, else its waiting batch, else the selection.
 export type Status = {stationId: string, code: string, inputStage: State.Stage, outputStage: State.Stage,
-	remaining: number?, batchId: string?, inputWaiting: boolean, cause: string?}
+	remaining: number?, batchId: string?, inputWaiting: boolean, cause: string?, recipeId: string, needed: string?}
 export type StoreStatus = {used: number, capacity: number, full: boolean}
 export type BeltStatus = {code: string, cause: string?, batchId: string?}
 
@@ -86,19 +89,25 @@ function Line.beltStatus(state: State.Profile, now: number, stopped: boolean): B
 end
 
 -- Read-only station feedback for signs and HUD; never changes stock. `beltStopped` marks the first belt as switched off.
-function Line.status(state: State.Profile, now: number, beltStopped: boolean?): {[string]: Status}
+-- `selectedRecipeId` is the line's recipe choice; without it the saw takes any recipe and an empty station shows the first.
+function Line.status(state: State.Profile, now: number, beltStopped: boolean?, selectedRecipeId: string?): {[string]: Status}
 	local result: {[string]: Status} = {}
-	for _, rule in State.STATIONS do
+	for _, base in State.STATIONS do
 		local inputBatch: State.Batch? = nil
 		local outputBatch: State.Batch? = nil
 		for _, batch in state.batches do
-			if batch.locationId == rule.input then inputBatch = batch end
-			if batch.locationId == rule.output then outputBatch = batch end
+			if batch.locationId == base.input then inputBatch = batch end
+			if batch.locationId == base.output then outputBatch = batch end
 		end
-		local waiting = inputBatch ~= nil and inputBatch.stage == rule.inputStage
-		local lock = state.reservations[rule.output]
+		local lock = state.reservations[base.output]
+		local locked = if lock then state.batches[lock.batchId] else nil
+		local inputRule = if inputBatch then State.ruleFor(base.id, inputBatch.recipeId) else nil
+		local waiting = inputBatch ~= nil and inputRule ~= nil and inputBatch.stage == inputRule.inputStage
+		local recipeId = if locked then locked.recipeId elseif outputBatch then outputBatch.recipeId
+			elseif inputBatch then inputBatch.recipeId else (selectedRecipeId or Recipes.DEFAULT_ID)
+		local rule = State.ruleFor(base.id, recipeId) or base
 		local status: Status = {stationId = rule.id, code = "INPUT_MISSING", inputStage = rule.inputStage,
-			outputStage = rule.outputStage, inputWaiting = waiting}
+			outputStage = rule.outputStage, inputWaiting = waiting, recipeId = recipeId}
 		if lock and lock.kind == "Production" then
 			status.code, status.batchId = "RUNNING", lock.batchId
 			status.remaining = math.max(0, lock.finishAt - now)
@@ -113,7 +122,11 @@ function Line.status(state: State.Profile, now: number, beltStopped: boolean?): 
 				if cause then status.code, status.cause = "BACKLOG", cause end
 			end
 		elseif waiting then
-			status.code = "READY"
+			if base.id == "Saege" and selectedRecipeId ~= nil and inputBatch ~= nil and inputBatch.recipeId ~= selectedRecipeId then
+				status.code, status.needed = "WRONG_RECIPE", selectedRecipeId
+			else
+				status.code = "READY"
+			end
 		end
 		result[rule.id] = status
 	end

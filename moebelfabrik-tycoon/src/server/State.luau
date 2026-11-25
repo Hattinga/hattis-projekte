@@ -3,8 +3,9 @@
 local runService = game:GetService("RunService")
 assert(runService:IsServer() or (runService:IsStudio() and not runService:IsRunning()),
 	"Factory state is server-only")
+local Recipes = require(script.Parent.Recipes)
 
-export type Stage = "Holzpaket" | "Bausatz" | "Rohhocker" | "Fertig" | "Karton"
+export type Stage = Recipes.Stage
 export type Location = {id: string, kind: string, capacity: number, acceptedStages: {Stage}}
 export type Batch = {id: string, ownerUserId: number, recipeId: string, recipeVersion: number, stage: Stage,
 	quantity: number, locationId: string}
@@ -41,13 +42,15 @@ local function stationRule(id: string, inputStage: Stage, outputStage: Stage, du
 	return table.freeze({id=id, input=id..".Input", process=id..".Process", output=id..".Output",
 		inputStage=inputStage, outputStage=outputStage, durationSeconds=durationSeconds})
 end
--- Hocker01 v1: one run per station, one batch in, the same batch out at the next stage.
-State.STATIONS = table.freeze({
-	stationRule("Saege", "Holzpaket", "Bausatz", 6),
-	stationRule("Montage", "Bausatz", "Rohhocker", 8),
-	stationRule("Finish", "Rohhocker", "Fertig", 6),
-	stationRule("Packen", "Fertig", "Karton", 4),
-})
+-- One run per station, one batch in, the same batch out at the next stage. STATIONS holds the places and the
+-- default recipe's stages and times; `State.ruleFor` answers with the times of the batch's own recipe (P10-02).
+local defaultRecipe = assert(Recipes.get(Recipes.DEFAULT_ID))
+local baseRules: {StationRule} = {}
+for _, stationId in Recipes.STATION_IDS do
+	local timing = assert(Recipes.timing(defaultRecipe.id, stationId))
+	table.insert(baseRules, stationRule(stationId, timing.inputStage, timing.outputStage, timing.durationSeconds))
+end
+State.STATIONS = table.freeze(baseRules)
 local stationById: {[string]: StationRule} = {}
 local stationByOutput: {[string]: StationRule} = {}
 for _, rule in State.STATIONS do
@@ -55,6 +58,20 @@ for _, rule in State.STATIONS do
 	stationByOutput[rule.output] = rule
 end
 State.STATION_BY_ID = table.freeze(stationById)
+local rulesByRecipe: {[string]: {[string]: StationRule}} = {}
+for _, entry in Recipes.LIST do
+	local perStation: {[string]: StationRule} = {}
+	for _, stationId in Recipes.STATION_IDS do
+		local timing = assert(Recipes.timing(entry.id, stationId))
+		perStation[stationId] = stationRule(stationId, timing.inputStage, timing.outputStage, timing.durationSeconds)
+	end
+	rulesByRecipe[entry.id] = table.freeze(perStation)
+end
+-- The station rule for one recipe; nil for an unknown recipe or station.
+function State.ruleFor(stationId: string, recipeId: string): StationRule?
+	local perStation = rulesByRecipe[recipeId]
+	return if perStation then perStation[stationId] else nil
+end
 State.SAW = State.STATIONS[1]
 export type WorkerLeg = {read carrier: string, read source: string, read target: string, read stage: Stage}
 State.FIRST_WORKER = table.freeze({carrier="Worker.First",source=State.SAW.output,
@@ -70,7 +87,7 @@ State.WORKER_ROUTES = table.freeze(workerRoutes)
 State.FIRST_BELT = table.freeze({carrier="Band.First",source=State.SAW.output,
 	target=stationById.Montage.input,stage=State.SAW.outputStage})
 local MAX_INTEGER = 9007199254740991
-local STAGES: {[string]: boolean} = {Holzpaket=true,Bausatz=true,Rohhocker=true,Fertig=true,Karton=true}
+local STAGES: {[string]: boolean} = Recipes.STAGES
 local KINDS: {[string]: boolean} = {Supplier=true,RawStore=true,FinishedStore=true,Carrier=true,
 	StationInput=true,StationProcess=true,StationOutput=true,Machine=true,VehicleSlot=true,
 	Band=true,Recovery=true}
@@ -227,10 +244,12 @@ function State.newLocation(id: string, kind: string, capacity: number, acceptedS
 	return {id=id,kind=kind,capacity=capacity,acceptedStages=stages}
 end
 
-function State.newBatch(id: string, ownerUserId: number, stage: Stage, locationId: string): Batch
+-- `recipeId` defaults to the first recipe; the stage must belong to that recipe's chain.
+function State.newBatch(id: string, ownerUserId: number, stage: Stage, locationId: string, recipeId: string?): Batch
 	assert(identifier(id) and identifier(locationId),"Invalid batch identity or location")
-	assert(integer(ownerUserId,1) and STAGES[stage],"Invalid owner or stage")
-	return {id=id,ownerUserId=ownerUserId,recipeId="Hocker01",recipeVersion=1,stage=stage,quantity=1,locationId=locationId}
+	local recipe=Recipes.get(recipeId or Recipes.DEFAULT_ID)
+	assert(integer(ownerUserId,1) and recipe~=nil and Recipes.hasStage(recipe.id,stage),"Invalid owner or stage")
+	return {id=id,ownerUserId=ownerUserId,recipeId=recipe.id,recipeVersion=recipe.version,stage=stage,quantity=1,locationId=locationId}
 end
 
 -- The batch's locationId is the only stock membership record.
@@ -278,7 +297,9 @@ function State.validate(profile: any): (boolean, string?)
 	for id,batch in profile.batches do
 		if not identifier(id) or not record(batch,BATCH_FIELDS) or batch.id~=id then return false,"INVALID_BATCH_ID" end
 		if batch.ownerUserId~=profile.ownerUserId then return false,"FOREIGN_BATCH" end
-		if batch.recipeId~="Hocker01" or batch.recipeVersion~=1 or not STAGES[batch.stage] then return false,"INVALID_RECIPE_STAGE" end
+		local recipe=Recipes.get(batch.recipeId)
+		if not recipe or batch.recipeVersion~=recipe.version or not STAGES[batch.stage]
+			or not Recipes.hasStage(recipe.id,batch.stage) then return false,"INVALID_RECIPE_STAGE" end
 		if batch.quantity~=1 then return false,"INVALID_QUANTITY" end
 		if not identifier(batch.locationId) or profile.locations[batch.locationId]==nil then return false,"UNKNOWN_LOCATION" end
 		if not table.find(profile.locations[batch.locationId].acceptedStages,batch.stage) then return false,"WRONG_STAGE" end
@@ -318,7 +339,9 @@ function State.validate(profile: any): (boolean, string?)
 			if deliveriesByOperation[reservation.purchaseOperationId] then return false,"INVALID_DELIVERY_RESERVATION" end
 			deliveriesByOperation[reservation.purchaseOperationId]=locationId
 		elseif reservation.kind=="Production" then
-			local rule=stationByOutput[locationId]
+			local base=stationByOutput[locationId]
+			-- The run keeps the recipe of its batch: times and stages come from that recipe's rule.
+			local rule=if base then State.ruleFor(base.id,batch.recipeId) else nil
 			if not rule then return false,"INVALID_PRODUCTION_RESERVATION" end
 			local input,process=profile.locations[rule.input],profile.locations[rule.process]
 			if not record(reservation,PRODUCTION_FIELDS) or not integer(reservation.finishAt,rule.durationSeconds)

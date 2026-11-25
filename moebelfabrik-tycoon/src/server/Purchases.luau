@@ -2,6 +2,7 @@
 -- P05-02: one confirmed material purchase. The server supplies the actor and registered physical slots.
 -- P07-07: a limited material advance for a workshop without money for material and without any stock.
 local State = require(script.Parent.State)
+local Recipes = require(script.Parent.Recipes)
 local Persistence = require(script.Parent.Persistence)
 
 export type Receipt = {ok: boolean, code: string, message: string, revision: number, batchId: string,
@@ -14,7 +15,7 @@ export type Slots = {supplierIds: {string}, rawIds: {string}}
 export type Binding = {slots: Slots, locations: {[string]: State.Location}, points: {[string]: Attachment}}
 
 local Purchases = {}
-Purchases.PRICE = 60 -- Prototype test economy; only new purchases use the current price.
+Purchases.PRICE = assert(Recipes.get(Recipes.DEFAULT_ID)).price -- Prototype test economy (Hocker01); only new purchases use the current price.
 local MAX_INTEGER = 9007199254740991
 
 -- Build the trusted slot list from the physical fixtures, once per workshop.
@@ -112,12 +113,18 @@ local function freeSlots(state: State.Profile, operationId: string, slots: Slots
 	return supplierId, rawSlotId, nil
 end
 
+-- P10-02: the line's selected recipe decides which package the supplier sells and what it costs.
+local function selectedRecipe(candidate: any): Recipes.Recipe
+	local progress = candidate.progress
+	return Recipes.get(if progress then progress.selectedRecipeId else nil) or assert(Recipes.get(Recipes.DEFAULT_ID))
+end
+
 -- New Holzpaket at the supplier, Delivery promise to the raw slot and the receipt, as one candidate.
 local function supply(opened: Opened, actor: any, action: string, batchId: string, supplierId: string,
-	rawSlotId: string, receipt: any)
+	rawSlotId: string, receipt: any, recipeId: string)
 	local state, operationId = opened.state, opened.operationId
 	state.revision += 1
-	state.batches[batchId] = State.newBatch(batchId, state.ownerUserId, "Holzpaket", supplierId)
+	state.batches[batchId] = State.newBatch(batchId, state.ownerUserId, "Holzpaket", supplierId, recipeId)
 	state.reservations[rawSlotId] = {kind = "Delivery", batchId = batchId, purchaseOperationId = operationId}
 	state.receipts[operationId] = {actorId = actor.actorId, actorKind = "Player", ownerUserId = state.ownerUserId,
 		action = action, request = {operationId = operationId, expectedRevision = opened.revision}, result = receipt}
@@ -131,21 +138,22 @@ function Purchases.buy(controller: Persistence.Controller, actor: any, request: 
 	if revision == MAX_INTEGER then return rejected("REVISION_OVERFLOW") end
 	local batchId = "purchase/" .. operationId
 	if state.batches[batchId] then return rejected("OPERATION_CONFLICT") end
-	if state.money < Purchases.PRICE then return rejected("NOT_ENOUGH_MONEY") end
+	local recipe = selectedRecipe(opened.candidate)
+	if state.money < recipe.price then return rejected("NOT_ENOUGH_MONEY") end
 	local supplierId, rawSlotId, problem = freeSlots(state, operationId, slots)
 	if not supplierId or not rawSlotId then return rejected(problem :: string) end
 
-	local receipt: Receipt = {ok = true, code = "PURCHASED", message = "Holzpaket beim Lieferanten bereit.",
-		revision = revision + 1, supplierId = supplierId, rawSlotId = rawSlotId, batchId = batchId, price = Purchases.PRICE}
-	state.money -= Purchases.PRICE
-	supply(opened, actor, "Purchase", batchId, supplierId, rawSlotId, receipt)
+	local receipt: Receipt = {ok = true, code = "PURCHASED", message = recipe.packageName .. " beim Lieferanten bereit.",
+		revision = revision + 1, supplierId = supplierId, rawSlotId = rawSlotId, batchId = batchId, price = recipe.price}
+	state.money -= recipe.price
+	supply(opened, actor, "Purchase", batchId, supplierId, rawSlotId, receipt, recipe.id)
 
 	local saved = controller.save(opened.candidate, ttlSeconds)
 	if not saved.ok then return rejected(saved.code, saved.unknown) end
 	return {ok = true, code = "PURCHASED", receipt = receipt, unknown = false}
 end
 
--- One Holzpaket worth the current material price, without any money. Only for an owner whose money is below
+-- One Holzpaket worth the current material price, without any money. It is always the first recipe's package (ECONOMY). Only for an owner whose money is below
 -- the price and who has no batch anywhere (supplier, hand, vehicle, line or stores), no open sale and no open
 -- advance. The sale of exactly this batch repays it (Sales.settle). A second claim while it is open is refused.
 function Purchases.advance(controller: Persistence.Controller, actor: any, request: any, slots: Slots,
@@ -168,7 +176,7 @@ function Purchases.advance(controller: Persistence.Controller, actor: any, reque
 	local receipt: AdvanceReceipt = {ok = true, code = "ADVANCED",
 		message = "Materialvorschuss: 1 Holzpaket abholbereit. Beim Verkauf bleibt Geld für den nächsten Einkauf.",
 		revision = revision + 1, supplierId = supplierId, rawSlotId = rawSlotId, batchId = batchId, amount = Purchases.PRICE}
-	supply(opened, actor, "Advance", batchId, supplierId, rawSlotId, receipt)
+	supply(opened, actor, "Advance", batchId, supplierId, rawSlotId, receipt, Recipes.DEFAULT_ID)
 	state.advance = {operationId = operationId, batchId = batchId, amount = Purchases.PRICE}
 
 	local saved = controller.save(opened.candidate, ttlSeconds)
