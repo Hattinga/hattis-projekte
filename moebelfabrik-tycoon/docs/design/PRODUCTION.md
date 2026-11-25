@@ -83,7 +83,7 @@ Das erste Band verbindet dieselben Transferpunkte in einer geraden, bündigen St
 | Übergabe wird wiederholt oder abgebrochen | Bestätigte Wiederholung liefert dasselbe Ergebnis; vor Aufnahme kann die vorläufige Reservierung gelöst werden | Nach Aufnahme bleibt Ware auf dem Träger und der Rückgabeplatz reserviert, bis Zielablage oder physische Rückgabe bestätigt ist |
 | Fertiglager ist voll | „Fertiglager voll – Lagerplatz freimachen“ an der Ablage | Bei abgewiesener Ablage bleibt der Karton auf dem Träger; ein nicht abgeholter Packausgang erzeugt Rückstau |
 
-Eine Charge behält das bei ihrem Start zugeordnete Rezept. Das erste Prüfmodell bietet nur `Hocker01`; eine Änderung der Auswahl darf begonnene Ware nicht umdeuten. Die folgenden Regeln ergänzen die gemeinsamen Umbuchungen aus STATE. Spieltests, Konkurrenztests und Wiederherstellung sind durch diese Papierprüfung noch nicht bestanden.
+Eine Charge behält das bei ihrem Start zugeordnete Rezept. Das erste Prüfmodell bietet nur `Hocker01`; das zweite Rezept `Beistelltisch01` ist in [TABLE](TABLE.md) festgelegt und noch nicht umgesetzt. Eine Änderung der Auswahl darf begonnene Ware nicht umdeuten. Die folgenden Regeln ergänzen die gemeinsamen Umbuchungen aus STATE. Spieltests, Konkurrenztests und Wiederherstellung sind durch diese Papierprüfung noch nicht bestanden.
 
 ## Rückgabeplatz während des Transports
 

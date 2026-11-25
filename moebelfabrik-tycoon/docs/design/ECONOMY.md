@@ -8,6 +8,8 @@ Der Betrieb verdient Spielgeld mit gelagerten Möbeln, die der Spieler an Käufe
 - Der Spieler wählt das aktive Möbelrezept. Eingänge, Stationskapazität und Platz am Ausgang bestimmen, wann die Linie produziert. Fertige Möbel stehen bis zum Verkauf im Fertigwarenlager. Der Produktionsstart ist unabhängig von Käufern.
 - Rohstoffe, Zwischenprodukte, Fertigwaren und Fahrzeugladung haben erkennbare Bestände. Ein voller Ausgang hält die Linie an. Entnahme oder Verkauf schafft Platz für den nächsten Durchlauf. Ein Modellwechsel erhält bereits begonnene Werkstücke und zeigt, welche Zutaten die neue Produktion benötigt.
 
+**Zweites Rezept.** Der Beistelltisch kostet im Prüfmodell 80 Spielgeld je Holzpaket und bringt dem Händler 140 (Privatspanne 112 bis 168). Der Hocker liegt je Montage-Sekunde vorn, der Tisch je Ladeplatz und je eingesetztem Spielgeld. Der Materialvorschuss bleibt auf das Hocker-Holzpaket begrenzt. Vergleich, Zeiten und Maße stehen in [TABLE](TABLE.md).
+
 ## Verkauf nach der Fahrt
 
 Die Verkaufsmenge wird beim Verladen sichtbar. Der Spieler fährt zum Verkaufsort und übergibt die Fracht dort. Die bestätigte physische Übergabe ist die Voraussetzung für Warenabgang und Gutschrift.

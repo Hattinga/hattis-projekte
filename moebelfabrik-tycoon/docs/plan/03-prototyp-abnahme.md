@@ -4,7 +4,7 @@
 
 **Abhängigkeit** P09 ist abgenommen.
 
-- [ ] **P10-01** Lege den Beistelltisch als zweites Rezept mit eigener Materialmenge, erkennbarem Werkstück und abweichendem Montagebedarf fest. Nutze vorhandene Stationen und prüfe die passende Transportgröße.
+- [x] **P10-01** Lege den Beistelltisch als zweites Rezept mit eigener Materialmenge, erkennbarem Werkstück und abweichendem Montagebedarf fest. Nutze vorhandene Stationen und prüfe die passende Transportgröße. ([Vertrag](../design/TABLE.md), [Beleg](../evidence/P10.md#p10-01--beistelltisch-als-zweites-rezept))
 - [ ] **P10-02** Gib der Linie eine Rezeptwahl und mache ihre Wirkung auf den nächsten Produktionszyklus sichtbar. Prüfe einen Wechsel bei begonnener Bearbeitung und behalte die Werkstücke des alten Rezepts eindeutig zugeordnet.
 - [ ] **P10-03** Zeige Rohstoff- und Fertigwarenbestand, Fahrzeugladung, freie Plätze und aktuelle Engpässe. Ergänze für Kauf, Rezeptwahl und Verkauf klare Bestätigungen sowie bedienbare Touch-Aktionen.
 - [ ] **P10-04** Ergänze eine mit Spielgeld erwerbbare Ausrüstung mit sichtbarer Wirkung, etwa eine größere Montagekapazität. Zeige Preis und Nutzen vor dem Kauf und prüfe den Materialnachschub nach einer zu hohen Ausgabe.
@@ -12,6 +12,8 @@
 - [ ] **P10-06** Gib fünf neuen Testpersonen nach dem Band-Upgrade fünf Minuten zur freien Nutzung. Mindestens drei setzen selbst eine sinnvolle Entscheidung zu Rezept, Nachschub, Lager, Kapazität oder Verkaufszeitpunkt um. Halte fest, welche Informationen sie genutzt haben und welche Hürden auftraten.
 
 **Abnahme und Nachweis** Beide Rezepte liefern die festgelegten Bestände und belegen die Montage unterschiedlich lange. Ein Kauf verändert die gewählte Kapazität. Sichere zwei Ablaufprotokolle, den Soll-Ist-Abgleich der Bestände und die Beobachtungen aus der freien Testphase. Die Schwelle von drei aus fünf ist ein internes Kriterium zur Prüfung des Entwurfs. Details stehen in der [Wirtschaft](../design/ECONOMY.md) und in der [Testübersicht](../qa/TESTS.md).
+
+[P10-Prüfbelege](../evidence/P10.md)
 
 ## P11 · Art-Integration und Prototypabnahme
 
