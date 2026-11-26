@@ -202,7 +202,7 @@ function LineView.syncSigns(root: Instance, state: State.Profile, now: number, p
 	-- P10-02: the recipe sign stands above the saw sign and always names the choice and what the supplier sells next.
 	local sawPad = places.stationPads.Saege
 	if places.selectedRecipeId and sawPad then
-		local board, head, detail = sign(signs, "Recipe", sawPad, 4.5)
+		local board, head, detail = sign(signs, "Recipe", sawPad, 6.0)
 		board:SetAttribute("RecipeId", places.selectedRecipeId)
 		head.TextColor3 = Color3.fromRGB(255, 228, 150)
 		setText(head, Labels.text("recipe.name." .. places.selectedRecipeId), true)

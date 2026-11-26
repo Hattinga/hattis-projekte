@@ -25,17 +25,9 @@ Recipe.stageNames = table.freeze({
 	Karton = "Hockerkarton",
 	Rohtisch = "Rohtisch", -- P10-02: the table's raw stage; its other stages use Recipe.stageNameFor
 })
-local TABLE_STAGE_NAMES = table.freeze({
-	Holzpaket = "Tischholzpaket",
-	Bausatz = "Bausatz · 10 Teile",
-	Rohtisch = "Rohtisch",
-	Fertig = "Fertiger Tisch",
-	Karton = "Tischkarton",
-})
--- The player-facing name of a stage for the recipe of its batch.
+-- The player-facing name of a stage for the recipe of its batch (the names live in Recipes).
 function Recipe.stageNameFor(stage: string, recipeId: string?): string
-	if recipeId == "Beistelltisch01" then return TABLE_STAGE_NAMES[stage] or stage end
-	return (Recipe.stageNames :: {[string]: string})[stage] or stage
+	return Recipes.stageName(stage, recipeId)
 end
 
 local stations: {Station} = {}

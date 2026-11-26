@@ -86,4 +86,23 @@ function Recipes.acceptedStages(stationId: string, role: string): {Stage}
 	return stages
 end
 
+-- Player-facing stage names of each recipe. A nil or unknown recipe answers with the first recipe's names, a stage the
+-- recipe does not know with the stage id itself.
+local STAGE_NAMES: {[string]: {[string]: string}} = {
+	Hocker01 = {Holzpaket = "Holzpaket", Bausatz = "Bausatz · 9 Teile", Rohhocker = "Rohhocker", Fertig = "Fertiger Hocker",
+		Karton = "Hockerkarton"},
+	Beistelltisch01 = {Holzpaket = "Tischholzpaket", Bausatz = "Bausatz · 10 Teile", Rohtisch = "Rohtisch",
+		Fertig = "Fertiger Tisch", Karton = "Tischkarton"},
+}
+for id, names in STAGE_NAMES do
+	assert(byId[id], "Stage names for an unknown recipe")
+	table.freeze(names)
+end
+table.freeze(STAGE_NAMES)
+assert(STAGE_NAMES[Recipes.DEFAULT_ID], "The default recipe needs stage names")
+function Recipes.stageName(stage: string, recipeId: string?): string
+	local names = STAGE_NAMES[if recipeId ~= nil and STAGE_NAMES[recipeId] then recipeId else Recipes.DEFAULT_ID]
+	return names[stage] or stage
+end
+
 return table.freeze(Recipes)

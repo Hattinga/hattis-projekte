@@ -122,3 +122,32 @@ Seit P10-02 gibt es zwei Rezepte (`Hocker01`, `Beistelltisch01`, siehe [TABLE](T
 **Warum nicht die Säge sperren.** Der erste Entwurf ließ die Säge nur das gewählte Rezept annehmen und wies einen Wechsel ab, solange ein unbegonnenes Paket des anderen Rezepts am Sägeeingang lag. Das hätte Spieler festgesetzt: Gekauftes Tischholz wäre unter der Hocker-Auswahl nicht verarbeitbar gewesen, und der Wechsel dagegen wäre selbst blockiert gewesen, solange das Paket dort lag. Die Auswahl als reine Einkaufsentscheidung vermeidet das und braucht keine zusätzliche Sperre. Die Wirkung bleibt sichtbar: Das Rezeptschild über der Säge nennt die Auswahl und das nächste Holzpaket, der Kaufprompt zeigt Paket und Preis, und leere Stationen zeigen die Ware der Auswahl.
 
 Studio-Prüfung am Test-Place: [Beleg P10-02](../evidence/P10.md#p10-02--rezeptwahl-der-linie).
+
+## Betriebsübersicht, Bestätigungen und Touch-Bedienung (P10-03)
+
+Die Übersicht lesen alle Spieler aus dem bestätigten Spielstand. [Overview](../../src/server/Overview.luau) rechnet sie, ohne Bestand, Geld oder Reservierungen zu ändern. [Hud](../../src/server/Hud.luau) zeigt sie an.
+
+**Inhalt des Panels.** Eine Kopfzeile nennt immer den dringendsten Engpass mit Farbpunkt, ein Tipp klappt die Zeilen auf: Guthaben (mit offenem Vorschuss), gewähltes Rezept mit Einkaufs- und Händlerpreis, Holz und Kartons je Ort (Rohstofflager, Lieferant, Anhänger, Linie, Fertiglager, unterwegs), Ware in Arbeit, belegte Plätze im Fertiglager und auf dem Anhänger. Ein Platz zählt als belegt, solange er Ware hält oder per Rückgabe zugesagt ist. Ein Lager oder Fahrzeug, das die Werkstatt nicht gebunden hat, erscheint nicht.
+
+**Engpässe in dieser Reihenfolge der Dringlichkeit.**
+
+| Stufe | Fall | Meldung nennt |
+| --- | --- | --- |
+| Stopp | Ausgang einer Station belegt | Station und Ware, die abzuholen ist |
+| Stopp | Kein Holz, nichts in Arbeit, keine Kartons, Geld reicht | Paket und Preis des gewählten Rezepts |
+| Stopp | Kein Holz, nichts in Arbeit, keine Kartons, kein Geld | Materialvorschuss, bei bereits offenem Vorschuss „zuerst verkaufen“ |
+| Hinweis | Kein Holz, aber Ware in Arbeit oder Kartons vorhanden | Nachkaufen oder zuerst verkaufen |
+| Aufgabe | Offener Verkauf | Karton am Käuferplatz bestätigen oder zurücklegen |
+| Einschränkung | Band wartet (Montageeingang belegt oder Band angehalten), Fertiglager voll, Anhänger voll | Ursache und Auflösung |
+| Hinweis | Holz beim Lieferanten, auf dem Anhänger oder im Lager, Kartons im Lager oder auf dem Anhänger | nächster Handgriff für diesen Ort |
+| Info | Langsamste Station des gewählten Rezepts | Takt in Sekunden |
+
+Innerhalb einer Stufe bleibt die Reihenfolge, in der die Regeln den Fall finden. Kein Engpass heißt, dass nur die Taktzeile bleibt.
+
+**Bestätigungen.** Kauf, Rezeptwahl und Verkauf melden ihr Ergebnis in einer Einblendung neben dem Panel (sechs Sekunden, grün bei Erfolg, bernstein bei Ablehnung). Der Kauf nennt Paket, Preis und neues Guthaben, der Verkauf Käufer, Ware, Erlös und Guthaben nach der bestätigten Speicherung, eine Ablehnung ihren Grund. Das Guthaben stammt immer aus dem bestätigten Stand, nie aus einer Annahme. Der Privaterlös erscheint wie bisher erst nach dem gespeicherten Abschluss.
+
+**Rezeptwahl mit Vorschau.** Die Rezept-Taste öffnet eine Karte, die vor dem Wechsel Einkauf, Händlerwert und Montagezeit des Zielrezepts nennt und festhält, dass vorhandenes Holz und Ware ihr Rezept behalten. Erst „Wechseln“ ändert die Wahl. Die Wahl braucht keine Nähe zur Säge, weil sie die ganze Linie betrifft. Der Server nimmt nur das Rezept an, das die Karte gerade anbietet.
+
+**Touch-Bedienung.** Jede Taste ist mindestens 44 px hoch, das Panel 250 px breit, die Karte 330 px. Rechts liegen die Tasten Rezept, Kaufen und Verkauf bestätigen (nur bei offenem Verkauf). Kaufen und Verkauf rufen denselben Servercode wie die Weltprompts auf, die Reichweitenprüfung bleibt dort. Die Oberfläche liegt unter den Touch-Steuerelementen von Roblox (`DisplayOrder = -1`) und unter dem Statusbanner. Zielprofil ist das schwächere Android-Phone mit 800 × 360 logischen Pixeln im Querformat.
+
+Prüfung am Test-Place: [Beleg P10-03](../evidence/P10.md#p10-03--betriebsübersicht-bestätigungen-und-touch-tasten).

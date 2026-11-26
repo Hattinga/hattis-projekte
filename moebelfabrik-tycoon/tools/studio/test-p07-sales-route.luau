@@ -159,6 +159,8 @@ stop.OnInvoke = function(index: number, leg: any): boolean
 				and pending.dealerValue == 100 and open.money == 180, pending.quoteMin)
 			check("offer shown in HUD and on the dealer pad", open.banner:find("Möbelhandel: 1 Hocker · Erlös 100", 1, true)
 				and open.sellPrompts.Dealer.enabled and not open.sellPrompts.Private.enabled, open.banner)
+			local sellGui: any = player.PlayerGui:FindFirstChild("BetriebHud")
+			check("the HUD shows the touch button for the open sale", sellGui and sellGui.Bar.Sell.Visible == true)
 			check("a second sale while carrying is refused", sale("open", slotA).result.code == "HANDS_FULL")
 			unchanged("busy attempt leaves stock", open)
 			check("settling away from the pad is refused", sale("settle", "Dealer").result.code == "TOO_FAR")
@@ -176,8 +178,17 @@ stop.OnInvoke = function(index: number, leg: any): boolean
 			local again = openSale(slotB, "Dealer")
 			local after, saleId = settled("Dealer", again, 100)
 			check("dealer receipt is shown only after the confirmed save", after.banner:find("für 100", 1, true), after.banner)
+			-- P10-03: the sale confirmation reached the HUD (only the management demo builds it).
+			local hudGui: any = player.PlayerGui:FindFirstChild("BetriebHud")
+			check("the HUD confirms the dealer sale with the new balance", hudGui and hudGui:GetAttribute("ToastKind") == "ok"
+				and hudGui:GetAttribute("ToastTitle") == "Verkauft" and tostring(hudGui:GetAttribute("ToastDetail")):find("für 100", 1, true)
+				and tostring(hudGui:GetAttribute("ToastDetail")):find("Guthaben 280", 1, true), hudGui and hudGui:GetAttribute("ToastDetail"))
+			report.dealerToast = hudGui and hudGui:GetAttribute("ToastDetail")
+			check("the touch button for the sale is hidden again", hudGui.Bar.Sell.Visible == false)
 			check("a repeated confirmation pays nothing", sale("settle", "Dealer").result.code == "SALE_NOT_FOUND"
 				and lineState:Invoke().money == 280)
+			check("the HUD warns about the repeated confirmation", hudGui:GetAttribute("ToastKind") == "warn"
+				and hudGui:GetAttribute("ToastTitle") == "Verkauf nicht abgeschlossen", hudGui:GetAttribute("ToastTitle"))
 			local replay = sale("replay", saleId).result
 			check("the stored receipt answers a replay", replay.ok and replay.receipt.amount == 100
 				and lineState:Invoke().money == 280, replay.code)
@@ -194,6 +205,11 @@ stop.OnInvoke = function(index: number, leg: any): boolean
 			check("the private price stays bound", sale("replay", saleId).result.receipt.amount == 120
 				and lineState:Invoke().money == 400)
 			report.private = {saleId = saleId, receipt = after.saleReceipts[saleId], money = after.money, revision = after.revision}
+			local hudGui: any = player.PlayerGui:FindFirstChild("BetriebHud")
+			check("the HUD confirms the private sale with the new balance", hudGui and hudGui:GetAttribute("ToastKind") == "ok"
+				and tostring(hudGui:GetAttribute("ToastDetail")):find("für 120", 1, true)
+				and tostring(hudGui:GetAttribute("ToastDetail")):find("Guthaben 400", 1, true), hudGui and hudGui:GetAttribute("ToastDetail"))
+			report.privateToast = hudGui and hudGui:GetAttribute("ToastDetail")
 			local final = lineState:Invoke()
 			local receipts = 0
 			for _ in final.saleReceipts do receipts += 1 end

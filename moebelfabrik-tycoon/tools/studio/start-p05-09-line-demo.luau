@@ -12,6 +12,8 @@ local factory = game:GetService("ServerScriptService").Factory
 local State = require(factory.State)
 local Recipes = require(factory.Recipes)
 local RecipeChoice = require(factory.RecipeChoice)
+local Overview = require(factory.Overview)
+local Hud = require(factory.Hud)
 local Recipe = require(factory.Recipe)
 local Transfers = require(factory.Transfers)
 local Persistence = require(factory.Persistence)
@@ -260,6 +262,23 @@ banner.TextSize = 17
 banner.Font = Enum.Font.GothamMedium
 banner.Parent = gui
 
+-- P10-03: the operating HUD (overview panel, confirmations, recipe button) belongs to the management demo only.
+-- A tap on its recipe card reaches chooseRecipe, which the workshop block below defines.
+local hud: Hud.Hud? = nil
+local chooseRecipe: ((Player, string) -> HandMoves.Result)? = nil
+local touchBuy: ((Player) -> HandMoves.Result)? = nil -- the buy and sell buttons reach the same code as the prompts
+local touchSettle: ((Player) -> HandMoves.Result)? = nil
+if logisticsEnabled then
+	hud = Hud.create(player, playerGui, {
+		selectRecipe = function(user: Player, recipeId: string): Hud.Result?
+			if chooseRecipe then return chooseRecipe(user, recipeId) end
+			return nil
+		end,
+		buy = function(user: Player) if touchBuy then touchBuy(user) end end,
+		settle = function(user: Player) if touchSettle then touchSettle(user) end end,
+	})
+end
+
 local nextTarget = {Holzpaket = "Säge · Eingang", Bausatz = "Montagebank · Eingang", Rohhocker = "Finishplatz · Eingang",
 	Rohtisch = "Finishplatz · Eingang", Fertig = "Packtisch · Eingang", Karton = "Fertiglager"}
 local prompts: {[string]: ProximityPrompt} = {}
@@ -500,6 +519,7 @@ local function render()
 		if sale and sale.buyer == buyer then prompt.ObjectText = offerText(sale) end
 	end
 	for _, prompt in prompts do prompt.ActionText = if held then "Ablegen" else "Aufnehmen" end
+	if hud then Hud.update(hud, Overview.compute(state, selected.id, os.time(), places.beltStopped)) end
 end
 
 local saleActor = {ready = true, kind = "Player", ownerUserId = player.UserId,
@@ -666,7 +686,18 @@ local function settleSale(user: Player, buyer: string): HandMoves.Result
 		else {ok = false, code = "ERROR", message = "Interner Fehler: " .. tostring(outcome)}
 	lastMessage = response.message
 	render()
+	-- P10-03: the sale is confirmed in the HUD too, with the new balance from the confirmed state.
+	if hud then
+		local money = confirmed().data.state.money
+		if response.ok then Hud.toast(hud, "ok", "Verkauft", response.message .. " Guthaben " .. money)
+		else Hud.toast(hud, "warn", "Verkauf nicht abgeschlossen", response.message) end
+	end
 	return response
+end
+-- P10-03: the touch button confirms the open sale at the buyer it names; without one the server explains what to do first.
+touchSettle = function(user: Player): HandMoves.Result
+	local sale = confirmed().data.state.pendingSale
+	return settleSale(user, if sale then sale.buyer else "Dealer")
 end
 if loading then
 	for buyer, endpoint in buyerPads do
@@ -728,11 +759,27 @@ if purchaseSlots then
 		local response = if ran then outcome else {ok = false, code = "ERROR", message = fallback}
 		lastMessage = response.message
 		render()
+		-- P10-03: purchase and advance are confirmed in the HUD, with price and new balance from the confirmed state.
+		if hud then
+			local saved = confirmed().data
+			local recipe = assert(Recipes.get(saved.progress.selectedRecipeId))
+			if response.code == "PURCHASED" then
+				Hud.toast(hud, "ok", "Gekauft: " .. recipe.packageName, "−" .. recipe.price .. " · Guthaben " .. saved.state.money)
+			elseif response.code == "ADVANCED" then
+				Hud.toast(hud, "ok", "Materialvorschuss erhalten", "1 Holzpaket · Guthaben " .. saved.state.money
+					.. ". Der nächste Verkauf verrechnet ihn.")
+			elseif response.ok then
+				Hud.toast(hud, "ok", "Erledigt", response.message)
+			else
+				Hud.toast(hud, "warn", if claim == Purchases.advance then "Vorschuss nicht möglich" else "Kauf nicht möglich", response.message)
+			end
+		end
 		return response
 	end
 	local function buy(user: Player): HandMoves.Result
 		return supply(user, Purchases.buy, purchaseStatus, "Kauf gerade nicht verfügbar.")
 	end
+	touchBuy = buy
 	local function advance(user: Player): HandMoves.Result
 		return supply(user, Purchases.advance, advanceStatus, "Vorschuss gerade nicht verfügbar.")
 	end
@@ -817,6 +864,12 @@ if logisticsEnabled then
 		NOT_CONFIRMED = "Speichern unklar – bitte warten.",
 		WRITE_UNKNOWN = "Speichern unklar – bitte warten.",
 	} :: {[string]: string}
+	-- P10-02/P10-03: what a confirmed recipe choice means for the next purchase; shared by the V prompt and the HUD card.
+	local function selectedMessage(): string
+		local recipe = assert(Recipes.get(confirmed().data.progress.selectedRecipeId))
+		return "Rezept: " .. recipe.name .. ". Nächster Einkauf: " .. recipe.packageName .. " für " .. recipe.price
+			.. " Spielgeld. Vorhandenes Holz bleibt nutzbar."
+	end
 	local function workshopPrompt(name: string, label: string, key: Enum.KeyCode, gamepad: Enum.KeyCode,
 		endpoint: HandMoves.Endpoint, action: (Persistence.Controller, number, number, number) -> {ok: boolean, code: string},
 		promptName: string, facingOnly: boolean?): ProximityPrompt
@@ -839,16 +892,17 @@ if logisticsEnabled then
 			if code == "BELT_INSTALLED" or code == "BELT_OWNED" then
 				lastMessage ..= " " .. nextBeltStep(confirmed().data.state)
 			end
-			if code == "SELECTED" then
-				local recipe = assert(Recipes.get(confirmed().data.progress.selectedRecipeId))
-				lastMessage = "Rezept: " .. recipe.name .. ". Nächster Einkauf: " .. recipe.packageName .. " für " .. recipe.price
-					.. " Spielgeld. Vorhandenes Holz bleibt nutzbar."
-			end
+			if code == "SELECTED" then lastMessage = selectedMessage() end
 			if (code == "ALREADY_ASSIGNED" or code == "ALREADY_REASSIGNED") and workerShift and workerShift.paused then
 				WorkerShift.retry(workerShift)
 				lastMessage = "Der Mitarbeiter versucht es erneut."
 			end
 			render()
+			-- P10-03: the recipe choice by key or gamepad is confirmed in the HUD like the one by tap.
+			if hud and promptName == "P1002SelectRecipe" then
+				Hud.toast(hud, if code == "SELECTED" then "ok" else "warn",
+					if code == "SELECTED" then "Rezept gewechselt" else "Rezept nicht gewechselt", lastMessage)
+			end
 			return {ok = ran and result.ok, code = code, message = lastMessage}
 		end
 		local prompt = Instance.new("ProximityPrompt")
@@ -892,6 +946,27 @@ if logisticsEnabled then
 			return RecipeChoice.select(c, userId, revision, target, ttl)
 		end, "P1002SelectRecipe")
 	recipePrompt.UIOffset = Vector2.new(0, 80) -- Shares the saw input with the E prompt.
+	-- P10-03: the HUD's recipe card (touch) selects from anywhere: a recipe choice is a decision for the whole line,
+	-- so it needs no reach to the saw. The server validates owner, revision and recipe like for the prompt.
+	chooseRecipe = function(user: Player, recipeId: string): HandMoves.Result
+		if user ~= player or busy or closing then
+			return {ok = false, code = "NOT_READY", message = "Diese Aktion ist gerade nicht verfügbar."}
+		end
+		busy = true
+		local ran, result = pcall(RecipeChoice.select, controller, user.UserId, confirmed().data.state.revision, recipeId, TTL)
+		busy = false
+		local code = if ran then result.code else "ERROR"
+		lastMessage = if code == "SELECTED" then selectedMessage() else (messages[code] or "Diese Aktion ist gerade nicht verfügbar.")
+		render()
+		return {ok = ran and result.ok, code = code, message = lastMessage}
+	end
+	local chooseHook = Instance.new("BindableFunction")
+	chooseHook.Name = "P1003Select"
+	chooseHook.OnInvoke = function(recipeId: string): HandMoves.Result
+		while busy do task.wait() end
+		return (chooseRecipe :: (Player, string) -> HandMoves.Result)(player, recipeId)
+	end
+	chooseHook.Parent = serverStorage
 end
 
 -- Facing station rows share one aisle stand marker (e.g. Montage.Output / Finish.Input, both 4.3 studs away).
