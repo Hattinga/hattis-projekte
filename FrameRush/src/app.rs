@@ -218,6 +218,7 @@ impl App {
                 .with_position(PhysicalPosition::new(g.x, g.y))
                 .with_inner_size(PhysicalSize::new(g.width, g.height));
         }
+        attributes = attributes.with_maximized(self.settings.maximized);
         if self.settings.fullscreen {
             let monitor = saved_monitor.map(|(_, m)| m);
             attributes = attributes.with_fullscreen(Some(Fullscreen::Borderless(monitor)));
@@ -402,9 +403,11 @@ impl App {
             return;
         };
         self.last_frame_at = Some(taken_at);
-        renderer.upload_frame(&frame);
+        // No swapchain image (e.g. minimized): drop the frame without
+        // uploading it; nothing would show it.
         match target {
             Some(target) => {
+                renderer.upload_frame(&frame);
                 renderer.draw_and_present(target, true);
                 let presented_at = Instant::now();
                 self.metrics
@@ -723,14 +726,19 @@ impl App {
     fn shutdown(&mut self) {
         if let Some(window) = &self.window
             && window.fullscreen().is_none()
-            && let (Ok(pos), size) = (window.outer_position(), window.inner_size())
         {
-            self.windowed = Some(WindowGeometry {
-                x: pos.x,
-                y: pos.y,
-                width: size.width,
-                height: size.height,
-            });
+            // Maximized: keep the normal geometry for un-maximizing later.
+            self.settings.maximized = window.is_maximized();
+            if !self.settings.maximized
+                && let (Ok(pos), size) = (window.outer_position(), window.inner_size())
+            {
+                self.windowed = Some(WindowGeometry {
+                    x: pos.x,
+                    y: pos.y,
+                    width: size.width,
+                    height: size.height,
+                });
+            }
         }
         self.settings.window = self.windowed;
         self.settings.save();
@@ -804,6 +812,7 @@ impl ApplicationHandler<AppEvent> for App {
                 }
                 if let Some(window) = &self.window
                     && window.fullscreen().is_none()
+                    && !window.is_maximized()
                     && size.width > 0
                     && size.height > 0
                     && let Some(g) = &mut self.windowed
@@ -816,6 +825,7 @@ impl ApplicationHandler<AppEvent> for App {
             WindowEvent::Moved(pos) => {
                 if let Some(window) = &self.window
                     && window.fullscreen().is_none()
+                    && !window.is_maximized()
                 {
                     let size = window.inner_size();
                     self.windowed = Some(WindowGeometry {

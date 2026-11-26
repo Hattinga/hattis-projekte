@@ -79,13 +79,16 @@ fn run(command: Command) -> Result<(), AppError> {
 }
 
 /// Logs to the console (if any) and to `%LOCALAPPDATA%\FrameRush\
-/// framerush.log` (overwritten on each start). Returns the log file path.
+/// framerush.log`. The previous run's log is kept as `framerush.old.log`
+/// (useful after a crash or a failed reconnect). Returns the log file path.
 fn init_logging(console: bool) -> Option<PathBuf> {
     let filter = || EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
     let path = std::env::var_os("LOCALAPPDATA")
         .map(|dir| PathBuf::from(dir).join("FrameRush").join("framerush.log"));
     let file = path.as_ref().and_then(|p| {
         std::fs::create_dir_all(p.parent()?).ok()?;
+        // Best effort: a second FrameRush still writing it keeps it.
+        let _ = std::fs::rename(p, p.with_file_name("framerush.old.log"));
         File::create(p).ok()
     });
     match (file, console) {

@@ -31,6 +31,9 @@ pub struct Settings {
     /// Statistics overlay visible.
     pub overlay: bool,
     pub fullscreen: bool,
+    pub maximized: bool,
+    /// Position and size of the normal (not maximized, not fullscreen)
+    /// window.
     pub window: Option<WindowGeometry>,
 }
 
@@ -44,6 +47,7 @@ impl Default for Settings {
             muted: false,
             overlay: false,
             fullscreen: false,
+            maximized: false,
             window: None,
         }
     }
@@ -133,6 +137,7 @@ impl Settings {
                 "muted" => parse_bool(value).map(|v| s.muted = v).is_some(),
                 "overlay" => parse_bool(value).map(|v| s.overlay = v).is_some(),
                 "fullscreen" => parse_bool(value).map(|v| s.fullscreen = v).is_some(),
+                "maximized" => parse_bool(value).map(|v| s.maximized = v).is_some(),
                 "window" if value.is_empty() => {
                     s.window = None;
                     true
@@ -158,7 +163,7 @@ impl Settings {
             format!("{},{},{},{}", w.x, w.y, w.width, w.height)
         });
         format!(
-            "{HEADER}device = {}\naudio = {}\naudio_output = {}\nvolume = {}\nmuted = {}\noverlay = {}\nfullscreen = {}\nwindow = {window}\n",
+            "{HEADER}device = {}\naudio = {}\naudio_output = {}\nvolume = {}\nmuted = {}\noverlay = {}\nfullscreen = {}\nmaximized = {}\nwindow = {window}\n",
             self.device.as_deref().unwrap_or(""),
             self.audio,
             self.audio_output.as_deref().unwrap_or(""),
@@ -166,6 +171,7 @@ impl Settings {
             self.muted,
             self.overlay,
             self.fullscreen,
+            self.maximized,
         )
     }
 }
@@ -214,6 +220,7 @@ mod tests {
             muted: true,
             overlay: true,
             fullscreen: true,
+            maximized: true,
             window: Some(WindowGeometry {
                 x: -1920,
                 y: 40,
