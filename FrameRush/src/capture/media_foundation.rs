@@ -119,6 +119,38 @@ pub fn list_video_devices() -> Result<Vec<DeviceInfo>, String> {
         .map_err(|_| "Media Foundation probe thread panicked".to_string())?
 }
 
+/// Friendly names of the video capture devices, in enumeration order.
+///
+/// Opens nothing: no `ActivateObject`, so no camera LED lights up. Used by
+/// the in-window device chooser.
+pub fn list_device_names() -> Result<Vec<String>, String> {
+    std::thread::Builder::new()
+        .name("mf-names".into())
+        .spawn(|| {
+            let _session = MfSession::start()?;
+            let names = enumerate_video_sources()?
+                .iter()
+                .map(|a| {
+                    allocated_string(a, &MF_DEVSOURCE_ATTRIBUTE_FRIENDLY_NAME)
+                        .unwrap_or_else(|_| "<unnamed device>".into())
+                })
+                .collect();
+            Ok::<_, windows::core::Error>(names)
+        })
+        .map_err(|e| format!("cannot start enumeration thread: {e}"))?
+        .join()
+        .map_err(|_| "device enumeration thread panicked".to_string())?
+        .map_err(|e| format!("Media Foundation: {e}"))
+}
+
+/// Full friendly name of the selected device, without opening it.
+pub fn device_name(selector: &crate::capture::DeviceSelector) -> Result<String, String> {
+    let names = list_device_names()?;
+    let pairs: Vec<(String, String)> = names.iter().map(|n| (n.clone(), String::new())).collect();
+    let index = source::match_device(&pairs, selector)?;
+    Ok(names[index].clone())
+}
+
 fn list_on_current_thread() -> windows::core::Result<Vec<DeviceInfo>> {
     // Declared first so it is dropped last, after every COM object below.
     let _session = MfSession::start()?;

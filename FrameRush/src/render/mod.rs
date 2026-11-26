@@ -276,6 +276,19 @@ impl Renderer {
     /// Gets the next swapchain image. This is where the present mode and frame
     /// latency make the thread wait. `None` means: skip this frame.
     pub fn acquire(&mut self) -> Option<wgpu::SurfaceTexture> {
+        let target = self.try_acquire();
+        if target.is_none() {
+            // `write_texture`/`write_buffer` only stage the data; wgpu sends
+            // it (and later frees the staging memory) with the next submit.
+            // Without a present (minimized window) nothing else submits, and
+            // ~3 MB per 1080p frame piled up until the GPU ran out of memory.
+            // An empty submit flushes whatever is pending.
+            self.queue.submit(std::iter::empty());
+        }
+        target
+    }
+
+    fn try_acquire(&mut self) -> Option<wgpu::SurfaceTexture> {
         if !self.configured {
             return None;
         }
@@ -318,7 +331,8 @@ impl Renderer {
     }
 
     /// Copies `frame` into the video textures (recreating them if size or
-    /// format changed).
+    /// format changed). Call it only for a frame that will be presented: the
+    /// copy is sent to the GPU with the next submit.
     pub fn upload_frame(&mut self, frame: &Frame) {
         if frame.format.frame_len(frame.width, frame.height) != Some(frame.data.len()) {
             tracing::warn!(

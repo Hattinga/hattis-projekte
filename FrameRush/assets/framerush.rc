@@ -1,0 +1,5 @@
+// Windows resources of FrameRush.exe. scripts\package.ps1 compiles this with
+// the Windows SDK's rc.exe and links the result into the exe (no build
+// script, see there). Icon group 1 is the exe icon in Explorer and the
+// shortcuts; src\platform.rs loads it for the window and taskbar.
+1 ICON "framerush.ico"

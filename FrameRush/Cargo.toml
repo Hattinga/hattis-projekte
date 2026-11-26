@@ -1,6 +1,6 @@
 [package]
 name = "framerush"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2024"
 rust-version = "1.88"
 description = "Low-latency HDMI capture viewer for Windows"
@@ -22,9 +22,23 @@ windows = { version = "0.62.2", features = [
     "Win32_Foundation",
     "Win32_Media_MediaFoundation",
     "Win32_System_Com",
-    # Only for IMFAttributes::GetItemByIndex (attribute dump in --probe).
+    # IMFAttributes::GetItemByIndex (attribute dump), PROPVARIANT (audio
+    # endpoint names).
     "Win32_System_Com_StructuredStorage",
     "Win32_System_Variant",
+    # Audio monitoring (WASAPI).
+    "Win32_Media_Audio",
+    "Win32_Media_KernelStreaming",
+    "Win32_Media_Multimedia",
+    "Win32_Devices_FunctionDiscovery",
+    "Win32_UI_Shell_PropertiesSystem",
+    "Win32_System_Threading",
+    "Win32_Security",
+    # Keep the display awake while capturing; console and error dialog for
+    # the release build (no console window).
+    "Win32_System_Power",
+    "Win32_System_Console",
+    "Win32_UI_WindowsAndMessaging",
 ] }
 # Already a dependency of `windows`; named directly because the
 # `#[implement]` macro (COM callback for the source reader) expands to

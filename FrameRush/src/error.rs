@@ -15,8 +15,6 @@ pub enum AppError {
     EventLoop(winit::error::EventLoopError),
     Window(winit::error::OsError),
     Render(RenderError),
-    /// Could not start the capture thread.
-    CaptureThread(std::io::Error),
     /// Device enumeration failed.
     DeviceProbe(String),
 }
@@ -29,7 +27,6 @@ impl fmt::Display for AppError {
             Self::EventLoop(err) => write!(f, "window system error: {err}"),
             Self::Window(err) => write!(f, "cannot create the window: {err}"),
             Self::Render(err) => write!(f, "GPU initialisation failed: {err}"),
-            Self::CaptureThread(err) => write!(f, "cannot start the capture thread: {err}"),
             Self::DeviceProbe(msg) => write!(f, "device enumeration failed: {msg}"),
         }
     }

@@ -1,8 +1,13 @@
 # FrameRush: Architektur
 
-Stand: Meilenstein M2 (2026-11-24). Live-Vorschau von der UGREEN-Karte
-(NV12 1080p60) über Media Foundation läuft; die synthetische Quelle bleibt
-für Tests ohne Karte.
+Stand: Version 1.0 (2026-11-24).
+- Live-Vorschau von der UGREEN-Karte (NV12 1080p60) über Media Foundation
+- Ton über WASAPI
+- Geräteauswahl, Wiederverbinden und gemerkte Einstellungen
+- Release-Paket
+
+Die synthetische Quelle bleibt für Tests ohne Karte. Ende-zu-Ende-Latenz
+(M3) ist bewusst nicht gemessen.
 
 ## Überblick
 
@@ -24,18 +29,23 @@ für Tests ohne Karte.
                                      5. metrics.record_shown()
 ```
 
-Zwei Threads, eine Übergabestelle. Der Capture-Thread wartet nie auf den
-Renderer. Der Renderer bekommt immer den neuesten Frame, ältere werden
-verworfen statt gepuffert.
+Für das Video gibt es zwei Threads und eine Übergabestelle. Der
+Capture-Thread wartet nie auf den Renderer. Der Renderer bekommt immer den
+neuesten Frame, ältere werden verworfen statt gepuffert. Der Ton läuft auf
+einem dritten, eigenen Thread (siehe „Ton“).
 
 ## Module
 
 | Datei | Aufgabe |
 |---|---|
-| `src/main.rs` | Logging, CLI-Auswertung, `--list-devices` |
-| `src/probe.rs` | `--probe`: Gerät ohne Fenster öffnen, Medientyp, Puffer, Zeiten, Wertebereiche |
+| `src/main.rs` | Logging (Konsole und Datei), Panic-Hook, CLI-Auswertung, `--list-devices` |
+| `src/probe.rs` | `--probe` und `--probe-audio`: Gerät ohne Fenster öffnen und Diagnose ausgeben |
 | `src/cli.rs` | Optionen (handgeschrieben, wenige Flags), mit Tests |
-| `src/app.rs` | winit-`ApplicationHandler`: Fenster, Tasten, Weckrufe, Statistik-Takt |
+| `src/app.rs` | winit-`ApplicationHandler`: Fenster, Tasten, Verbindungszustand, Geräteauswahl, Toasts, Ton-Anbindung |
+| `src/settings.rs` | gemerkte Einstellungen (`settings.ini`), mit Tests |
+| `src/platform.rs` | Bildschirm wachhalten, Konsole des Release-Builds, Fehlerdialog, Fenster-Icon |
+| `src/audio/mod.rs` | `AudioHandle`, `PlayoutBuffer` mit Drift-Ausgleich, mit Tests |
+| `src/audio/wasapi.rs` | WASAPI: Endpunkte finden, Aufnahme → Wiedergabe, Neuverbinden |
 | `src/capture/mod.rs` | `Frame`, `PixelFormat`, `VideoMode`, `VideoSource`-Trait, Capture-Thread |
 | `src/capture/mailbox.rs` | Latest-Frame-Mailbox mit Weck-Vertrag, mit Tests |
 | `src/capture/synthetic.rs` | synthetische Quelle mit Testbild und Takt, mit Tests |
@@ -168,33 +178,126 @@ Stand 2026-11-24: Live-Vorschau mit der UGREEN 25854 in NV12 1080p60 geprüft
 im Overlay); Latenzvergleich NV12 (vermutlich von Windows aus MJPG
 dekodiert) gegen MJPG mit eigener Dekodierung (M3).
 
+## Verbindung, Geräteauswahl und Einstellungen (`app.rs`, `settings.rs`)
+
+- **Ziel:** `--synthetic`, `--device` oder, ohne beides, das in
+  `%APPDATA%\FrameRush\settings.ini` gemerkte Gerät. Gibt es keins, zeigt
+  das Fenster eine Auswahl. Sie listet nur Namen
+  (`list_device_names`, kein `ActivateObject`), damit keine Webcam-LED
+  angeht. Gemerkt wird der Name, den das Gerät beim Öffnen meldet, nie die
+  Nummer.
+- **Zustände:** `Idle` → `Connecting` → `Live`, bei Fehlern `Retrying` oder
+  `Stuck`. Jeder Verbindungsversuch startet einen neuen Capture-Thread mit
+  einer Generationsnummer. `Opened`/`Failed` eines ersetzten Threads werden
+  ignoriert, `FrameReady` dagegen immer verarbeitet, denn der Weck-Vertrag
+  der Mailbox verlangt ein `take` pro Weckruf.
+- **Neu verbinden** nur nach `CaptureEvent::Failed`, nie wegen ausbleibender
+  Bilder. Eine Quelle, die nichts liefert (gesperrter Stream), würde sonst
+  Thread um Thread im Treiber festsetzen.
+  - nicht gefunden (`NotFound`): alle 2 s; dabei wird nichts geöffnet
+  - belegt (`Busy`, 0xC00D3704): Backoff, nach 3 Fehlschlägen `Stuck`, bis R
+    gedrückt wird
+  - nicht unterstützter Modus: `Stuck`
+  - sonst: Backoff 2, 4, 8, 10 s; nach 10 s stabilem Betrieb wieder ab 2 s
+- Alte Capture-Threads werden ohne Warten zurückgelassen
+  (`request_stop`, `try_join` im Sekundentakt). Der UI-Thread blockiert nie
+  auf das Schließen eines Geräts.
+- **UI:** Statuszeilen (Verbinden, Warten, Fehler, „keine Bilder“) sind
+  immer sichtbar, Toasts 2,5 s, die Statistik nur mit O. Im Vollbild
+  verschwindet der Mauszeiger nach 2 s Ruhe. Solange FrameRush läuft, sorgt
+  `SetThreadExecutionState(ES_DISPLAY_REQUIRED)` dafür, dass der Bildschirm
+  an bleibt.
+- **Einstellungen:** `key = value`, von Hand geparst. Unbekannte Schlüssel
+  und kaputte Werte ergeben Warnungen und Standardwerte. Geschrieben wird
+  über eine temporäre Datei und `rename`, beim Öffnen eines Geräts und beim
+  Beenden (Fenster, Vollbild, maximiert, Lautstärke, stumm, Overlay).
+
+## Ton (`audio/`)
+
+```
+ Audio-Thread (COM MTA, ein Thread für beide Streams)
+   WaitForMultipleObjects([Capture-Event, Render-Event], 200 ms)
+     Capture: alle Pakete → PlayoutBuffer (f32 Stereo)
+     Render:  freier Platz ← PlayoutBuffer.pull(gain)
+```
+
+- **Eingang:** der Aufnahme-Endpunkt, dessen Name den Videogerätenamen
+  enthält, z. B. „Digitale Audioschnittstelle (UGREEN 25854)“. Es gibt
+  **keinen** Rückfall auf das Standard-Aufnahmegerät, auf dem
+  Entwicklungs-PC wäre das eins von fünf Mikrofonen.
+- **Ausgang:** die Windows-Standardausgabe oder `--audio-output`
+  (Namensteil, wird gemerkt).
+- **Format:** Beide Streams laufen in 32-bit float Stereo mit der Mix-Rate
+  der Ausgabe (auf dem Entwicklungs-PC 96 kHz), mit `AUTOCONVERTPCM`. Windows
+  rechnet also um, FrameRush braucht keinen eigenen Resampler.
+- **`PlayoutBuffer`:**
+  - Ziel 30 ms
+  - Wiedergabe beginnt erst, wenn das Ziel erreicht ist; Unterlauf ergibt
+    Stille und ein neues Vorpuffern
+  - geglätteter Füllstand über Ziel + 10 ms: ein Frame von 500 fällt weg;
+    unter Ziel − 10 ms: einer wird wiederholt (maximal 0,2 %, Taktdrift
+    üblicher Geräte liegt weit darunter)
+  - mehr als das Fünffache des Ziels (nach einem Hänger): sofort aufs Ziel
+    gekürzt
+  - Getestet mit simulierter Drift von ±0,1 %.
+- **Fehler** (Abziehen, Ausgabe weg): neuer Versuch mit Backoff, fehlender
+  Eingang alle 3 s. Lautstärke (quadratische Kurve) und Stumm über Atomics,
+  ohne Neustart. Stoppen höchstens 2 s, wie beim Video.
+
+## Release-Hülle (`main.rs`, `platform.rs`)
+
+- Release-Builds sind eine Fensteranwendung
+  (`windows_subsystem = "windows"`). Aus einem Terminal gestartet, hängen sie
+  sich mit `AttachConsole(ATTACH_PARENT_PROCESS)` an dessen Konsole.
+- Log in `%LOCALAPPDATA%\FrameRush\framerush.log`, der vorige Lauf in
+  `framerush.old.log`. Startfehler und Panics zeigen ohne Konsole ein
+  Meldungsfenster mit dem Log-Pfad.
+- `scripts\package.ps1` baut `dist\FrameRush-<Version>\` und die Zip-Datei.
+  Scheitert `--release` an gesperrten Build-Skripten, nimmt es den
+  optimierten Dev-Profil-Build (Begründung im Skript).
+- **Icon:** `assets\framerush.ico` (gezeichnet von `scripts\make-icon.ps1`)
+  wird über `assets\framerush.rc` mit `rc.exe` zur `.res` kompiliert und per
+  `cargo rustc -- -C link-arg=…` nur in FrameRush.exe gelinkt. Bewusst ohne
+  `build.rs`, denn ein weiteres neues Build-Skript würde Kaspersky sperren.
+  Der Dateiname der `.res` enthält ihren Hash, damit Cargo nach einer
+  Icon-Änderung neu linkt. Windows nimmt das EXE-Icon nicht von selbst fürs
+  Fenster, daher lädt `platform::set_window_icon` es (16/32 px × Skalierung)
+  für Titelleiste und Taskleiste. Builds ohne Ressource (`cargo run`)
+  behalten das Standardsymbol.
+- `scripts\install.ps1` installiert pro Benutzer nach
+  `%LOCALAPPDATA%\Programs\FrameRush\` und legt Verknüpfungen im Startmenü
+  (Windows-Suche) und auf dem Desktop an; `-Uninstall` entfernt beides.
+
 ## Fehler und Beenden
 
-- Fehler beim Start (Fenster, GPU, Thread) beenden das Programm mit einer
-  Meldung und Exit-Code 1.
-- Fehler der Quelle zur Laufzeit kommen als `CaptureEvent::Failed` an. Das
-  Fenster bleibt offen und zeigt den Fehler im Overlay.
-- Beim Schließen stoppt `exiting()` den Capture-Thread und wartet höchstens
-  2 s auf ihn (`CaptureHandle::stop`), danach steht die Endstatistik im Log.
-  Hängt das Gerät beim Schließen, bleibt der Thread zurück, und im Log steht
-  ein Fehler. Getestet mit einer Quelle, deren Abbau absichtlich hängt.
-- Device-Lost der GPU wird nur geloggt. Ein Neuaufbau ist offen (M5).
+- Fehler beim Start (Fenster, GPU) beenden das Programm mit einer Meldung
+  (Release: Meldungsfenster) und Exit-Code 1.
+- Fehler der Quelle zur Laufzeit kommen als `CaptureEvent::Failed` an und
+  führen zum Neuverbinden (siehe oben). Das Fenster bleibt offen.
+- Beim Schließen: Einstellungen speichern, Ton und Capture höchstens je 2 s
+  stoppen, alte Threads nur anstoßen, `ES_CONTINUOUS` zurücksetzen,
+  Endstatistik ins Log. Das zeitbegrenzte Stoppen ist mit einer Quelle
+  getestet, deren Abbau absichtlich hängt.
+- Device-Lost der GPU wird nur geloggt. Ein Neuaufbau ist offen.
 
-## Mit Hardware geprüft (2026-11-24)
+## Mit Hardware geprüft (2026-11-24, UGREEN 25854 + PS5)
 
-- NV12 1920×1080 @ 60 von der UGREEN 25854: 60 fps, keine Lücken laut
-  Zeitstempel, Puffer ohne Padding, Farbraum BT.601 Full aus dem Medientyp.
-  Das PS5-Bild sah im Screenshot natürlich aus. Gemessen ist der Farbraum
-  damit nicht.
+- NV12 1920×1080 @ 60: 60 fps, keine Lücken laut Zeitstempel, Puffer ohne
+  Padding, Farbraum BT.601 Full aus dem Medientyp. Das PS5-Bild sah im
+  Screenshot natürlich aus. Gemessen ist der Farbraum damit nicht.
 - Ohne HDMI-Signal liefert die Karte ihr eigenes „No Signal“-Bild.
+- Ton im Headset klar (Nutzer), Puffer 29–39 ms, keine Aussetzer.
+- Vom Nutzer mit dem Paket (`dist\FrameRush-1.0.0\FrameRush.exe`) geprüft:
+  - Vollbild und Ausblenden des Mauszeigers
+  - USB und HDMI ab und wieder an: verbindet sich von selbst neu
+  - Neustart mit gemerktem Gerät
+  - Teilen des Fensters in Discord
 
 ## Noch nicht geprüft
 
+- echte HDMI-zu-Photon-Latenz und ein Vergleich mit OBS/PotPlayer (bewusst
+  zurückgestellt)
+- Standby/Ruhezustand des PCs mit laufender Karte
+- Betrieb mit eingeschalteter Kaspersky-Programmüberwachung und einer
+  wirksamen Freigabe; eine Datei-Ausnahme reichte nicht
 - USB-Modus der Karte und ob NV12 wirklich aus MJPG dekodiert wird
-- echte HDMI-zu-Photon-Latenz; dafür braucht es Kamera oder Fotodiode
-- Vergleich mit OBS/PotPlayer unter gleichen Bedingungen
-- Abziehen und Wiederanstecken während der Aufnahme, Standby mit laufender
-  Karte
-- Betrieb mit eingeschaltetem Kaspersky und einer Ausnahme für FrameRush
-- Teilen in Discord (Fenster teilen)
-- Ton (M4)
