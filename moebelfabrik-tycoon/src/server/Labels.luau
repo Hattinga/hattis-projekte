@@ -42,12 +42,40 @@ Labels.entries = table.freeze({
 	-- P06-01 buyer drop-off pads.
 	table.freeze({key = "dropoff.dealer", en = "DEALER DROP-OFF", de = "HÄNDLERANNAHME"}),
 	table.freeze({key = "dropoff.private", en = "PRIVATE DROP-OFF", de = "PRIVATANNAHME"}),
+	-- P10-02 Beistelltisch01 (TABLE.md). Stages shared with the stool keep their keys; a key with the recipe id as
+	-- suffix replaces the stool text for the table (see Labels.stageKey).
+	table.freeze({key = "kit.table.name", en = "PARTS KIT · 10 PARTS", de = "BAUSATZ · 10 TEILE"}),
+	table.freeze({key = "table.raw.name", en = "RAW TABLE", de = "ROHTISCH"}),
+	table.freeze({key = "table.finished.name", en = "FINISHED TABLE", de = "FERTIGER TISCH"}),
+	table.freeze({key = "carton.table.name", en = "TABLE CARTON", de = "TISCHKARTON"}),
+	table.freeze({key = "carton.table.count", en = "1 TABLE", de = "1 TISCH"}),
+	table.freeze({key = "package.table.name", en = "TABLE WOOD PACKAGE", de = "TISCHHOLZPAKET"}),
+	table.freeze({key = "missing.Rohtisch", en = "RAW TABLE MISSING", de = "ROHTISCH FEHLT"}),
+	table.freeze({key = "missing.Holzpaket.Beistelltisch01", en = "TABLE WOOD MISSING", de = "TISCHHOLZ FEHLT"}),
+	table.freeze({key = "missing.Fertig.Beistelltisch01", en = "FINISHED TABLE MISSING", de = "FERTIGER TISCH FEHLT"}),
+	table.freeze({key = "collect.Rohtisch", en = "COLLECT RAW TABLE", de = "ROHTISCH ABHOLEN"}),
+	table.freeze({key = "collect.Fertig.Beistelltisch01", en = "COLLECT FINISHED TABLE", de = "FERTIGEN TISCH ABHOLEN"}),
+	table.freeze({key = "collect.Karton.Beistelltisch01", en = "COLLECT TABLE CARTON", de = "TISCHKARTON ABHOLEN"}),
+	-- P10-02 recipe choice: the sign above the saw.
+	table.freeze({key = "recipe.name.Hocker01", en = "RECIPE: STOOL", de = "REZEPT: HOCKER"}),
+	table.freeze({key = "recipe.name.Beistelltisch01", en = "RECIPE: SIDE TABLE", de = "REZEPT: BEISTELLTISCH"}),
+	table.freeze({key = "recipe.next.Hocker01", en = "NEXT: STOOL WOOD PACKAGE", de = "NÄCHSTES: HOLZPAKET HOCKER"}),
+	table.freeze({key = "recipe.next.Beistelltisch01", en = "NEXT: TABLE WOOD PACKAGE", de = "NÄCHSTES: TISCHHOLZPAKET"}),
 }) :: {Entry}
 
 local byKey: {[string]: Entry} = {}
 for _, entry in Labels.entries do
 	assert(not byKey[entry.key], "Duplicate label key")
 	byKey[entry.key] = entry
+end
+
+-- The key for a stage text: the recipe's own variant ("prefix.Stage.RecipeId") when one exists, else "prefix.Stage".
+function Labels.stageKey(prefix: string, stage: string, recipeId: string?): string
+	if recipeId ~= nil then
+		local own = prefix .. "." .. stage .. "." .. recipeId
+		if byKey[own] then return own end
+	end
+	return prefix .. "." .. stage
 end
 
 -- Source text for a TextLabel; AutoLocalize translates it for German clients.

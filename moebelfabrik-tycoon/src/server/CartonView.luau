@@ -1,5 +1,6 @@
 --!strict
--- Measured greybox of one closed Hocker01 carton (DIMENSIONS: 0.46 x 0.51 x 0.46 m), pending the imported art.
+-- Measured greybox of one closed carton, pending the imported art. Hocker01: 0.46 x 0.51 x 0.46 m (DIMENSIONS),
+-- Beistelltisch01: 0.48 x 0.54 x 0.48 m (TABLE.md).
 local Labels = require(script.Parent.Labels)
 local CartonView = {}
 local SCALE = 25 / 7
@@ -30,11 +31,15 @@ local function bar(parent: Instance, position: UDim2, size: UDim2)
 end
 
 -- Pivot = centre of the carton's underside; the carton rests on its support.
-function CartonView.create(parent: Instance, support: CFrame, batchId: string): Model
+function CartonView.create(parent: Instance, support: CFrame, batchId: string, recipeId: string?): Model
+	local isTable = recipeId == "Beistelltisch01"
+	local width = if isTable then 0.48 else 0.46
+	local bodyHeight = if isTable then 0.526 else 0.496 -- plus the 0.014 m tape: 0.54 and 0.51 m in total
 	local model = Instance.new("Model")
 	model.Name = "Karton"
 	model:SetAttribute("BatchId", batchId)
 	model:SetAttribute("Stage", "Karton")
+	model:SetAttribute("RecipeId", recipeId or "Hocker01")
 	local function part(name: string, size: Vector3, center: Vector3, color: Color3): BasePart
 		local piece = Instance.new("Part")
 		piece.Name = name
@@ -50,8 +55,8 @@ function CartonView.create(parent: Instance, support: CFrame, batchId: string): 
 		return piece
 	end
 	-- Tape (0.014 m, smallest exact part) sits inside the 0.51 m envelope on the closed lid.
-	local body = part("Karton", Vector3.new(0.46, 0.496, 0.46), Vector3.new(0, 0.248, 0), CARD)
-	part("Klebeband", Vector3.new(0.46, 0.014, 0.08), Vector3.new(0, 0.503, 0), CARD:Lerp(Color3.new(1, 1, 1), 0.35))
+	local body = part("Karton", Vector3.new(width, bodyHeight, width), Vector3.new(0, bodyHeight / 2, 0), CARD)
+	part("Klebeband", Vector3.new(width, 0.014, 0.08), Vector3.new(0, bodyHeight + 0.007, 0), CARD:Lerp(Color3.new(1, 1, 1), 0.35))
 	for _, face in {Enum.NormalId.Front, Enum.NormalId.Back} do
 		local sheet = Instance.new("SurfaceGui")
 		sheet.Name = "Aufdruck" .. face.Name
@@ -61,12 +66,20 @@ function CartonView.create(parent: Instance, support: CFrame, batchId: string): 
 		sheet.LightInfluence = 1
 		sheet.Adornee = body
 		sheet.Parent = body
-		-- Language-neutral stool symbol: seat, two legs, one rail.
-		bar(sheet, UDim2.fromScale(0.30, 0.12), UDim2.fromScale(0.40, 0.06))
-		bar(sheet, UDim2.fromScale(0.34, 0.18), UDim2.fromScale(0.05, 0.30))
-		bar(sheet, UDim2.fromScale(0.61, 0.18), UDim2.fromScale(0.05, 0.30))
-		bar(sheet, UDim2.fromScale(0.34, 0.33), UDim2.fromScale(0.32, 0.04))
-		label(sheet, Labels.text("carton.count"), UDim2.fromScale(0.08, 0.52), UDim2.fromScale(0.84, 0.16), true)
+		if isTable then
+			-- Language-neutral table symbol: wide plate, two legs, a lower shelf.
+			bar(sheet, UDim2.fromScale(0.26, 0.12), UDim2.fromScale(0.48, 0.05))
+			bar(sheet, UDim2.fromScale(0.32, 0.17), UDim2.fromScale(0.04, 0.31))
+			bar(sheet, UDim2.fromScale(0.64, 0.17), UDim2.fromScale(0.04, 0.31))
+			bar(sheet, UDim2.fromScale(0.32, 0.36), UDim2.fromScale(0.36, 0.035))
+		else
+			-- Language-neutral stool symbol: seat, two legs, one rail.
+			bar(sheet, UDim2.fromScale(0.30, 0.12), UDim2.fromScale(0.40, 0.06))
+			bar(sheet, UDim2.fromScale(0.34, 0.18), UDim2.fromScale(0.05, 0.30))
+			bar(sheet, UDim2.fromScale(0.61, 0.18), UDim2.fromScale(0.05, 0.30))
+			bar(sheet, UDim2.fromScale(0.34, 0.33), UDim2.fromScale(0.32, 0.04))
+		end
+		label(sheet, Labels.text(if isTable then "carton.table.count" else "carton.count"), UDim2.fromScale(0.08, 0.52), UDim2.fromScale(0.84, 0.16), true)
 		label(sheet, Labels.text("carton.batch"), UDim2.fromScale(0.08, 0.72), UDim2.fromScale(0.84, 0.08), true)
 		label(sheet, batchId, UDim2.fromScale(0.08, 0.81), UDim2.fromScale(0.84, 0.08), false)
 	end
@@ -74,7 +87,7 @@ function CartonView.create(parent: Instance, support: CFrame, batchId: string): 
 	sign.Name = "StufenLabel"
 	sign.Adornee = body
 	sign.Size = UDim2.fromOffset(160, 38)
-	sign.StudsOffsetWorldSpace = Vector3.new(0, 1.3, 0)
+	sign.StudsOffsetWorldSpace = Vector3.new(0, if isTable then 1.4 else 1.3, 0)
 	sign.MaxDistance = 18
 	sign.Parent = model
 	local text = Instance.new("TextLabel")
@@ -83,7 +96,7 @@ function CartonView.create(parent: Instance, support: CFrame, batchId: string): 
 	text.TextColor3 = Color3.fromRGB(255, 249, 220)
 	text.TextStrokeTransparency = 0
 	text.TextScaled = true
-	text.Text = Labels.text("carton.name")
+	text.Text = Labels.text(if isTable then "carton.table.name" else "carton.name")
 	text.Parent = sign
 	model.Parent = parent
 	return model

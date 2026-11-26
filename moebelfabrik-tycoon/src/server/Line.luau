@@ -7,12 +7,11 @@ local Stations = require(script.Parent.Stations)
 local Line = {}
 
 export type Event = {stationId: string, code: string, ok: boolean, unknown: boolean, batchId: string?}
--- RUNNING > OUTPUT_FULL > OUTPUT_RESERVED > WRONG_RECIPE > READY > INPUT_MISSING (PRODUCTION "Stoppfälle").
+-- RUNNING > OUTPUT_FULL > OUTPUT_RESERVED > READY > INPUT_MISSING (PRODUCTION "Stoppfälle").
 -- BACKLOG (P09-05) replaces OUTPUT_RESERVED while the first belt holds this station's output and cannot move on.
--- WRONG_RECIPE (P10-02): the saw's waiting package belongs to another recipe than the selected one; `needed` names it.
--- `recipeId` is the recipe the station shows: its running or finished batch, else its waiting batch, else the selection.
+-- P10-02 `recipeId` is the recipe the station shows: its running or finished batch, else its waiting batch, else the selection.
 export type Status = {stationId: string, code: string, inputStage: State.Stage, outputStage: State.Stage,
-	remaining: number?, batchId: string?, inputWaiting: boolean, cause: string?, recipeId: string, needed: string?}
+	remaining: number?, batchId: string?, inputWaiting: boolean, cause: string?, recipeId: string}
 export type StoreStatus = {used: number, capacity: number, full: boolean}
 export type BeltStatus = {code: string, cause: string?, batchId: string?}
 
@@ -89,7 +88,7 @@ function Line.beltStatus(state: State.Profile, now: number, stopped: boolean): B
 end
 
 -- Read-only station feedback for signs and HUD; never changes stock. `beltStopped` marks the first belt as switched off.
--- `selectedRecipeId` is the line's recipe choice; without it the saw takes any recipe and an empty station shows the first.
+-- `selectedRecipeId` is the line's recipe choice; an empty station shows its ware, without a choice the first recipe's.
 function Line.status(state: State.Profile, now: number, beltStopped: boolean?, selectedRecipeId: string?): {[string]: Status}
 	local result: {[string]: Status} = {}
 	for _, base in State.STATIONS do
@@ -122,11 +121,7 @@ function Line.status(state: State.Profile, now: number, beltStopped: boolean?, s
 				if cause then status.code, status.cause = "BACKLOG", cause end
 			end
 		elseif waiting then
-			if base.id == "Saege" and selectedRecipeId ~= nil and inputBatch ~= nil and inputBatch.recipeId ~= selectedRecipeId then
-				status.code, status.needed = "WRONG_RECIPE", selectedRecipeId
-			else
-				status.code = "READY"
-			end
+			status.code = "READY"
 		end
 		result[rule.id] = status
 	end

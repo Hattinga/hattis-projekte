@@ -101,7 +101,7 @@ return function(State: any, Transfers: any, Persistence: any, Stations: any, Lin
 			h.save(store)
 		end
 		function h.select(recipeId: any): any
-			return RecipeChoice.select(h.c, 101, h.state().revision, recipeId, h.now, 600)
+			return RecipeChoice.select(h.c, 101, h.state().revision, recipeId, 600)
 		end
 		function h.tick(seconds: number): string
 			h.now += seconds
@@ -211,21 +211,21 @@ return function(State: any, Transfers: any, Persistence: any, Stations: any, Lin
 		assert(State.validate(h.state()) and h.state().money == 200)
 	end)
 
-	test("06 the saw refuses a package of another recipe than the selected one and writes nothing", function()
+	test("06 the saw works a package of either recipe whatever is selected; the choice never holds stock back", function()
 		local p = profile()
 		p.batches.t = State.newBatch("t", 101, "Holzpaket", "Saege.Input", TISCH)
 		local h = harness(p, HOCKER)
-		local writes, before = h.writes, h.state()
-		unchanged(h, "WRONG_RECIPE", Stations.start(h.c, "Saege", h.now, 600))
-		assert(h.tick(0) == "" and h.writes == writes and equal(h.state(), before))
 		local status = Line.status(h.state(), h.now, false, HOCKER).Saege
-		assert(status.code == "WRONG_RECIPE" and status.needed == HOCKER and status.recipeId == TISCH and status.inputWaiting)
-		local free = Line.status(h.state(), h.now, false).Saege
-		assert(free.code == "READY", "Without a selection the saw takes any recipe")
-		-- Choosing the package's own recipe is allowed and starts the run.
-		local chosen = h.select(TISCH)
-		assert(chosen.ok and chosen.code == "SELECTED", chosen.code)
+		assert(status.code == "READY" and status.recipeId == TISCH and status.inputWaiting and status.outputStage == "Bausatz")
 		assert(h.tick(0) == "Saege:STARTED")
+		assert(h.state().reservations["Saege.Output"].finishAt == h.now + 8,
+			"The table package takes the table's 8 s although the stool is selected")
+		assert(h.progress().selectedRecipeId == HOCKER and h.state().batches.t.recipeId == TISCH)
+		local q = profile()
+		q.batches.w = State.newBatch("w", 101, "Holzpaket", "Saege.Input", HOCKER)
+		local h2 = harness(q, TISCH)
+		assert(h2.tick(0) == "Saege:STARTED" and h2.state().reservations["Saege.Output"].finishAt == h2.now + 6,
+			"The stool package takes the stool's 6 s although the table is selected")
 	end)
 
 	test("07 the choice is stored with the revision and survives a new session", function()
@@ -239,9 +239,9 @@ return function(State: any, Transfers: any, Persistence: any, Stations: any, Lin
 		local again = h.controller("session/2")
 		assert(again.snapshot().confirmed.data.progress.selectedRecipeId == TISCH, "The new session sees the choice")
 		local writes = h.writes
-		local same = RecipeChoice.select(again, 101, again.snapshot().confirmed.data.state.revision, TISCH, h.now, 600)
+		local same = RecipeChoice.select(again, 101, again.snapshot().confirmed.data.state.revision, TISCH, 600)
 		assert(same.ok and same.code == "ALREADY_SELECTED" and h.writes == writes)
-		local back = RecipeChoice.select(again, 101, again.snapshot().confirmed.data.state.revision, HOCKER, h.now, 600)
+		local back = RecipeChoice.select(again, 101, again.snapshot().confirmed.data.state.revision, HOCKER, 600)
 		assert(back.ok and back.code == "SELECTED" and again.snapshot().confirmed.data.progress.selectedRecipeId == HOCKER)
 	end)
 
@@ -249,39 +249,31 @@ return function(State: any, Transfers: any, Persistence: any, Stations: any, Lin
 		local h = harness(profile(), HOCKER)
 		local writes, before = h.writes, h.state()
 		local revision = before.revision
-		assert(RecipeChoice.select(h.c, 101, revision, "Regal01", h.now, 600).code == "UNKNOWN_RECIPE")
-		assert(RecipeChoice.select(h.c, 101, revision, 5, h.now, 600).code == "UNKNOWN_RECIPE")
-		assert(RecipeChoice.select(h.c, 101, revision + 1, TISCH, h.now, 600).code == "STALE_REVISION")
-		assert(RecipeChoice.select(h.c, 202, revision, TISCH, h.now, 600).code == "NOT_AUTHORIZED")
-		assert(RecipeChoice.select(h.c, 101, "x", TISCH, h.now, 600).code == "INVALID_REQUEST")
-		assert(RecipeChoice.select(h.c, 101, -1, TISCH, h.now, 600).code == "INVALID_REQUEST")
-		assert(RecipeChoice.select(h.c, 101, revision, TISCH, nil, 600).code == "INVALID_REQUEST")
-		assert(RecipeChoice.select(h.c, 101, revision, HOCKER, h.now, 600).code == "ALREADY_SELECTED")
+		assert(RecipeChoice.select(h.c, 101, revision, "Regal01", 600).code == "UNKNOWN_RECIPE")
+		assert(RecipeChoice.select(h.c, 101, revision, 5, 600).code == "UNKNOWN_RECIPE")
+		assert(RecipeChoice.select(h.c, 101, revision + 1, TISCH, 600).code == "STALE_REVISION")
+		assert(RecipeChoice.select(h.c, 202, revision, TISCH, 600).code == "NOT_AUTHORIZED")
+		assert(RecipeChoice.select(h.c, 101, "x", TISCH, 600).code == "INVALID_REQUEST")
+		assert(RecipeChoice.select(h.c, 101, -1, TISCH, 600).code == "INVALID_REQUEST")
+		assert(RecipeChoice.select(h.c, 101, revision, HOCKER, 600).code == "ALREADY_SELECTED")
 		assert(h.writes == writes and equal(h.state(), before) and h.progress().selectedRecipeId == HOCKER)
 		h.drop = true
 		local lost = h.select(TISCH)
 		assert(not lost.ok and lost.code == "SAVE_FAILED" and lost.unknown)
-		assert(RecipeChoice.select(h.c, 101, revision, TISCH, h.now, 600).code == "NOT_CONFIRMED", "An unclear save blocks the next change")
+		assert(RecipeChoice.select(h.c, 101, revision, TISCH, 600).code == "NOT_CONFIRMED", "An unclear save blocks the next change")
 	end)
 
-	test("09 a package of the old recipe at the saw input blocks the switch; its own recipe and expired claims do not", function()
-		-- Waiting package.
+	test("09 wood at the saw input, carried to it or promised to it never blocks a switch; every batch keeps its recipe", function()
+		-- A waiting package of the old recipe is worked with the old recipe's time after the switch.
 		local p = profile()
 		p.batches.w = State.newBatch("w", 101, "Holzpaket", "Saege.Input", HOCKER)
 		local h = harness(p, HOCKER)
-		local writes = h.writes
-		unchanged(h, "INPUT_OCCUPIED", h.select(TISCH))
-		assert(h.writes == writes and h.progress().selectedRecipeId == HOCKER)
-		-- Return reservation while the package is carried.
-		local q = profile()
-		q.batches.w = State.newBatch("w", 101, "Holzpaket", "Saege.Input", HOCKER)
-		local h2 = harness(q, HOCKER)
-		local store = h2.store()
-		h2.move(store, "w", "Saege.Input", HAND, "take")
-		h2.save(store)
-		assert(h2.state().reservations["Saege.Input"].kind == "Return")
-		unchanged(h2, "INPUT_OCCUPIED", h2.select(TISCH))
-		-- A live claim moving a package to the input.
+		local chosen = h.select(TISCH)
+		assert(chosen.ok and chosen.code == "SELECTED", chosen.code)
+		assert(h.state().batches.w.recipeId == HOCKER and h.state().batches.w.locationId == "Saege.Input")
+		assert(h.tick(0) == "Saege:STARTED" and h.state().reservations["Saege.Output"].finishAt == h.now + 6,
+			"The old package still takes the stool time")
+		-- A package in the hand with its Return reservation and a live claim to the saw input survives a switch.
 		local r = profile()
 		r.batches.w = State.newBatch("w", 101, "Holzpaket", "RawStore.Slot1", HOCKER)
 		local h3 = harness(r, HOCKER)
@@ -291,14 +283,19 @@ return function(State: any, Transfers: any, Persistence: any, Stations: any, Lin
 			batchId = "w", sourceId = HAND, targetId = "Saege.Input", quantity = 1}, h3.now, 5)
 		assert(reserved.ok, reserved.code)
 		h3.save(claimStore)
-		unchanged(h3, "INPUT_OCCUPIED", h3.select(TISCH))
-		h3.now += 6
-		local expired = h3.select(TISCH)
-		assert(expired.ok and expired.code == "SELECTED", "An expired claim does not hold the choice: " .. expired.code)
-		-- The package already belongs to the recipe being chosen.
-		local s = profile()
-		s.batches.t = State.newBatch("t", 101, "Holzpaket", "Saege.Input", TISCH)
-		local h4 = harness(s, HOCKER)
+		local switched = h3.select(TISCH)
+		assert(switched.ok and switched.code == "SELECTED", switched.code)
+		local after = h3.store()
+		local committed = Transfers.commit(after, ACTOR, {operationId = "c1/c", expectedRevision = after.profile.revision,
+			claimId = "c1"}, h3.now)
+		assert(committed.ok, committed.code)
+		h3.save(after)
+		assert(State.validate(h3.state()) and h3.state().batches.w.locationId == "Saege.Input")
+		assert(h3.tick(0) == "Saege:STARTED" and h3.state().reservations["Saege.Output"].finishAt == h3.now + 6)
+		-- Switching to the recipe of the waiting package is just as free.
+		local s2 = profile()
+		s2.batches.t = State.newBatch("t", 101, "Holzpaket", "Saege.Input", TISCH)
+		local h4 = harness(s2, HOCKER)
 		assert(h4.select(TISCH).ok and h4.progress().selectedRecipeId == TISCH)
 	end)
 

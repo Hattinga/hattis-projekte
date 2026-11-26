@@ -4,6 +4,7 @@ local rs = game:GetService("RunService")
 assert(rs:IsStudio() and (rs:IsServer() or not rs:IsRunning()), "Edit/Server only")
 local factory = game:GetService("ServerScriptService").Factory
 local State = require(factory.State)
+local Recipes = require(factory.Recipes)
 local Recipe = require(factory.Recipe)
 local root = workspace.P02Line.Stations
 local binding, problem = Recipe.bind(root)
@@ -26,7 +27,9 @@ for i, station in Recipe.stations do
 		local location, point = binding.locations[id], binding.points[id]
 		local expected = if role == "Output" then stages[i + 1] else stages[i]
 		assert(location.kind == "Station" .. role and location.capacity == 1)
-		assert(#location.acceptedStages == 1 and location.acceptedStages[1] == expected)
+		-- P10-02: a station place accepts the stages of every registered recipe, the first recipe's stage first.
+		local accepted = Recipes.acceptedStages(station.id, role)
+		assert(location.acceptedStages[1] == expected and table.concat(location.acceptedStages, ",") == table.concat(accepted, ","))
 		assert(point:IsA("Attachment") and point == root[station.id][role].Transfer and not points[point])
 		points[point] = true
 		if role ~= "Process" then profile.batches[id] = State.newBatch(id, 101, expected, id) end

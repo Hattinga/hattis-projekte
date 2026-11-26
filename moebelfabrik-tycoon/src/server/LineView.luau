@@ -25,6 +25,7 @@ export type Places = {
 	storeSlots: {string}?,
 	storePad: BasePart?,
 	beltStopped: boolean?, -- the first belt is switched off; a station that waits on it shows the cause
+	selectedRecipeId: string?, -- the line's recipe choice (P10-02); the recipe sign and empty stations show it
 }
 
 local function folder(parent: Instance, name: string): Folder
@@ -48,10 +49,11 @@ local function holdOnCarrier(view: Model, carrier: BasePart)
 	end
 end
 
-local function addTrailerStrap(view: Model, support: CFrame, stage: State.Stage)
+local function addTrailerStrap(view: Model, support: CFrame, stage: State.Stage, recipeId: string)
 	if stage ~= "Holzpaket" and stage ~= "Karton" then return end
-	local halfWidth = if stage == "Holzpaket" then 0.30 else 0.23
-	local top = if stage == "Holzpaket" then 0.15 else 0.496
+	local isTable = recipeId == "Beistelltisch01" -- table carton 0.48 x 0.54 m (TABLE.md), package width unchanged
+	local halfWidth = if stage == "Holzpaket" then 0.30 elseif isTable then 0.24 else 0.23
+	local top = if stage == "Holzpaket" then 0.15 elseif isTable then 0.526 else 0.496
 	local thickness, width, offset = 0.014, 0.048, 0.085
 	local function piece(name: string, size: Vector3, across: number, height: number, buckle: boolean?)
 		local part = Instance.new("Part")
@@ -84,6 +86,8 @@ function LineView.syncWares(root: Instance, state: State.Profile, places: Places
 		local carrier = if places.carriers then places.carriers[batch.locationId] else nil
 		local mount = if places.mounts then places.mounts[batch.locationId] else nil
 		if not point and not carrier and not mount then continue end
+		-- A batch keeps its recipe for good, so stage and place alone say when its view must be rebuilt.
+		-- BeltShift finds the kit on the belt by this signature ("Bausatz@Band.First") for every recipe.
 		local signature = batch.stage .. "@" .. batch.locationId
 		local view = wares:FindFirstChild(batch.id)
 		if view and view:GetAttribute("Signature") ~= signature then
@@ -94,11 +98,12 @@ function LineView.syncWares(root: Instance, state: State.Profile, places: Places
 			local support = if point then point.WorldCFrame
 				elseif mount then mount.WorldCFrame
 				else (carrier :: BasePart).CFrame * CFrame.new(Vector3.new(0, -0.45, -0.55) * SCALE)
-			local created = WareView.create(wares, support, batch.id, batch.stage)
+			local created = WareView.create(wares, support, batch.id, batch.stage, batch.recipeId)
 			created.Name = batch.id
 			created:SetAttribute("Signature", signature)
+			created:SetAttribute("RecipeId", batch.recipeId)
 			if not point and mount then
-				addTrailerStrap(created, support, batch.stage)
+				addTrailerStrap(created, support, batch.stage, batch.recipeId)
 				holdOnCarrier(created, mount.Parent :: BasePart)
 			elseif not point and carrier then
 				holdOnCarrier(created, carrier)
@@ -167,7 +172,7 @@ end
 -- Station and store signs following PRODUCTION feedback; returns the shown status per station.
 function LineView.syncSigns(root: Instance, state: State.Profile, now: number, places: Places): {[string]: Line.Status}
 	local signs = folder(root, "Signs")
-	local statuses = Line.status(state, now, places.beltStopped)
+	local statuses = Line.status(state, now, places.beltStopped, places.selectedRecipeId)
 	for stationId, status in statuses do
 		local pad = places.stationPads[stationId]
 		if not pad then continue end
@@ -182,7 +187,7 @@ function LineView.syncSigns(root: Instance, state: State.Profile, now: number, p
 			setText(detail, Labels.text("status.starting"), true)
 		elseif status.code == "OUTPUT_FULL" then
 			setText(head, Labels.text("status.outputFull"), true)
-			setText(detail, Labels.text("collect." .. status.outputStage), true)
+			setText(detail, Labels.text(Labels.stageKey("collect", status.outputStage, status.recipeId)), true)
 		elseif status.code == "BACKLOG" then
 			setText(head, Labels.text("status.backlog"), true)
 			setText(detail, Labels.text("status.cause." .. (status.cause :: string)), true)
@@ -190,9 +195,18 @@ function LineView.syncSigns(root: Instance, state: State.Profile, now: number, p
 			setText(head, Labels.text("status.transport"), true)
 			setText(detail, Labels.text("status.reserved"), true)
 		else
-			setText(head, Labels.text("missing." .. status.inputStage), true)
+			setText(head, Labels.text(Labels.stageKey("missing", status.inputStage, status.recipeId)), true)
 			setText(detail, "", false)
 		end
+	end
+	-- P10-02: the recipe sign stands above the saw sign and always names the choice and what the supplier sells next.
+	local sawPad = places.stationPads.Saege
+	if places.selectedRecipeId and sawPad then
+		local board, head, detail = sign(signs, "Recipe", sawPad, 4.5)
+		board:SetAttribute("RecipeId", places.selectedRecipeId)
+		head.TextColor3 = Color3.fromRGB(255, 228, 150)
+		setText(head, Labels.text("recipe.name." .. places.selectedRecipeId), true)
+		setText(detail, Labels.text("recipe.next." .. places.selectedRecipeId), true)
 	end
 	if places.storeSlots and places.storePad then
 		local store = Line.storeStatus(state, places.storeSlots)

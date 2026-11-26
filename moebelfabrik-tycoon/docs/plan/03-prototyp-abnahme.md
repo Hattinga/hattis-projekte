@@ -5,7 +5,7 @@
 **Abhängigkeit** P09 ist abgenommen.
 
 - [x] **P10-01** Lege den Beistelltisch als zweites Rezept mit eigener Materialmenge, erkennbarem Werkstück und abweichendem Montagebedarf fest. Nutze vorhandene Stationen und prüfe die passende Transportgröße. ([Vertrag](../design/TABLE.md), [Beleg](../evidence/P10.md#p10-01--beistelltisch-als-zweites-rezept))
-- [ ] **P10-02** Gib der Linie eine Rezeptwahl und mache ihre Wirkung auf den nächsten Produktionszyklus sichtbar. Prüfe einen Wechsel bei begonnener Bearbeitung und behalte die Werkstücke des alten Rezepts eindeutig zugeordnet.
+- [x] **P10-02** Gib der Linie eine Rezeptwahl und mache ihre Wirkung auf den nächsten Produktionszyklus sichtbar. Prüfe einen Wechsel bei begonnener Bearbeitung und behalte die Werkstücke des alten Rezepts eindeutig zugeordnet. ([Regeln](../design/PRODUCTION.md#rezeptwechsel-ohne-umdeuten-alter-ware), [Beleg](../evidence/P10.md#p10-02--rezeptwahl-der-linie))
 - [ ] **P10-03** Zeige Rohstoff- und Fertigwarenbestand, Fahrzeugladung, freie Plätze und aktuelle Engpässe. Ergänze für Kauf, Rezeptwahl und Verkauf klare Bestätigungen sowie bedienbare Touch-Aktionen.
 - [ ] **P10-04** Ergänze eine mit Spielgeld erwerbbare Ausrüstung mit sichtbarer Wirkung, etwa eine größere Montagekapazität. Zeige Preis und Nutzen vor dem Kauf und prüfe den Materialnachschub nach einer zu hohen Ausgabe.
 - [ ] **P10-05** Mache die Entscheidung zwischen Hocker und Tisch überprüfbar. Vergleiche Materialbedarf, Belegung der Montage, Platz im Lager oder Fahrzeug und den Händlererlös. Spiele beide Rezepte über die bestehende Fahrzeugroute bis zur Abrechnung.

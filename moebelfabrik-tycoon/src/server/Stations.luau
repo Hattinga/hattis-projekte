@@ -53,11 +53,8 @@ function Stations.start(controller: Persistence.Controller, stationId: string, n
 	if lock or State.countAt(state, rule.output) ~= 0 then return reject("OUTPUT_BLOCKED") end
 	if State.countAt(state, rule.process) ~= 0 or state.reservations[rule.process] then return reject("PROCESS_BLOCKED") end
 	if not inputBatch or inputBatch.stage ~= rule.inputStage then return reject("INPUT_REQUIRED") end
-	-- The saw takes only packages of the selected recipe. Later stations always follow the recipe of their batch.
-	if stationId == "Saege" and candidate.progress ~= nil
-		and inputBatch.recipeId ~= candidate.progress.selectedRecipeId then
-		return reject("WRONG_RECIPE")
-	end
+	-- Every station, the saw included, works the recipe its waiting batch carries. The line's recipe choice only
+	-- steers what the supplier sells next (RecipeChoice), so wood bought earlier never gets stuck.
 	if state.revision >= MAX_INTEGER - 1 then return reject("REVISION_OVERFLOW") end
 	for id, claim in state.claims do
 		if State.claimTouches(claim, rule.input) or State.claimTouches(claim, rule.output) then

@@ -10,6 +10,8 @@ local rs = game:GetService("RunService")
 assert(rs:IsStudio() and rs:IsServer() and rs:IsRunning(), "Studio Server only")
 local factory = game:GetService("ServerScriptService").Factory
 local State = require(factory.State)
+local Recipes = require(factory.Recipes)
+local RecipeChoice = require(factory.RecipeChoice)
 local Recipe = require(factory.Recipe)
 local Transfers = require(factory.Transfers)
 local Persistence = require(factory.Persistence)
@@ -91,7 +93,7 @@ local profile = State.newProfile(player.UserId)
 for _, binding in {stations, shelf, raw} do
 	for id, location in binding.locations do profile.locations[id] = location end
 end
-profile.locations[hand] = State.newLocation(hand, "Carrier", 1, {"Holzpaket", "Bausatz", "Rohhocker", "Fertig", "Karton"})
+profile.locations[hand] = State.newLocation(hand, "Carrier", 1, {"Holzpaket", "Bausatz", "Rohhocker", "Rohtisch", "Fertig", "Karton"})
 local loading: Loading.Binding? = nil
 local purchaseSlots: Purchases.Slots? = nil
 local trips: Trips.Tracker? = nil
@@ -259,13 +261,15 @@ banner.Font = Enum.Font.GothamMedium
 banner.Parent = gui
 
 local nextTarget = {Holzpaket = "Säge · Eingang", Bausatz = "Montagebank · Eingang", Rohhocker = "Finishplatz · Eingang",
-	Fertig = "Packtisch · Eingang", Karton = "Fertiglager"}
+	Rohtisch = "Finishplatz · Eingang", Fertig = "Packtisch · Eingang", Karton = "Fertiglager"}
 local prompts: {[string]: ProximityPrompt} = {}
 local hirePrompt: ProximityPrompt? = nil
 local assignPrompt: ProximityPrompt? = nil
 local reassignPrompt: ProximityPrompt? = nil
 local beltPrompt: ProximityPrompt? = nil
 local powerPrompt: ProximityPrompt? = nil
+local buyPrompt: ProximityPrompt? = nil -- P10-02: price and package follow the selected recipe
+local recipePrompt: ProximityPrompt? = nil
 local beltShift: BeltShift.Shift? = nil
 local workerStarted = false
 local workerShift: WorkerShift.Shift? = nil
@@ -280,10 +284,17 @@ if loading and confirmed().data.state.money < Purchases.PRICE and next(confirmed
 end
 if next(recoveryPoints) then lastMessage = "Fracht am Bergungsplatz abholen und auf den passenden Anhängerplatz laden." end
 if confirmed().data.state.pendingSale then lastMessage = "Offener Verkauf: Lege den Karton zurück auf seinen Anhängerplatz." end
+-- P10-02: the carton of a sale names its product; "1 Hocker" or "1 Beistelltisch".
+local function productName(batchId: string?): string
+	local batch = if batchId then confirmed().data.state.batches[batchId] else nil
+	local recipe = Recipes.get(if batch then batch.recipeId else nil)
+	return "1 " .. (if recipe then recipe.name else "Hocker")
+end
 local function offerText(sale: any): string
 	local name = buyerNames[sale.buyer]
-	if sale.buyer == "Dealer" then return name .. ": 1 Hocker · Erlös " .. sale.dealerValue end
-	return name .. ": 1 Hocker · " .. sale.quoteMin .. "–" .. sale.quoteMax .. " (Händler " .. sale.dealerValue .. ")"
+	local product = productName(sale.batchId)
+	if sale.buyer == "Dealer" then return name .. ": " .. product .. " · Erlös " .. sale.dealerValue end
+	return name .. ": " .. product .. " · " .. sale.quoteMin .. "–" .. sale.quoteMax .. " (Händler " .. sale.dealerValue .. ")"
 end
 -- A repaid material advance (P07-07) is part of the confirmed receipt: amount - repaid was credited.
 local function repaidText(receipt: Sales.Receipt): string
@@ -303,6 +314,20 @@ local function render()
 	local state = saved.data.state
 	local worker = saved.data.progress.firstWorker
 	local permit = saved.data.progress.firstBelt
+	local selected = assert(Recipes.get(saved.data.progress.selectedRecipeId))
+	places.selectedRecipeId = selected.id
+	if buyPrompt then
+		buyPrompt.ObjectText = "1 " .. selected.packageName
+		buyPrompt.ActionText = "Kaufen · " .. selected.price
+	end
+	if recipePrompt then
+		local following = Recipes.LIST[1]
+		for index, recipe in Recipes.LIST do
+			if recipe.id == selected.id then following = Recipes.LIST[index % #Recipes.LIST + 1] end
+		end
+		recipePrompt.ObjectText = "Rezept: " .. selected.name
+		recipePrompt.ActionText = "Wechseln zu: " .. following.name
+	end
 	local installedBelt = permit ~= nil
 	if beltPrompt then beltPrompt.ActionText = if installedBelt then "Förderband ansehen" else "Installieren · " .. Belts.PRICE end
 	if powerPrompt then
@@ -461,8 +486,9 @@ local function render()
 	local sale = state.pendingSale
 	local selling = sale ~= nil and held ~= nil and held.id == sale.batchId
 	if sale and selling then target = buyerNames[sale.buyer] .. " · Annahme" end
-	banner.Text = (if held then "In der Hand: " .. Recipe.stageNames[held.stage] .. " · Ziel: " .. (target or "Auflage")
+	banner.Text = (if held then "In der Hand: " .. Recipe.stageNameFor(held.stage, held.recipeId) .. " · Ziel: " .. (target or "Auflage")
 		else "Hand frei · E an einer Auflage drücken") .. " · Fertiglager " .. store.used .. "/" .. store.capacity
+		.. (if logisticsEnabled then " · Rezept: " .. selected.name else "")
 		.. (if load then " · Anhänger " .. load.used .. "/" .. load.capacity .. " · Guthaben " .. state.money else "")
 		.. (if state.advance then " · Vorschuss offen: " .. state.advance.amount else "")
 		.. (if beltShift then " · Band: " .. beltShift.status else "")
@@ -624,13 +650,14 @@ local function settleSale(user: Player, buyer: string): HandMoves.Result
 		end
 		local reach = HandMoves.checkReach(user, buyerPads[buyer])
 		if reach then return reach end
+		local product = productName(sale.batchId)
 		local result = Sales.settle(controller, saleActor, sale.id, TTL)
 		if result.unknown then unclearSale = sale.id end
 		local receipt = result.receipt
 		if result.ok and receipt then
 			openedHere[sale.id] = nil
 			return {ok = true, code = result.code,
-				message = "Verkauft an " .. buyerNames[buyer] .. ": 1 Hocker für " .. receipt.amount .. "." .. repaidText(receipt)}
+				message = "Verkauft an " .. buyerNames[buyer] .. ": " .. product .. " für " .. receipt.amount .. "." .. repaidText(receipt)}
 		end
 		return saleResponse(result)
 	end)
@@ -690,8 +717,12 @@ if purchaseSlots then
 				ownerUserId = user.UserId, ready = true}
 			local result = claim(controller, actor, {operationId = http:GenerateGUID(false),
 				expectedRevision = confirmed().data.state.revision}, slots, TTL)
-			return {ok = result.ok, code = result.code, message = if result.receipt then result.receipt.message
-				else (statuses[result.code] or fallback)}
+			local text = statuses[result.code] or fallback
+			if result.code == "NOT_ENOUGH_MONEY" then
+				local recipe = assert(Recipes.get(confirmed().data.progress.selectedRecipeId))
+				text = "Das " .. recipe.packageName .. " kostet " .. recipe.price .. " Spielgeld. Dein Guthaben reicht nicht."
+			end
+			return {ok = result.ok, code = result.code, message = if result.receipt then result.receipt.message else text}
 		end)
 		busy = false
 		local response = if ran then outcome else {ok = false, code = "ERROR", message = fallback}
@@ -709,6 +740,7 @@ if purchaseSlots then
 	prompt.Name = "P060405BuyWood"
 	prompt.ObjectText = "1 Holzpaket"
 	prompt.ActionText = "Kaufen · " .. Purchases.PRICE
+	buyPrompt = prompt
 	prompt.MaxActivationDistance = 6
 	prompt.KeyboardKeyCode = Enum.KeyCode.R
 	prompt.GamepadKeyCode = Enum.KeyCode.ButtonY
@@ -758,8 +790,9 @@ if logisticsEnabled then
 		end
 		if woodAtSupplier then return "Hole dein Holzpaket beim Lieferanten ab." end
 		if next(state.batches) then return "Verarbeite deine vorhandene Ware bis zum Karton für den Verkauf." end
-		if state.money >= Purchases.PRICE then
-			return "Kaufe beim Holzlieferanten das nächste Paket für " .. Purchases.PRICE .. " Spielgeld."
+		local price = assert(Recipes.get(confirmed().data.progress.selectedRecipeId)).price
+		if state.money >= price then
+			return "Kaufe beim Holzlieferanten das nächste Paket für " .. price .. " Spielgeld."
 		end
 		return "Hole beim Holzlieferanten einen Materialvorschuss."
 	end
@@ -806,6 +839,11 @@ if logisticsEnabled then
 			if code == "BELT_INSTALLED" or code == "BELT_OWNED" then
 				lastMessage ..= " " .. nextBeltStep(confirmed().data.state)
 			end
+			if code == "SELECTED" then
+				local recipe = assert(Recipes.get(confirmed().data.progress.selectedRecipeId))
+				lastMessage = "Rezept: " .. recipe.name .. ". Nächster Einkauf: " .. recipe.packageName .. " für " .. recipe.price
+					.. " Spielgeld. Vorhandenes Holz bleibt nutzbar."
+			end
 			if (code == "ALREADY_ASSIGNED" or code == "ALREADY_REASSIGNED") and workerShift and workerShift.paused then
 				WorkerShift.retry(workerShift)
 				lastMessage = "Der Mitarbeiter versucht es erneut."
@@ -840,6 +878,20 @@ if logisticsEnabled then
 		endpoints[State.FIRST_BELT.source], Belts.install, "P0901InstallBelt")
 	powerPrompt = workshopPrompt("P0905Power", "Förderband", Enum.KeyCode.T, Enum.KeyCode.ButtonR2,
 		endpoints[State.FIRST_BELT.source], Belts.toggle, "P0905BeltPower", false)
+	-- P10-02: V at the saw input switches the line to the next recipe. The server explains a refusal.
+	for code, text in RecipeChoice.MESSAGES do
+		if code ~= "NOT_CONFIRMED" and code ~= "NOT_AUTHORIZED" then messages[code] = text end
+	end
+	recipePrompt = workshopPrompt("P1002Recipe", "Rezept", Enum.KeyCode.V, Enum.KeyCode.ButtonR3,
+		endpoints["Saege.Input"], function(c: Persistence.Controller, userId: number, revision: number, ttl: number): {ok: boolean, code: string}
+			local current = c.snapshot().confirmed.data.progress.selectedRecipeId
+			local target = Recipes.LIST[1].id
+			for index, recipe in Recipes.LIST do
+				if recipe.id == current then target = Recipes.LIST[index % #Recipes.LIST + 1].id end
+			end
+			return RecipeChoice.select(c, userId, revision, target, ttl)
+		end, "P1002SelectRecipe")
+	recipePrompt.UIOffset = Vector2.new(0, 80) -- Shares the saw input with the E prompt.
 end
 
 -- Facing station rows share one aisle stand marker (e.g. Montage.Output / Finish.Input, both 4.3 studs away).
@@ -901,7 +953,7 @@ rs.Heartbeat:Connect(function(dt: number)
 			if resumed.ok then
 				local receipt = resumed.receipt
 				-- An unclear advance write is clarified here too; a landed advance then shows in the banner.
-				lastMessage = if receipt then "Verkauf bestätigt: 1 Hocker für " .. receipt.amount .. "." .. repaidText(receipt)
+				lastMessage = if receipt then "Verkauf bestätigt: für " .. receipt.amount .. "." .. repaidText(receipt)
 					else "Spielstand geklärt."
 				unclearSale = nil
 			else

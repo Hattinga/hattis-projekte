@@ -1,7 +1,8 @@
 --!strict
 -- P10-02: the line's recipe choice. It lives in the profile's progress and changes with the State revision.
--- The choice decides what the supplier sells next and which package the saw starts. Runs that already began and
--- every later station keep the recipe of their batch (PRODUCTION, "Rezeptwechsel ohne Umdeuten alter Ware").
+-- The choice decides what the supplier sells next. Every batch keeps the recipe it was bought with, and every station,
+-- the saw included, works whatever recipe its batch carries (PRODUCTION, "Rezeptwechsel ohne Umdeuten alter Ware").
+-- A switch is therefore never blocked by stock: wood bought before it stays usable.
 local Persistence = require(script.Parent.Persistence)
 local Recipes = require(script.Parent.Recipes)
 local State = require(script.Parent.State)
@@ -10,10 +11,9 @@ export type Result = {ok: boolean, code: string, message: string, recipeId: stri
 
 local RecipeChoice = {}
 local MAX_REVISION = 9007199254740991
-local SAW_INPUT = State.STATION_BY_ID.Saege.input
 
 local MESSAGES: {[string]: string} = {
-	SELECTED = "Rezept gewechselt. Der nächste Einkauf und die nächste Säge-Charge folgen diesem Rezept.",
+	SELECTED = "Rezept gewechselt. Der nächste Einkauf folgt diesem Rezept, vorhandenes Holz bleibt nutzbar.",
 	ALREADY_SELECTED = "Dieses Rezept ist bereits gewählt.",
 	NOT_CONFIRMED = "Der Spielstand wird gerade gespeichert. Bitte kurz warten.",
 	NOT_AUTHORIZED = "Du darfst diese Werkstatt nicht verändern.",
@@ -21,10 +21,11 @@ local MESSAGES: {[string]: string} = {
 	UNKNOWN_RECIPE = "Dieses Rezept gibt es nicht.",
 	STALE_REVISION = "Der Bestand hat sich geändert. Bitte erneut versuchen.",
 	REVISION_OVERFLOW = "Der Bestand ist vorübergehend gesperrt.",
-	INPUT_OCCUPIED = "Eingang zuerst freimachen oder vorhandene Charge beginnen lassen.",
 	LAYOUT_UNSUPPORTED = "Diese Werkstatt kann das Rezept noch nicht verarbeiten.",
 	SAVE_FAILED = "Die Rezeptwahl konnte nicht gespeichert werden.",
 }
+
+RecipeChoice.MESSAGES = table.freeze(MESSAGES)
 
 local function result(code: string, recipeId: string?, unknown: boolean?): Result
 	return {ok = code == "SELECTED" or code == "ALREADY_SELECTED", code = code, message = MESSAGES[code],
@@ -48,28 +49,9 @@ local function layoutRuns(state: State.Profile, recipeId: string): boolean
 	return true
 end
 
--- Only the saw input can hold a package that the new choice would turn into the wrong recipe: a waiting package,
--- its Return reservation while somebody carries it, or a live claim that moves a package there. Expired claims do
--- not count, and a package of the recipe being chosen is no obstacle.
-local function sawInputBusy(state: State.Profile, now: number, recipeId: string): boolean
-	local function foreign(batchId: string): boolean
-		local batch = state.batches[batchId]
-		return batch ~= nil and batch.recipeId ~= recipeId
-	end
-	for id, batch in state.batches do
-		if batch.locationId == SAW_INPUT and foreign(id) then return true end
-	end
-	local hold = state.reservations[SAW_INPUT]
-	if hold and foreign(hold.batchId) then return true end
-	for _, claim in state.claims do
-		if claim.expiresAt > now and State.claimTouches(claim, SAW_INPUT) and foreign(claim.batchId) then return true end
-	end
-	return false
-end
-
--- `now` is the server time in whole seconds, `lease` the save lease like in Workers.
+-- `lease` is the save lease like in Workers.
 function RecipeChoice.select(controller: Persistence.Controller, ownerUserId: any, expectedRevision: any, recipeId: any,
-	now: any, lease: number): Result
+	lease: number): Result
 	local snapshot = controller.snapshot()
 	local profile = snapshot.confirmed
 	if not profile or snapshot.inFlight or snapshot.status ~= "Confirmed" then
@@ -79,7 +61,7 @@ function RecipeChoice.select(controller: Persistence.Controller, ownerUserId: an
 	local state = envelope.state
 	if state.ownerUserId ~= ownerUserId then return result("NOT_AUTHORIZED") end
 	if type(expectedRevision) ~= "number" or expectedRevision % 1 ~= 0 or expectedRevision < 0
-		or expectedRevision > MAX_REVISION or type(now) ~= "number" or now ~= now or now < 0 then
+		or expectedRevision > MAX_REVISION then
 		return result("INVALID_REQUEST")
 	end
 	local recipe = Recipes.get(recipeId)
@@ -88,7 +70,6 @@ function RecipeChoice.select(controller: Persistence.Controller, ownerUserId: an
 	if state.revision ~= expectedRevision then return result("STALE_REVISION") end
 	if state.revision == MAX_REVISION then return result("REVISION_OVERFLOW") end
 	if not layoutRuns(state, recipe.id) then return result("LAYOUT_UNSUPPORTED", recipe.id) end
-	if sawInputBusy(state, now, recipe.id) then return result("INPUT_OCCUPIED", recipe.id) end
 
 	envelope.progress.selectedRecipeId, envelope.progress.selectedRecipeVersion = recipe.id, recipe.version
 	state.revision += 1
