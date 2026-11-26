@@ -13,6 +13,7 @@ local State = require(factory.State)
 local Recipes = require(factory.Recipes)
 local RecipeChoice = require(factory.RecipeChoice)
 local Overview = require(factory.Overview)
+local Equipment = require(factory.Equipment)
 local Hud = require(factory.Hud)
 local Recipe = require(factory.Recipe)
 local Transfers = require(factory.Transfers)
@@ -268,6 +269,7 @@ local hud: Hud.Hud? = nil
 local chooseRecipe: ((Player, string) -> HandMoves.Result)? = nil
 local touchBuy: ((Player) -> HandMoves.Result)? = nil -- the buy and sell buttons reach the same code as the prompts
 local touchSettle: ((Player) -> HandMoves.Result)? = nil
+local chooseEquipment: ((Player, string) -> HandMoves.Result)? = nil -- P10-04
 if logisticsEnabled then
 	hud = Hud.create(player, playerGui, {
 		selectRecipe = function(user: Player, recipeId: string): Hud.Result?
@@ -276,6 +278,10 @@ if logisticsEnabled then
 		end,
 		buy = function(user: Player) if touchBuy then touchBuy(user) end end,
 		settle = function(user: Player) if touchSettle then touchSettle(user) end end,
+		buyEquipment = function(user: Player, equipmentId: string): Hud.Result?
+			if chooseEquipment then return chooseEquipment(user, equipmentId) end
+			return nil
+		end,
 	})
 end
 
@@ -457,6 +463,7 @@ local function render()
 		end)
 	end
 	LineView.syncWares(demo, state, places)
+	LineView.syncEquipment(demo, saved.data.progress, places) -- P10-04: owned equipment stands in the workshop
 	-- P09-04: a rebuilt Band.First view takes its belt pose before the frame ends.
 	if beltShift then BeltShift.place(beltShift, os.clock(), state) end
 	if workerShift then
@@ -519,7 +526,11 @@ local function render()
 		if sale and sale.buyer == buyer then prompt.ObjectText = offerText(sale) end
 	end
 	for _, prompt in prompts do prompt.ActionText = if held then "Ablegen" else "Aufnehmen" end
-	if hud then Hud.update(hud, Overview.compute(state, selected.id, os.time(), places.beltStopped)) end
+	if hud then
+		local progress = saved.data.progress
+		Hud.update(hud, Overview.compute(state, selected.id, os.time(), places.beltStopped, progress),
+			Equipment.offer(progress, state.money, selected.id, selected.price))
+	end
 end
 
 local saleActor = {ready = true, kind = "Player", ownerUserId = player.UserId,
@@ -960,6 +971,35 @@ if logisticsEnabled then
 		render()
 		return {ok = ran and result.ok, code = code, message = lastMessage}
 	end
+	-- P10-04: the equipment card's confirm. Like the recipe choice it is a decision for the whole workshop, so it needs
+	-- no reach. The save confirms price and ownership together; the message names the new balance.
+	chooseEquipment = function(user: Player, equipmentId: string): HandMoves.Result
+		if user ~= player or busy or closing then
+			return {ok = false, code = "NOT_READY", message = "Diese Aktion ist gerade nicht verfügbar."}
+		end
+		busy = true
+		local ran, result = pcall(Equipment.buy, controller, user.UserId, confirmed().data.state.revision, equipmentId, TTL)
+		busy = false
+		local code = if ran then result.code else "ERROR"
+		local item = Equipment.get(equipmentId)
+		if code == "BOUGHT" and item then
+			lastMessage = item.name .. " gekauft (−" .. item.price .. " · Guthaben " .. confirmed().data.state.money .. "). "
+				.. "Ab dem nächsten Lauf arbeitet die Montage schneller."
+		elseif code == "NOT_ENOUGH_MONEY" and item then
+			lastMessage = "Die " .. item.name .. " kostet " .. item.price .. " Spielgeld. Dein Guthaben reicht nicht."
+		else
+			lastMessage = if ran then result.message else "Diese Aktion ist gerade nicht verfügbar."
+		end
+		render()
+		return {ok = ran and result.ok, code = code, message = lastMessage}
+	end
+	local equipHook = Instance.new("BindableFunction")
+	equipHook.Name = "P1004Equip"
+	equipHook.OnInvoke = function(equipmentId: string): HandMoves.Result
+		while busy do task.wait() end
+		return (chooseEquipment :: (Player, string) -> HandMoves.Result)(player, equipmentId)
+	end
+	equipHook.Parent = serverStorage
 	local chooseHook = Instance.new("BindableFunction")
 	chooseHook.Name = "P1003Select"
 	chooseHook.OnInvoke = function(recipeId: string): HandMoves.Result

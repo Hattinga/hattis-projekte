@@ -2,6 +2,7 @@
 -- P10-03: the operating overview. Read-only: it derives raw stock, finished goods, vehicle load, free places and the
 -- current bottlenecks from one confirmed profile and never changes stock, money or reservations.
 -- Places are counted by location kind, so it works for any workshop that binds its stores, stations and vehicle slots.
+local Equipment = require(script.Parent.Equipment)
 local Line = require(script.Parent.Line)
 local Recipes = require(script.Parent.Recipes)
 local State = require(script.Parent.State)
@@ -18,6 +19,7 @@ export type Overview = {
 	wood: {total: number, where: Where},
 	cartons: {total: number, where: Where},
 	inProgress: number,
+	equipment: {string}, -- names of the owned equipment (P10-04)
 	stock: {StockEntry},
 	places: {raw: Places?, store: Places?, vehicle: Places?},
 	saleOpen: boolean,
@@ -74,8 +76,9 @@ local function whereText(where: Where): string
 end
 
 -- `now` is the server time in seconds, `beltStopped` marks the first belt as switched off, `selectedRecipeId` is the
--- line's recipe choice. Every value comes from the confirmed profile, so a rejected or unclear save changes nothing here.
-function Overview.compute(state: State.Profile, selectedRecipeId: string?, now: number, beltStopped: boolean?): Overview
+-- line's recipe choice, `progress` the profile's progress for owned equipment (nil counts as none). Every value comes from
+-- the confirmed profile, so a rejected or unclear save changes nothing here.
+function Overview.compute(state: State.Profile, selectedRecipeId: string?, now: number, beltStopped: boolean?, progress: any?): Overview
 	local selected = Recipes.get(selectedRecipeId) or (Recipes.get(Recipes.DEFAULT_ID) :: Recipes.Recipe)
 	local wood, cartons = emptyWhere(), emptyWhere()
 	local inProgress = 0
@@ -172,14 +175,14 @@ function Overview.compute(state: State.Profile, selectedRecipeId: string?, now: 
 			.. " auf dem Anhänger: zum Händler (" .. selected.dealer .. ") oder Privatkunden fahren.")
 	end
 
-	-- The slowest station of the selected recipe sets the pace of the line.
+	-- The slowest station of the selected recipe sets the pace of the line, with owned equipment applied (P10-04).
 	local takt: string? = nil
-	local slowest, slowestSeconds = nil, 0
-	for _, stationId in Recipes.STATION_IDS do
-		local timing = Recipes.timing(selected.id, stationId)
-		if timing and timing.durationSeconds > slowestSeconds then slowest, slowestSeconds = stationId, timing.durationSeconds end
+	local slowest, slowestSeconds = Equipment.pace(progress, selected.id)
+	local owned: {string} = {}
+	for _, item in Equipment.LIST do
+		if Equipment.owned(progress, item.id) then table.insert(owned, item.name) end
 	end
-	if slowest then
+	if slowest ~= "" then
 		takt = STATION_NAMES[slowest] .. " bestimmt den Takt: " .. slowestSeconds .. " s je " .. selected.name .. "."
 		add("TAKT", "info", takt :: string, slowest)
 	end
@@ -203,6 +206,7 @@ function Overview.compute(state: State.Profile, selectedRecipeId: string?, now: 
 		wood = {total = woodTotal, where = wood},
 		cartons = {total = cartonTotal, where = cartons},
 		inProgress = inProgress,
+		equipment = owned,
 		stock = stock,
 		places = places,
 		saleOpen = state.pendingSale ~= nil,
@@ -225,6 +229,7 @@ function Overview.rows(overview: Overview): {Row}
 	table.insert(rows, {label = "Guthaben", value = money})
 	table.insert(rows, {label = "Rezept", value = overview.recipe.name .. " · Einkauf " .. overview.recipe.price
 		.. " · Händler " .. overview.recipe.dealer})
+	table.insert(rows, {label = "Ausrüstung", value = if #overview.equipment > 0 then table.concat(overview.equipment, ", ") else "keine"})
 	local wood = tostring(overview.wood.total)
 	if overview.wood.total > 0 then wood ..= " (" .. whereText(overview.wood.where) .. ")" end
 	table.insert(rows, {label = "Holz", value = wood})

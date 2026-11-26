@@ -4,6 +4,7 @@ local State = require(script.Parent.State)
 local Labels = require(script.Parent.Labels)
 local Line = require(script.Parent.Line)
 local WareView = require(script.Parent.WareView)
+local Equipment = require(script.Parent.Equipment)
 local LineView = {}
 local SCALE = 25 / 7
 local COLORS = {
@@ -167,6 +168,59 @@ function LineView.syncBelt(root: Instance, state: State.Profile, now: number, ad
 		setText(detail, "", false)
 	end
 	return status
+end
+
+-- P10-04: the owned equipment stands in the workshop. The assembly jig is a greybox gantry behind the assembly
+-- work place: two posts, a crossbar, an arm and a press plate above the work piece. Nothing collides, so the avatar
+-- and the carried ware pass it. The model appears with the confirmed ownership and is removed without it.
+local JIG_ID = "Montagevorrichtung"
+function LineView.syncEquipment(root: Instance, progress: any, places: Places)
+	local shelf = folder(root, "Equipment")
+	local existing = shelf:FindFirstChild(JIG_ID)
+	if not Equipment.owned(progress, JIG_ID) then
+		if existing then existing:Destroy() end
+		return
+	end
+	local pad = places.stationPads.Montage
+	if existing or not pad then return end
+	local model = Instance.new("Model")
+	model.Name = JIG_ID
+	model:SetAttribute("EquipmentId", JIG_ID)
+	local steel, orange = Color3.fromRGB(84, 96, 110), Color3.fromRGB(230, 150, 40)
+	local function part(name: string, size: Vector3, offset: Vector3, color: Color3): BasePart
+		local piece = Instance.new("Part")
+		piece.Name = name
+		piece.Size = size
+		piece.CFrame = pad.CFrame * CFrame.new(offset)
+		piece.Anchored = true
+		piece.CanCollide, piece.CanTouch, piece.CanQuery = false, false, false
+		piece.Color = color
+		piece.Material = Enum.Material.Metal
+		piece.Parent = model
+		return piece
+	end
+	part("PostLeft", Vector3.new(0.22, 2.1, 0.22), Vector3.new(-1.45, 1.1, 1.0), steel)
+	part("PostRight", Vector3.new(0.22, 2.1, 0.22), Vector3.new(1.45, 1.1, 1.0), steel)
+	local bar = part("Crossbar", Vector3.new(3.12, 0.24, 0.24), Vector3.new(0, 2.25, 1.0), steel)
+	part("Arm", Vector3.new(0.18, 0.18, 1.0), Vector3.new(0, 2.25, 0.5), steel)
+	part("Rod", Vector3.new(0.14, 0.6, 0.14), Vector3.new(0, 1.95, 0), orange)
+	part("Plate", Vector3.new(0.9, 0.1, 0.9), Vector3.new(0, 1.65, 0), orange)
+	local board = Instance.new("BillboardGui")
+	board.Name = "EquipmentLabel"
+	board.Adornee = bar
+	board.Size = UDim2.fromOffset(190, 30)
+	board.StudsOffsetWorldSpace = Vector3.new(0, 1.0, 0)
+	board.MaxDistance = 24
+	board.Parent = model
+	local text = Instance.new("TextLabel")
+	text.Size = UDim2.fromScale(1, 1)
+	text.BackgroundTransparency = 1
+	text.TextColor3 = Color3.fromRGB(255, 205, 120)
+	text.TextStrokeTransparency = 0
+	text.TextScaled = true
+	text.Text = Labels.text("equipment." .. JIG_ID .. ".name")
+	text.Parent = board
+	model.Parent = shelf
 end
 
 -- Station and store signs following PRODUCTION feedback; returns the shown status per station.

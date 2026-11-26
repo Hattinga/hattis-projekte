@@ -9,8 +9,8 @@ const staging=resolve(root,'.local/p04-06-tests/run');
 mkdirSync(staging,{recursive:true});
 const hashes={};
 function source(name,path){const s=readFileSync(resolve(root,path),'utf8');hashes[name]=createHash('sha256').update(s).digest('hex');return s;}
-for(const name of ['Recipes','State','Actions','Transfers','Profiles','Sessions','Persistence']){
- let s=source(name,`src/server/${name}.luau`).replace(/require\(script\.Parent\.(Recipes|State|Actions|Transfers|Profiles|Sessions)\)/g,'require("./$1")');
+for(const name of ['Recipes','Equipment','State','Actions','Transfers','Profiles','Sessions','Persistence']){
+ let s=source(name,`src/server/${name}.luau`).replace(/require\(script\.Parent\.(Recipes|Equipment|State|Actions|Transfers|Profiles|Sessions)\)/g,'require("./$1")');
  if(name==='State'){
   const guard='local runService = game:GetService("RunService")';
   if(!s.includes(guard))throw Error('Review changed State guard');

@@ -3,11 +3,12 @@
 -- A trusted reader returns the raw saved value (nil only for confirmed absence), or throws.
 local State = require(script.Parent.State)
 local Recipes = require(script.Parent.Recipes)
+local Equipment = require(script.Parent.Equipment)
 
 export type WorkerHire = {revision: number, price: number, assigned: boolean?, route: string?}
 export type BeltPermit = {revision: number, price: number, sourceId: string, targetId: string, stopped: boolean?}
 export type Progress = {version: number, selectedRecipeId: string, selectedRecipeVersion: number,
-	firstWorker: WorkerHire?, firstBelt: BeltPermit?}
+	firstWorker: WorkerHire?, firstBelt: BeltPermit?, equipment: {[string]: Equipment.Owned}?}
 export type Envelope = {profileVersion: number, state: State.Profile, progress: Progress}
 export type Result = {ok: boolean, code: string, message: string, ready: boolean,
 	key: string?, origin: string?, data: Envelope?}
@@ -17,9 +18,11 @@ Profiles.VERSION = 1
 Profiles.PROGRESS_VERSION = 1
 local MAX_INTEGER = 9007199254740991
 local ENVELOPE_FIELDS = {profileVersion=true, state=true, progress=true}
-local PROGRESS_FIELDS = {version=true, selectedRecipeId=true, selectedRecipeVersion=true, firstWorker=true, firstBelt=true}
+local PROGRESS_FIELDS = {version=true, selectedRecipeId=true, selectedRecipeVersion=true, firstWorker=true, firstBelt=true,
+	equipment=true}
 local WORKER_HIRE_FIELDS = {revision=true, price=true, assigned=true, route=true}
 local BELT_PERMIT_FIELDS = {revision=true, price=true, sourceId=true, targetId=true, stopped=true}
+local EQUIPMENT_FIELDS = {revision=true, price=true}
 local MESSAGES: {[string]: string} = {
 	LOADED="Gespeichertes Profil geladen; wirtschaftliche Freigabe steht noch aus.",
 	INITIALIZED="Fehlendes Profil bestätigt und Startmuster erstellt; noch nicht gespeichert oder freigegeben.",
@@ -80,6 +83,17 @@ local function validate(data: any, ownerUserId: number): string?
 		or (belt.stopped~=nil and belt.stopped~=true)
 		or belt.sourceId~=State.FIRST_BELT.source or belt.targetId~=State.FIRST_BELT.target) then
 		return "INVALID_PROGRESS"
+	end
+	-- P10-04: only registered equipment, each bought at a revision the state has reached.
+	local equipment=progress.equipment
+	if equipment~=nil then
+		if not plain(equipment) then return "INVALID_PROGRESS" end
+		for id, owned in equipment do
+			if not Equipment.get(id) or not record(owned, EQUIPMENT_FIELDS) or not positiveInteger(owned.price)
+				or not positiveInteger(owned.revision) or owned.revision>data.state.revision then
+				return "INVALID_PROGRESS"
+			end
+		end
 	end
 	return nil
 end

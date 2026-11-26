@@ -151,3 +151,15 @@ Innerhalb einer Stufe bleibt die Reihenfolge, in der die Regeln den Fall finden.
 **Touch-Bedienung.** Jede Taste ist mindestens 44 px hoch, das Panel 250 px breit, die Karte 330 px. Rechts liegen die Tasten Rezept, Kaufen und Verkauf bestätigen (nur bei offenem Verkauf). Kaufen und Verkauf rufen denselben Servercode wie die Weltprompts auf, die Reichweitenprüfung bleibt dort. Die Oberfläche liegt unter den Touch-Steuerelementen von Roblox (`DisplayOrder = -1`) und unter dem Statusbanner. Zielprofil ist das schwächere Android-Phone mit 800 × 360 logischen Pixeln im Querformat.
 
 Prüfung am Test-Place: [Beleg P10-03](../evidence/P10.md#p10-03--betriebsübersicht-bestätigungen-und-touch-tasten).
+
+## Ausrüstung (P10-04)
+
+Ausrüstung ist eine mit Spielgeld erwerbbare, dauerhafte Verbesserung einer Station. [Equipment](../../src/server/Equipment.luau) hält die Liste, den Kauf und die Wirkung. Die erste Ausrüstung ist die **Montagevorrichtung**.
+
+1. **Wirkung.** Eine Ausrüstung ersetzt die Laufzeit ihrer Station für jedes Rezept durch eine kürzere. Montagevorrichtung: Montage Hocker 8 auf 6 s, Beistelltisch 14 auf 10 s. Alle Zeiten sind ganze Sekunden und kürzer als die Rezeptzeit, das Modul prüft das beim Laden.
+2. **Ab dem nächsten Lauf.** Die Zeit wird beim Start eines Laufs festgelegt. Ein bereits laufender Lauf behält seine Endzeit (`finishAt`), auch wenn die Ausrüstung währenddessen gekauft wird.
+3. **Ein bestätigter Kauf.** Preis, neues Guthaben, Revision und Besitz (`progress.equipment[id] = {revision, price}`) stehen in einer Speicherung. Wiederholte Anfragen für vorhandene Ausrüstung melden „besitzt du bereits“ und buchen nichts. Abgelehnt werden fehlendes Guthaben, veralteter Stand, fremder Besitzer, unbekannte Ausrüstung und ein unklarer Speicherstand. Der Besitz überlebt einen Wiederbeitritt, ein gespeicherter Eintrag mit unbekannter Kennung, nichtganzem Preis, unbekannten Feldern oder einer Revision aus der Zukunft lädt nicht.
+4. **Preis und Nutzen vor dem Kauf.** Die Karte nennt Preis, Zeiten für beide Rezepte, den Takt des gewählten Rezepts vorher und nachher, das Restguthaben und, wenn es für ein Holzpaket nicht reicht, den Hinweis auf Verkauf oder Materialvorschuss. Ein Kauf bleibt erlaubt, auch wenn danach das Geld für Holz fehlt: Der leere Betrieb holt sich den einmaligen Materialvorschuss, der Verkauf dieser Charge verrechnet ihn.
+5. **Sichtbar.** Die Vorrichtung steht als Greybox-Portal hinter der Montageauflage (zwei Pfosten, Querholm, Arm, orange Pressplatte) mit dem Schild „ASSEMBLY JIG“ beziehungsweise „MONTAGEVORRICHTUNG“, ohne Kollision. Die Übersicht zeigt sie in der Zeile „Ausrüstung“, und der Takt in der Übersicht folgt den neuen Zeiten (Hocker: Säge, Montage und Finish teilen sich 6 s, die Säge steht in der Reihenfolge vorn).
+
+Prüfung am Test-Place: [Beleg P10-04](../evidence/P10.md#p10-04--erwerbbare-ausrüstung-montagevorrichtung).

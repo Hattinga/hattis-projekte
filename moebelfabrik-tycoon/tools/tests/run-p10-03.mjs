@@ -10,7 +10,7 @@ mkdirSync(staging,{recursive:true});
 const hashes={};
 function source(name,path){const s=readFileSync(resolve(root,path),'utf8');hashes[name]=createHash('sha256').update(s).digest('hex');return s;}
 // Overview reads Line, which pulls in the station and persistence modules; the suite itself only builds plain profiles.
-const modules=['Recipes','State','Actions','Transfers','Profiles','Sessions','Persistence','Stations','Line','Overview'];
+const modules=['Recipes','Equipment','State','Actions','Transfers','Profiles','Sessions','Persistence','Stations','Line','Overview'];
 for(const name of modules){
  let s=source(name,`src/server/${name}.luau`).replace(/require\(script\.Parent\.(\w+)\)/g,'require("./$1")');
  if(name==='State'){

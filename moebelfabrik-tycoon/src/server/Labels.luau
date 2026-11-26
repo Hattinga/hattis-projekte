@@ -61,6 +61,8 @@ Labels.entries = table.freeze({
 	table.freeze({key = "recipe.name.Beistelltisch01", en = "RECIPE: SIDE TABLE", de = "REZEPT: BEISTELLTISCH"}),
 	table.freeze({key = "recipe.next.Hocker01", en = "NEXT: STOOL WOOD PACKAGE", de = "NÄCHSTES: HOLZPAKET HOCKER"}),
 	table.freeze({key = "recipe.next.Beistelltisch01", en = "NEXT: TABLE WOOD PACKAGE", de = "NÄCHSTES: TISCHHOLZPAKET"}),
+	-- P10-04 equipment: the sign on the assembly jig.
+	table.freeze({key = "equipment.Montagevorrichtung.name", en = "ASSEMBLY JIG", de = "MONTAGEVORRICHTUNG"}),
 }) :: {Entry}
 
 local byKey: {[string]: Entry} = {}

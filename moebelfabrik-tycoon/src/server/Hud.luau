@@ -3,18 +3,21 @@
 -- current bottleneck), a confirmation toast for purchase, recipe choice and sale, and a touch bar with a recipe button
 -- that asks for confirmation before it switches. The server builds the gui, a small LocalScript handles taps and timing.
 -- Layout target: 800 x 360 logical pixels (the weaker Android profile in landscape); every button is at least 44 px high.
+local Equipment = require(script.Parent.Equipment)
 local Overview = require(script.Parent.Overview)
 local Recipes = require(script.Parent.Recipes)
 
 export type Result = {ok: boolean, code: string, message: string}
 -- What a tap may do. Every handler runs on the server and checks owner, reach and state itself.
 -- selectRecipe answers with a result the HUD confirms; buy and settle confirm in the demo themselves.
-export type Handlers = {selectRecipe: (Player, string) -> Result?, buy: (Player) -> (), settle: (Player) -> ()}
+export type Handlers = {selectRecipe: (Player, string) -> Result?, buy: (Player) -> (), settle: (Player) -> (),
+	buyEquipment: (Player, string) -> Result?}
 export type Hud = {
 	gui: ScreenGui,
 	player: Player,
 	remote: RemoteEvent,
 	followingId: string?,
+	offerId: string?, -- the equipment the card currently offers (P10-04)
 	toastId: number,
 	lastAction: number,
 	rows: {TextLabel},
@@ -40,6 +43,8 @@ local bar = gui:WaitForChild("Bar")
 local recipeButton = bar:WaitForChild("Recipe")
 local buyButton = bar:WaitForChild("Buy")
 local sellButton = bar:WaitForChild("Sell")
+local equipButton = panel:WaitForChild("Equip")
+local equipCard = gui:WaitForChild("EquipCard")
 local card = gui:WaitForChild("Card")
 local toast = gui:WaitForChild("Toast")
 local function sync() arrow.Text = if body.Visible then "–" else "+" end
@@ -48,8 +53,20 @@ header.Activated:Connect(function()
 	sync()
 end)
 recipeButton.Activated:Connect(function()
+	equipCard.Visible = false
 	card.Visible = gui:GetAttribute("FollowingId") ~= nil and not card.Visible
 end)
+equipButton.Activated:Connect(function()
+	card.Visible = false
+	equipCard.Visible = gui:GetAttribute("OfferId") ~= nil and not equipCard.Visible
+end)
+equipCard:WaitForChild("Cancel").Activated:Connect(function() equipCard.Visible = false end)
+equipCard:WaitForChild("Confirm").Activated:Connect(function()
+	local id = gui:GetAttribute("OfferId")
+	equipCard.Visible = false
+	if id then remote:FireServer("Equip", id) end
+end)
+gui:GetAttributeChangedSignal("OfferId"):Connect(function() equipCard.Visible = false end)
 buyButton.Activated:Connect(function() remote:FireServer("Buy") end)
 sellButton.Activated:Connect(function() remote:FireServer("Settle") end)
 card:WaitForChild("Cancel").Activated:Connect(function() card.Visible = false end)
@@ -170,9 +187,13 @@ function Hud.create(player: Player, playerGui: Instance, handlers: Handlers): Hu
 	arrow.Position = UDim2.new(1, 18, 0, -2)
 	arrow.TextXAlignment = Enum.TextXAlignment.Right
 	arrow.Text = "+" -- the Gotham font has no triangles
+	-- P10-04: the equipment button sits under the header while something is on offer; its card asks before the purchase.
+	local equipButton = button(panel, "Equip", UDim2.new(1, 0, 0, 44), "Ausrüstung", 13)
+	equipButton.LayoutOrder = 2
+	equipButton.Visible = false
 	local body = Instance.new("ScrollingFrame")
 	body.Name = "Body"
-	body.LayoutOrder = 2
+	body.LayoutOrder = 3
 	body.Size = UDim2.new(1, 0, 0, 96)
 	body.BackgroundColor3 = PANEL
 	body.BackgroundTransparency = 0.12
@@ -228,6 +249,23 @@ function Hud.create(player: Player, playerGui: Instance, handlers: Handlers): Hu
 	cancel.BackgroundColor3 = Color3.fromRGB(96, 78, 66)
 
 	-- Right of the panel column (8..258 px) and left of the recipe button (starts at 527 px on 705 px width).
+	-- Equipment card: price, benefit for every recipe, the pace before and after and what is left for wood.
+	local equipCard = frame(gui, "EquipCard", UDim2.new(0, 330, 0, 206), PANEL)
+	equipCard.AnchorPoint = Vector2.new(0.5, 0)
+	equipCard.Position = UDim2.new(0.5, 0, 0, 100)
+	equipCard.Visible = false
+	padded(equipCard, 10)
+	label(equipCard, "Title", UDim2.new(1, 0, 0, 24), 18, true)
+	local equipDetail = label(equipCard, "Detail", UDim2.new(1, 0, 0, 100), 13)
+	equipDetail.Position = UDim2.fromOffset(0, 28)
+	local equipConfirm = button(equipCard, "Confirm", UDim2.new(0.5, -6, 0, 48), "Kaufen", 16)
+	equipConfirm.AnchorPoint = Vector2.new(0, 1)
+	equipConfirm.Position = UDim2.fromScale(0, 1)
+	local equipCancel = button(equipCard, "Cancel", UDim2.new(0.5, -6, 0, 48), "Abbrechen", 16)
+	equipCancel.AnchorPoint = Vector2.new(1, 1)
+	equipCancel.Position = UDim2.fromScale(1, 1)
+	equipCancel.BackgroundColor3 = Color3.fromRGB(96, 78, 66)
+
 	local toast = frame(gui, "Toast", UDim2.new(0, 250, 0, 0), Color3.fromRGB(58, 110, 64))
 	toast.AutomaticSize = Enum.AutomaticSize.Y
 	toast.Position = UDim2.new(0, 266, 0, 110)
@@ -248,10 +286,10 @@ function Hud.create(player: Player, playerGui: Instance, handlers: Handlers): Hu
 	client.Source = CLIENT
 	client.Parent = gui
 
-	local hud: Hud = {gui = gui, player = player, remote = remote, followingId = nil, toastId = 0, lastAction = -math.huge,
-		rows = {}, connection = nil}
+	local hud: Hud = {gui = gui, player = player, remote = remote, followingId = nil, offerId = nil, toastId = 0,
+		lastAction = -math.huge, rows = {}, connection = nil}
 	hud.connection = remote.OnServerEvent:Connect(function(user: Player, action: any, value: any)
-		if user ~= player or (action ~= "SelectRecipe" and action ~= "Buy" and action ~= "Settle") then return end
+		if user ~= player or (action ~= "SelectRecipe" and action ~= "Buy" and action ~= "Settle" and action ~= "Equip") then return end
 		local now = os.clock()
 		if now - hud.lastAction < RATE_SECONDS then return end
 		hud.lastAction = now
@@ -265,6 +303,18 @@ function Hud.create(player: Player, playerGui: Instance, handlers: Handlers): Hu
 			return
 		end
 		if type(value) ~= "string" then return end
+		if action == "Equip" then
+			-- Only the equipment the card offers right now can be bought by a tap.
+			if value ~= hud.offerId then return end
+			local ran, result = pcall(handlers.buyEquipment, user, value)
+			if not ran then
+				Hud.toast(hud, "warn", "Ausrüstung nicht gekauft", "Das hat gerade nicht geklappt.")
+			elseif result then
+				Hud.toast(hud, if result.ok then "ok" else "warn", if result.ok then "Ausrüstung gekauft" else "Ausrüstung nicht gekauft",
+					result.message)
+			end
+			return
+		end
 		-- The server's current following recipe is the only one a tap may select, whatever the client sent.
 		if value ~= hud.followingId then return end
 		local ran, result = pcall(handlers.selectRecipe, user, value)
@@ -292,8 +342,29 @@ local function escape(text: string): string
 end
 
 -- Redraws header, rows, recipe button and card from one overview. `overview` always comes from a confirmed profile.
-function Hud.update(hud: Hud, overview: Overview.Overview)
+-- `offer` is the equipment on offer (nil when everything is owned): the button and its card show it before the purchase.
+function Hud.update(hud: Hud, overview: Overview.Overview, offer: Equipment.Offer?)
 	local gui = hud.gui
+	local equipButton = gui.Panel.Equip :: TextButton
+	if offer then
+		hud.offerId = offer.id
+		gui:SetAttribute("OfferId", offer.id)
+		equipButton.Visible = true
+		equipButton.Text = offer.name .. " · " .. offer.price
+		local equipCard = gui.EquipCard :: Frame
+		local equipTitle, equipDetail = equipCard.Title :: TextLabel, equipCard.Detail :: TextLabel
+		equipTitle.Text = offer.name .. " kaufen?"
+		local lines = {offer.benefit, offer.pace, "Preis " .. offer.price .. " · " .. (if offer.canAfford
+			then "danach bleiben " .. offer.remaining .. " Spielgeld." else "dir fehlen " .. -offer.remaining .. " Spielgeld.")}
+		if offer.aftermath then table.insert(lines, offer.aftermath) end
+		equipDetail.Text = table.concat(lines, "\n")
+		local equipConfirm = equipCard.Confirm :: TextButton
+		equipConfirm.BackgroundColor3 = if offer.canAfford then BUTTON else Color3.fromRGB(80, 80, 76)
+	else
+		hud.offerId = nil
+		gui:SetAttribute("OfferId", nil)
+		equipButton.Visible = false
+	end
 	local primary = Overview.primary(overview)
 	local header = gui.Panel.Header :: TextButton
 	local color = if primary then SEVERITY_COLOR[primary.severity] else "#8fd18a"

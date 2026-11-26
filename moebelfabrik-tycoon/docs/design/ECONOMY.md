@@ -10,6 +10,8 @@ Der Betrieb verdient Spielgeld mit gelagerten Möbeln, die der Spieler an Käufe
 
 **Zweites Rezept.** Der Beistelltisch kostet im Prüfmodell 80 Spielgeld je Holzpaket und bringt dem Händler 140 (Privatspanne 112 bis 168). Der Hocker liegt je Montage-Sekunde vorn, der Tisch je Ladeplatz und je eingesetztem Spielgeld. Der Materialvorschuss bleibt auf das Hocker-Holzpaket begrenzt. Vergleich, Zeiten und Maße stehen in [TABLE](TABLE.md).
 
+**Ausrüstung.** Die Montagevorrichtung kostet im Prüfmodell 150 Spielgeld (Mitarbeiter 120, Band 200). Sie kürzt die Montage ab dem nächsten Lauf: Hocker 8 auf 6 s, Beistelltisch 14 auf 10 s. Beim Hocker wird die Linie damit nicht mehr von der Montage begrenzt, Säge, Montage und Finish laufen dann je 6 s. Ein Kauf mit zu wenig Restguthaben für Holz ist erlaubt, die Vorschau nennt es aber vorher. Danach greift die Wiederanlaufregel unten: Ist der Betrieb leer, bringt der Materialvorschuss das nächste Holzpaket. Preis und Zeiten sind Balancing-Prüfwerte. Regeln: [PRODUCTION](PRODUCTION.md#ausrüstung-p10-04).
+
 ## Verkauf nach der Fahrt
 
 Die Verkaufsmenge wird beim Verladen sichtbar. Der Spieler fährt zum Verkaufsort und übergibt die Fracht dort. Die bestätigte physische Übergabe ist die Voraussetzung für Warenabgang und Gutschrift.

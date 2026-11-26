@@ -2,6 +2,7 @@
 -- P05-04/P05-05: one station run = confirmed input, persisted output reservation, one completed batch.
 local State = require(script.Parent.State)
 local Persistence = require(script.Parent.Persistence)
+local Equipment = require(script.Parent.Equipment)
 local Stations = {}
 local MAX_INTEGER = 9007199254740991
 
@@ -62,7 +63,9 @@ function Stations.start(controller: Persistence.Controller, stationId: string, n
 			state.claims[id] = nil
 		end
 	end
-	local finishAt = now + rule.durationSeconds
+	-- P10-04: owned equipment shortens the run; it counts from the start of a run, so a run in progress keeps its time.
+	local seconds = Equipment.seconds(candidate.progress, rule.id, inputBatch.recipeId, rule.durationSeconds)
+	local finishAt = now + seconds
 	inputBatch.locationId = rule.process
 	state.reservations[rule.output] = {kind = "Production", batchId = inputBatch.id, finishAt = finishAt}
 	state.revision += 1
