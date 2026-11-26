@@ -16,7 +16,17 @@ Vergleich mit OBS. Null Latenz gibt es nicht: Die Karte puffert, USB
 ## Benutzen
 
 1. Zip entpacken, `FrameRush.exe` doppelklicken. Eine Installation ist nicht
-   nötig.
+   nötig. Wer FrameRush über die Windows-Suche und eine Desktop-Verknüpfung
+   starten will, führt im entpackten Ordner aus:
+   ```
+   powershell -ExecutionPolicy Bypass -File install.ps1
+   ```
+   Das kopiert die EXE nach `%LOCALAPPDATA%\Programs\FrameRush\` (ohne
+   Adminrechte) und legt die Verknüpfung „FrameRush“ im Startmenü und auf dem
+   Desktop an. Erneut ausführen aktualisiert die Kopie; `-Uninstall` entfernt
+   Kopie und Verknüpfungen. Einstellungen und Logs bleiben in beiden Fällen.
+   Gilt eine Freigabe in der Sicherheitssoftware (siehe unten) nur für den
+   alten Pfad der EXE, muss sie für den neuen Pfad neu angelegt werden.
 2. Beim ersten Start listet FrameRush die Capture-Geräte auf: die Nummer der
    Karte drücken (bei der UGREEN-Karte „UGREEN 25854“). Ab dann öffnet
    FrameRush die Karte direkt.
@@ -156,6 +166,7 @@ zu Lauf (der Takt der Quelle liegt zufällig zum VBlank).
 | Ton auf dem falschen Gerät | Windows-Standardausgabe ändern, oder `--audio-output "<Namensteil>"` (wird gemerkt). |
 | FrameRush startet nicht, fehlende `MFPlat.dll` | Windows-N-Edition: „Media Feature Pack“ installieren. |
 | `no DX12 GPU adapter can present to this window` | Grafiktreiber aktualisieren, DX12-fähige GPU nötig. |
+| Verknüpfung zeigt nach einem Update noch das alte Icon | Windows' Icon-Cache: `ie4uinit.exe -show` ausführen oder abmelden und wieder anmelden. |
 
 ## Bauen
 
@@ -170,12 +181,19 @@ cargo run                                  # Debug-Build mit Konsole
 cargo run -- --synthetic --overlay         # Testbild mit Statistik
 powershell -ExecutionPolicy Bypass -File scripts\package.ps1
                                            # Release: dist\FrameRush-<Version>\ und .zip
+powershell -ExecutionPolicy Bypass -File scripts\install.ps1
+                                           # dieses Paket installieren: Startmenü + Desktop
 ```
 
 Der Release-Build ist eine Fensteranwendung ohne Konsolenfenster. Aus einem
 Terminal gestartet, schreibt er `--help`, `--list-devices` und die Probes
-trotzdem dorthin. `scripts\package.ps1` baut mit `cargo build --release`.
-Scheitert das, weil Sicherheitssoftware die neuen Build-Skripte unter
+trotzdem dorthin. `scripts\package.ps1` baut mit `cargo rustc --release` und
+linkt dabei das App-Icon ein (`assets\framerush.rc`, kompiliert mit `rc.exe`
+aus dem Windows SDK). Ein einfaches `cargo build`/`cargo run` hat kein Icon
+und zeigt das Standard-Fenstersymbol. Das Icon selbst zeichnet
+`scripts\make-icon.ps1` (nur nach Designänderungen nötig, das Ergebnis
+`assets\framerush.ico` ist eingecheckt).
+Scheitert der Release-Build, weil Sicherheitssoftware die neuen Build-Skripte unter
 `target\release` sperrt (so auf dem Entwicklungs-PC), baut das Skript
 dasselbe optimierte Programm im Dev-Profil und verwendet dabei die
 vorhandenen Build-Skripte weiter. Die Begründung steht im Skript.

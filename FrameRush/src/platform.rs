@@ -1,5 +1,39 @@
 //! Small Windows integrations: keeping the display awake, the console of the
-//! release build and an error dialog. No-ops elsewhere.
+//! release build, an error dialog and the window icon. No-ops elsewhere.
+
+/// Icon group of `assets\framerush.rc`. `scripts\package.ps1` links it into
+/// FrameRush.exe; a plain `cargo build` has no icon resource.
+#[cfg(windows)]
+const ICON_RESOURCE: u16 = 1;
+
+/// Shows the app icon in the title bar, taskbar, Alt+Tab and window
+/// pickers (Discord). The exe's own icon resource is not used for windows
+/// automatically. Without the resource (plain `cargo build`) the window
+/// keeps the default icon.
+pub fn set_window_icon(window: &winit::window::Window) {
+    #[cfg(windows)]
+    {
+        use winit::dpi::PhysicalSize;
+        use winit::platform::windows::{IconExtWindows, WindowExtWindows};
+        use winit::window::Icon;
+        // Sizes for the window's current monitor (16/32 px at 100 %).
+        let load = |logical: f64| {
+            let side = (logical * window.scale_factor()).round() as u32;
+            Icon::from_resource(ICON_RESOURCE, Some(PhysicalSize::new(side, side)))
+        };
+        match (load(16.0), load(32.0)) {
+            (Ok(small), Ok(big)) => {
+                window.set_window_icon(Some(small));
+                window.set_taskbar_icon(Some(big));
+            }
+            (Err(err), _) | (_, Err(err)) => {
+                tracing::debug!(%err, "no embedded icon, keeping the default");
+            }
+        }
+    }
+    #[cfg(not(windows))]
+    let _ = window;
+}
 
 /// While capturing, the PC itself gets no keyboard or mouse input (the
 /// player uses the console's controller), so Windows would turn the display

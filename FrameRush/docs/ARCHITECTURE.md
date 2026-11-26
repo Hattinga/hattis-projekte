@@ -43,7 +43,7 @@ einem dritten, eigenen Thread (siehe „Ton“).
 | `src/cli.rs` | Optionen (handgeschrieben, wenige Flags), mit Tests |
 | `src/app.rs` | winit-`ApplicationHandler`: Fenster, Tasten, Verbindungszustand, Geräteauswahl, Toasts, Ton-Anbindung |
 | `src/settings.rs` | gemerkte Einstellungen (`settings.ini`), mit Tests |
-| `src/platform.rs` | Bildschirm wachhalten, Konsole des Release-Builds, Fehlerdialog |
+| `src/platform.rs` | Bildschirm wachhalten, Konsole des Release-Builds, Fehlerdialog, Fenster-Icon |
 | `src/audio/mod.rs` | `AudioHandle`, `PlayoutBuffer` mit Drift-Ausgleich, mit Tests |
 | `src/audio/wasapi.rs` | WASAPI: Endpunkte finden, Aufnahme → Wiedergabe, Neuverbinden |
 | `src/capture/mod.rs` | `Frame`, `PixelFormat`, `VideoMode`, `VideoSource`-Trait, Capture-Thread |
@@ -255,6 +255,18 @@ dekodiert) gegen MJPG mit eigener Dekodierung (M3).
 - `scripts\package.ps1` baut `dist\FrameRush-<Version>\` und die Zip-Datei.
   Scheitert `--release` an gesperrten Build-Skripten, nimmt es den
   optimierten Dev-Profil-Build (Begründung im Skript).
+- **Icon:** `assets\framerush.ico` (gezeichnet von `scripts\make-icon.ps1`)
+  wird über `assets\framerush.rc` mit `rc.exe` zur `.res` kompiliert und per
+  `cargo rustc -- -C link-arg=…` nur in FrameRush.exe gelinkt. Bewusst ohne
+  `build.rs`, denn ein weiteres neues Build-Skript würde Kaspersky sperren.
+  Der Dateiname der `.res` enthält ihren Hash, damit Cargo nach einer
+  Icon-Änderung neu linkt. Windows nimmt das EXE-Icon nicht von selbst fürs
+  Fenster, daher lädt `platform::set_window_icon` es (16/32 px × Skalierung)
+  für Titelleiste und Taskleiste. Builds ohne Ressource (`cargo run`)
+  behalten das Standardsymbol.
+- `scripts\install.ps1` installiert pro Benutzer nach
+  `%LOCALAPPDATA%\Programs\FrameRush\` und legt Verknüpfungen im Startmenü
+  (Windows-Suche) und auf dem Desktop an; `-Uninstall` entfernt beides.
 
 ## Fehler und Beenden
 

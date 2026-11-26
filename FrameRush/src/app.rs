@@ -224,6 +224,7 @@ impl App {
             attributes = attributes.with_fullscreen(Some(Fullscreen::Borderless(monitor)));
         }
         let window = Arc::new(event_loop.create_window(attributes)?);
+        platform::set_window_icon(&window);
         let renderer = Renderer::new(
             Arc::clone(&window),
             &RendererOptions {
