@@ -1,0 +1,96 @@
+{
+  "note": "Upload-Protokoll HQ-Serie 1, 26.11.2026. Jede GLB wurde genau einmal hochgeladen (Open Cloud, assetType Model, Konto users/3493645144, elf Uploads insgesamt). Nicht erneut hochladen, nur die assetIds verwenden. Der Import in Studio ist als Paket verknüpft: Korrekturen im Place liegen nur an der Kopie, die hochgeladenen Assets bleiben unverändert.",
+  "creator": "users/3493645144",
+  "uploads": {
+    "Finishplatz01": {
+      "operationId": "fd66645e-b5c8-47bb-81b3-a6840dee43b6",
+      "assetId": "138939245428798",
+      "moderation": "Approved"
+    },
+    "Saege01": {
+      "operationId": "25273ede-a3ab-44b7-8eeb-ece3fabe837b",
+      "assetId": "114020872477504",
+      "moderation": "Approved"
+    },
+    "Montagebank01": {
+      "operationId": "dbea2c69-6c9d-434e-8366-2d4af07de226",
+      "assetId": "132186394270181",
+      "moderation": "Approved"
+    },
+    "Packtisch01": {
+      "operationId": "d405fd15-6e9e-424d-bcb7-eec7a73b6c6f",
+      "assetId": "130314738839587",
+      "moderation": "Approved"
+    },
+    "Band01_1m": {
+      "operationId": "a17ba59a-64f8-454a-9a12-53a14db0296a",
+      "assetId": "127721736392081",
+      "moderation": "Approved"
+    },
+    "Band01_030": {
+      "operationId": "67decf76-4623-4991-acf7-7429859c7689",
+      "assetId": "136854213610960",
+      "moderation": "Approved"
+    },
+    "Hocker01_Raw": {
+      "operationId": "6c0a2ea5-9095-448c-b825-974d212c5c92",
+      "assetId": "111403622769586",
+      "moderation": "Approved"
+    },
+    "Hocker01_Finish": {
+      "operationId": "a1692e13-6497-45e6-b513-90f0a7dcb8f6",
+      "assetId": "94341784434972",
+      "moderation": "Approved"
+    },
+    "Hocker01_Kit": {
+      "operationId": "91e4bbc5-57a7-47a7-9acf-e082542f1ec0",
+      "assetId": "71119693891277",
+      "moderation": "Approved"
+    },
+    "Holzpaket01": {
+      "operationId": "be4bf199-0c8c-47ac-bf00-9b31c0e2f0da",
+      "assetId": "91784135912256",
+      "moderation": "Approved"
+    },
+    "Hockerkarton01": {
+      "operationId": "19969aad-d90b-48e5-aa0a-23de1a2312a1",
+      "assetId": "137024081335869",
+      "moderation": "Approved"
+    }
+  },
+  "studio": {
+    "place": "79033653140107",
+    "version": 117,
+    "folder": "ServerStorage.HQ1Import",
+    "insertedAs": "Package (PackageLink)",
+    "repair": "assets/hq/tools/studio-import.luau",
+    "note": "Korrekturen (Maßstab 25/7, Drehung, Materialien, Verankerung, Kollision aus) liegen nur an den Kopien im Place, die hochgeladenen Assets sind unverändert."
+  },
+  "importerImages": {
+    "ColorMap": [
+      "102889011268163",
+      "123196707512264",
+      "127248697985035",
+      "73450877459484",
+      "92005606593412"
+    ],
+    "NormalMap": [
+      "120821333364615",
+      "124394366003251",
+      "139095192319831",
+      "139591740399949",
+      "79996834324934"
+    ],
+    "RoughnessMap": [
+      "115691776352664",
+      "124989338311439",
+      "71858477000973",
+      "92284260950537",
+      "94116723805091"
+    ],
+    "MetalnessMap": [
+      "129877276233965"
+    ],
+    "note": "Vom Importer selbst angelegt: 16 Bilder (fünf Texturensätze). Kein eigener Upload."
+  }
+}

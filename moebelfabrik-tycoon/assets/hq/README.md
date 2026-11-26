@@ -54,17 +54,21 @@ Texturen: fünf gemeinsame, kachelbare Sätze (`WoodRaw`, `WoodFinish`, `WoodBen
 
 Neu aufbauen: zuerst `python assets/hq/tools/textures.py`, danach in Blender 5.1 `tools/run_all.py` ausführen. Das Skript baut alle Assets, exportiert, prüft per Rückimport, rendert und speichert. Es legt nur die Collections `HQ_Goods`, `HQ_Stations` und `HQ_Preview` neu an.
 
-## Übernahme in Studio (offen, braucht Upload-Freigabe)
+## Studio-Import (26.11.2026 erledigt, Sichtschicht noch nicht eingebaut)
 
-1. GLB einmal je Asset hochladen. Den Maßstab 25/7 Studs je Meter genau einmal anwenden und mit `ControlCube_1m` aus P03-05 gegenprüfen.
-2. Materialien nach `manifest-*.json` → `materials` zuordnen. Bei `flat` wird eine eventuell erzeugte SurfaceAppearance entfernt, `Color` und `Material` werden gesetzt, `ClearGuard` erhält zusätzlich `Transparency` 0,6. Bei `SurfaceAppearance` werden Color-, Normal- und RoughnessMap verwendet.
+Alle elf GLB wurden einmal hochgeladen (Open Cloud, Konto 3493645144) und sind freigegeben. Asset-IDs, Operationen und die 16 vom Importer angelegten Bilder stehen in [import-log.json](import-log.json). **Nicht erneut hochladen.** Die Modelle liegen als Pakete in `ServerStorage.HQ1Import` (Place-Version 117), repariert mit [tools/studio-import.luau](tools/studio-import.luau): Maßstab 25/7 genau einmal, 180°-Drehung zurück, Flächenfarben und Materialien aus dem Manifest, verankert, ohne Kollision, Abfrage und Berührung, Pivot im Ursprung (Mitte der Grundfläche am Boden). Geprüft: elf von elf Hüllen auf 0,0002 Studs genau, Meshanzahl je Asset gleich dem Manifest, die Statuslampe von Finishplatz01 liegt exakt auf ihrer Manifest-Marke (Ausrichtung ohne Spiegelung), alle fünf Texturensätze kamen als SurfaceAppearance an. Die Reparaturen liegen nur an den Kopien im Place, ein erneutes Einfügen der Assets bringt Maßstab, Drehung und graue Flächen zurück. Soll die korrigierte Fassung ein eigenes Asset werden, ist das ein bewusster Schritt (weiterer Upload).
+
+## Nächste Schritte in Studio
+
+1. Erledigt (siehe oben). Den Maßstab gegen `ControlCube_1m` aus P03-05 gegenzuprüfen steht noch aus, die Hüllen stimmen mit dem Manifest.
+2. Erledigt für flache Materialien (Farbe, Material, `ClearGuard` mit Transparenz 0,6). Materialien nach `manifest-*.json` → `materials` zuordnen: Bei `flat` wird eine eventuell erzeugte SurfaceAppearance entfernt, `Color` und `Material` werden gesetzt, `ClearGuard` erhält zusätzlich `Transparency` 0,6. Bei `SurfaceAppearance` werden Color-, Normal- und RoughnessMap verwendet.
 3. Sichtmeshes: `CanCollide`, `CanTouch` und `CanQuery` aus. Kollision und Plätze bleiben bei der vorhandenen Greybox (`Workspace.P02Line`). Die Assets werden als Sichtschicht über die Slot-Anker gelegt.
 4. `Label_*` erhalten SurfaceGui mit `LocalizationTable`-Schlüsseln. Die Statuslampe wird an den Stationszustand gebunden, Blatt, Drehteller und Lüfter an den laufenden Prozess.
 5. Ansichten nach P03-06 aufnehmen: Spielkamera, Nahansicht, kleine Bildschirmansicht.
 
 ## Offen
 
-- Studio-Import und Spielkamera-Prüfung. Upload nur mit ausdrücklicher Freigabe.
+- Spielkamera-Prüfung der importierten Modelle und Einbau als Sichtschicht über die Slot-Anker. Weitere Uploads nur mit ausdrücklicher Freigabe.
 - Messung auf dem Zielgerät, um das Budget zu bestätigen.
 - Folgeserien mit demselben Baukasten: Architektur (Wand, Fenster, Ecke, Dach, Traufe/Ortgang, First, Boden, Tor, Leuchte), Fahrzeug (Quad, Anhänger, Ladeplätze) und Route (Gerade, Kurve, Abzweig, Übergabefläche, vier Zielorte).
 - Sichtbarer Sägeschnitt: Das Blatt dreht hinten, das Werkstück wird im Prozess vorbeigeführt. Die Animation legt Studio fest.
